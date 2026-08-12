@@ -26,6 +26,25 @@ export const aliases = {
 };
 
 /**
+ * Aliases for *bare npm specifiers*, as opposed to the repo-relative map above.
+ *
+ * Same rule applies — alias only what genuinely cannot run under Node — but the
+ * matching is by exact package name, since there is no path to resolve.
+ */
+export const packageAliases = {
+    // `worker-timers` schedules through a Web Worker built from a blob URL.
+    // `Worker` does not exist in Node, and the failure is deferred to the first
+    // setTimeout call rather than to import time, so it surfaces as a mystery
+    // crash mid-run. Upstream's own vitest.setup.js mocks this the same way.
+    'worker-timers': 'server/src/shims/worker-timers.js',
+
+    // Every API error in `src/services/request.js` and the coordinators is
+    // reported as a toast. Headless, those become structured log lines (and,
+    // from phase 3, events on the client stream).
+    'vue-sonner': 'server/src/shims/toast.js'
+};
+
+/**
  * Extra candidate suffixes used to emulate Vite's resolver. Node's ESM loader
  * requires exact paths, but `src/**` is written for Vite and uses extensionless
  * and directory imports (e.g. `import { dbVars } from '../database'`).

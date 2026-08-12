@@ -1,0 +1,27 @@
+# Build context for server/Dockerfile is the repo root, but the image only
+# needs server/**, src/** and Version. Everything below is desktop-client or
+# build tooling that would otherwise be uploaded to the daemon on every build.
+.git
+.github
+node_modules
+build
+coverage
+
+Dotnet
+src-electron
+Installer
+build-scripts
+images
+README
+*.md
+
+.vscode
+.idea
+*.log
+
+# NOTE: `src/**` is deliberately kept whole. It is tempting to drop
+# src/components and src/views since the server renders nothing, but
+# src/stores/gameLog/index.js imports a pure helper from
+# src/views/GameLog/sessions/buildGameLogSessions.js, and future upstream
+# merges can add more edges like it. Text source is cheap; a container that
+# fails to resolve an import at runtime is not.

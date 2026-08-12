@@ -9,7 +9,12 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import { aliases, resolveExtensions, resolveIndexFiles } from './aliases.js';
+import {
+    aliases,
+    packageAliases,
+    resolveExtensions,
+    resolveIndexFiles
+} from './aliases.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 
@@ -47,10 +52,21 @@ export function headlessAliasPlugin(aliasMapSource = aliases) {
         ])
     );
 
+    const packageAliasMap = new Map(
+        Object.entries(packageAliases).map(([from, to]) => [
+            from,
+            path.join(repoRoot, to)
+        ])
+    );
+
     return {
         name: 'vrcx-headless-alias',
         enforce: 'pre',
         resolveId(source, importer) {
+            const packageAlias = packageAliasMap.get(source);
+            if (packageAlias) {
+                return packageAlias;
+            }
             if (!importer || !source.startsWith('.')) {
                 return null;
             }

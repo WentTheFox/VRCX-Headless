@@ -28,6 +28,33 @@ export function readVersion() {
 }
 
 /**
+ * Node has `WebSocket` but not `CloseEvent`.
+ *
+ * This matters more than it looks: `src/services/websocket.js:118` handles
+ * `socket.onerror` by *constructing* a CloseEvent and calling its own
+ * `onclose` with it, and `onclose` is what schedules the 5 s reconnect. Without
+ * the polyfill, a network error throws a ReferenceError inside the error
+ * handler and the pipeline connection dies permanently instead of reconnecting.
+ */
+export function installCloseEventPolyfill() {
+    if (typeof globalThis.CloseEvent === 'function') {
+        return;
+    }
+    globalThis.CloseEvent = class CloseEvent extends Event {
+        /**
+         * @param {string} type
+         * @param {{ code?: number, reason?: string, wasClean?: boolean }} [init]
+         */
+        constructor(type, init = {}) {
+            super(type, init);
+            this.code = init.code ?? 0;
+            this.reason = init.reason ?? '';
+            this.wasClean = init.wasClean ?? false;
+        }
+    };
+}
+
+/**
  * Define `LINUX` / `WINDOWS` / `VERSION` / `NIGHTLY` as real globals so that
  * `src/**` — which references them as bare identifiers — can run under Node.
  *
@@ -40,6 +67,7 @@ export function installGlobals() {
     if (globalThis.window === undefined) {
         globalThis.window = globalThis;
     }
+    installCloseEventPolyfill();
     if (globalThis.LINUX === undefined) {
         globalThis.LINUX = false;
     }
