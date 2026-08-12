@@ -1,0 +1,20 @@
+{
+    "name": "vrcx-headless-server",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Headless VRCX server: sole owner of VRCX.sqlite3 and (from phase 2) the VRChat API connection",
+    "license": "MIT",
+    "bin": {
+        "vrcx-server": "./src/cli.js"
+    },
+    "type": "module",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node --import ./register-hooks.mjs src/cli.js serve",
+        "cli": "node --import ./register-hooks.mjs src/cli.js",
+        "test": "vitest run"
+    },
+    "engines": {
+        "node": ">=22.5.0"
+    }
+}

@@ -1,19 +1,19 @@
 {
-    "name": "VRCX",
+    "name": "VRCX-Headless",
     "private": true,
-    "description": "Friendship management tool for VRChat",
+    "description": "Friendship management tool for VRChat (headless server + multi-device client fork)",
     "keywords": [
         "vrchat"
     ],
-    "homepage": "https://github.com/vrcx-team/VRCX#readme",
+    "homepage": "https://github.com/WentTheFox/VRCX-Headless#readme",
     "bugs": {
-        "url": "https://github.com/vrcx-team/VRCX/issues"
+        "url": "https://github.com/WentTheFox/VRCX-Headless/issues"
     },
     "license": "MIT",
     "author": "VRCX Team",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/vrcx-team/VRCX.git"
+        "url": "git+https://github.com/WentTheFox/VRCX-Headless.git"
     },
     "main": "src-electron/main.js",
     "scripts": {
@@ -30,6 +30,8 @@
         "typecheck:node": "tsc -p tsconfig.node.json",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
+        "test:server": "vitest run --config server/vitest.config.js",
+        "server": "node --disable-warning=ExperimentalWarning --import ./server/register-hooks.mjs server/src/cli.js",
         "build:licenses": "node ./build-scripts/generate-third-party-licenses.js",
         "prod": "cross-env PLATFORM=windows vite build src && npm run build:licenses",
         "prod-linux": "cross-env PLATFORM=linux vite build src && npm run build:licenses",
