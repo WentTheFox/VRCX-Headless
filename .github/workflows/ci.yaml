@@ -1,8 +1,13 @@
 name: CI
 on:
-  # pull_request:
-  #   branches:
-  #     - master
+  # Fork change: upstream leaves this disabled, but this fork carries a large
+  # refactor that must survive every upstream merge, so PR checks are required.
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:

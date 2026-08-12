@@ -15,4 +15,8 @@ bun.lock
 AGENTS.md
 AI_GUIDE.md
 CLAUDE.md
+# Fork change: upstream keeps AI guidance files untracked, but this fork's
+# CLAUDE.md is the migration/maintenance guide for the headless split and has
+# to travel with the repo.
+!CLAUDE.md
 coverage/
