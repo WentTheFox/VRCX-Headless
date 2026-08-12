@@ -16,7 +16,12 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { aliases, resolveExtensions, resolveIndexFiles } from './aliases.js';
+import {
+    aliases,
+    packageAliases,
+    resolveExtensions,
+    resolveIndexFiles
+} from './aliases.js';
 
 const repoRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -28,6 +33,14 @@ const srcRoot = path.join(repoRoot, 'src');
 const aliasMap = new Map(
     Object.entries(aliases).map(([from, to]) => [
         path.join(repoRoot, from),
+        path.join(repoRoot, to)
+    ])
+);
+
+/** Bare npm specifier -> absolute shim path. */
+const packageAliasMap = new Map(
+    Object.entries(packageAliases).map(([from, to]) => [
+        from,
         path.join(repoRoot, to)
     ])
 );
@@ -62,6 +75,14 @@ function resolveLikeVite(basePath) {
  * @param {Function} nextResolve
  */
 export async function resolve(specifier, context, nextResolve) {
+    const packageAlias = packageAliasMap.get(specifier);
+    if (packageAlias) {
+        return {
+            url: pathToFileURL(packageAlias).href,
+            shortCircuit: true
+        };
+    }
+
     if (
         specifier.startsWith('./') ||
         specifier.startsWith('../') ||

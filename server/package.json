@@ -12,7 +12,11 @@
     "scripts": {
         "start": "node --import ./register-hooks.mjs src/cli.js serve",
         "cli": "node --import ./register-hooks.mjs src/cli.js",
+        "check-deps": "node ./scripts/check-deps.js",
         "test": "vitest run"
+    },
+    "dependencies": {
+        "tough-cookie": "^6.0.1"
     },
     "engines": {
         "node": ">=22.5.0"

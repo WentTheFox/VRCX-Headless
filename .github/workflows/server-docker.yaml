@@ -1,0 +1,114 @@
+# Fork-only workflow: builds and publishes the headless server container.
+# Nothing upstream touches this file, so it adds no merge surface.
+name: Server Container
+
+on:
+    push:
+        branches:
+            - main
+        tags:
+            - 'v*'
+        paths:
+            - 'server/**'
+            - 'src/**'
+            - 'Version'
+            - '.dockerignore'
+            - '.github/workflows/server-docker.yaml'
+    pull_request:
+        branches:
+            - main
+        paths:
+            - 'server/**'
+            - 'src/**'
+            - 'Version'
+            - '.dockerignore'
+            - '.github/workflows/server-docker.yaml'
+    workflow_dispatch:
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository_owner }}/vrcx-headless-server
+
+jobs:
+    test:
+        name: Server tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: npm
+            - run: npm ci
+            - name: Check server/root dependency drift
+              run: node server/scripts/check-deps.js
+            - run: npm run test:server
+
+    build:
+        name: Build and publish
+        needs: test
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v6
+
+            - uses: docker/setup-qemu-action@v3
+            - uses: docker/setup-buildx-action@v3
+
+            - id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=pr
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+                      type=sha,format=short
+                      type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+            # Build the native-arch image first and load it into the local
+            # daemon, so the container is proven to actually boot before
+            # anything is published. The multi-arch build below reuses this
+            # layer cache, so it costs little.
+            - name: Build (amd64, for smoke test)
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: server/Dockerfile
+                  platforms: linux/amd64
+                  load: true
+                  tags: vrcx-headless-server:smoke
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Smoke-test the image
+              run: |
+                  set -euo pipefail
+                  docker run --rm vrcx-headless-server:smoke migrate --create
+                  docker run --rm vrcx-headless-server:smoke --help
+
+            - name: Log in to GHCR
+              if: github.event_name != 'pull_request'
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            # Pull requests stop here: they have proved the Dockerfile builds
+            # and the image runs, without publishing anything.
+            - name: Build and push (multi-arch)
+              if: github.event_name != 'pull_request'
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: server/Dockerfile
+                  platforms: linux/amd64,linux/arm64
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
