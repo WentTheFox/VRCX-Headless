@@ -92,7 +92,16 @@ export async function resolve(specifier, context, nextResolve) {
             ? fileURLToPath(context.parentURL)
             : path.join(process.cwd(), 'index.js');
 
-        const requested = path.resolve(path.dirname(parentPath), specifier);
+        // Strip Vite-only suffixes (`?worker&inline`, `?url`, `?raw`, …) before
+        // touching the filesystem or the alias map — `path.resolve` treats `?`
+        // as a literal filename character, not a query separator, so a candidate
+        // path built from the raw specifier never matches a real file and
+        // silently falls through to `nextResolve` below: no alias, and no
+        // `format: 'module'` forcing either. A path- or package-aliased target
+        // is what's actually meant to load, regardless of the suffix Vite would
+        // have consumed at build time.
+        const specifierPath = specifier.split(/[?#]/)[0];
+        const requested = path.resolve(path.dirname(parentPath), specifierPath);
         const resolved = resolveLikeVite(requested);
 
         if (resolved) {

@@ -1,18 +1,21 @@
 /**
- * Headless stand-in for `src/stores/index.js`.
+ * Headless stand-in for `src/stores/modal.js`.
  *
- * Aliased in because `src/services/sqlite.js` imports `useModalStore` to turn
- * SQLite failures into modal dialogs. Importing the real barrel would pull all
- * 36 Pinia stores (and, transitively, Vue components) into the server process.
+ * The real store's `confirm`/`alert`/`prompt` return promises that resolve
+ * when a human clicks a button in a dialog that only exists in a mounted Vue
+ * app — headless, they would simply hang forever. It also calls `useI18n()`
+ * at store-setup scope, which needs a real injected i18n instance (phase 2b
+ * step 5) to not throw. Stays stubbed permanently — same reasoning as `ui.js`
+ * (`server/src/shims/ui.js`): a headless process has no dialogs.
  *
- * Phase 2 replaces this with a real Pinia instance for the background stores;
- * the modal store stays stubbed permanently, since a headless process has no
- * dialogs. Failures are logged and the original error still propagates,
- * because `handleSQLiteError` re-throws after showing its dialog.
+ * `src/services/sqlite.js`, `src/services/request.js` and three coordinators
+ * reach this for `alert`/`prompt` (grepped, not guessed); `confirm` is kept
+ * for parity even though nothing in the current closure calls it.
  */
 import { log } from '../log.js';
 
 /**
+ * @param {string} kind
  * @param {{ title?: string, description?: string }} options
  */
 function record(kind, options) {
