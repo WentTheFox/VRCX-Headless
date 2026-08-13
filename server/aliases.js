@@ -22,7 +22,30 @@ export const aliases = {
 
     // `openExternalLink` is the only symbol the data layer pulls from here, and
     // the real module reaches for `window.open` / AppApi.
-    'src/shared/utils/index.js': 'server/src/shims/shared-utils.js'
+    'src/shared/utils/index.js': 'server/src/shims/shared-utils.js',
+
+    // The two edges that pull the 629-file component/view closure into any
+    // background store that imports them (CLAUDE.md § "The store-graph
+    // problem"). The real `plugins/index.js` re-exports `./components` (raw
+    // `.vue` imports, unparseable under Node) and `./router`; the real
+    // `plugins/router.js` imports every view directly to build its route
+    // table. Phase 2b step 1.
+    'src/plugins/index.js': 'server/src/shims/plugins-index.js',
+    'src/plugins/router.js': 'server/src/shims/router.js',
+
+    // Vite-only `?worker&inline` import; fails at resolve time under Node and
+    // can't be deferred. Every message type it dispatches is a pure function
+    // from `src/shared/utils/activityEngine.js`, so this runs the same
+    // dispatch in-process rather than aliasing away the real `activity.js`
+    // store. Phase 2b step 2.
+    'src/workers/activityWorkerRunner.js':
+        'server/src/shims/activity-worker-runner.js',
+
+    // Dialog bookkeeping only; calls `document.body.addEventListener` and
+    // `useMagicKeys()` (@vueuse/core) at store-setup scope. A headless
+    // process has no dialogs, so unlike the other phase 2b aliases this one
+    // stays forever. Phase 2b step 3.
+    'src/stores/ui.js': 'server/src/shims/ui.js'
 };
 
 /**
