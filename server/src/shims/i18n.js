@@ -20,4 +20,25 @@ export const i18n = {
     }
 };
 
+/**
+ * No-op stand-ins for the real module's loaders — headless has no locale
+ * bundles to fetch, so `t()` passing the key through above is the whole
+ * translation story.
+ *
+ * @returns {Promise<void>}
+ */
+export async function loadLocalizedStrings() {}
+
+/** @returns {Promise<void>} */
+export async function updateLocalizedStrings() {}
+
+/**
+ * @param {string} _locale
+ * @param {string} key
+ * @returns {Promise<string>}
+ */
+export async function tForLocale(_locale, key) {
+    return key;
+}
+
 export default i18n;
