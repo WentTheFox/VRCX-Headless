@@ -5,8 +5,7 @@
  * (`:273`) and pulls `@vueuse/core` via `useMagicKeys()` (`:31`) — both
  * fail outright under Node. What it's *for* is dialog bookkeeping (open/close,
  * breadcrumbs, menu highlighting), and a headless process has no dialogs, so
- * this stub stays forever — same reasoning as the `modal` stub in
- * `server/src/shims/stores.js`.
+ * this stub stays forever — same reasoning as `server/src/shims/modal.js`.
  *
  * Every method here is a no-op reproduction of what its callers in
  * `src/coordinators/*Coordinator.js` and `src/stores/{instance,user}.js`

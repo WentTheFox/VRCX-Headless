@@ -13,16 +13,23 @@
  * dependency. Do NOT alias a module just because it is large.
  */
 export const aliases = {
-    // `src/services/sqlite.js` renders SQLite failures as modal dialogs.
-    // Headless has no modals; the stub logs and re-throws so callers behave the same.
-    'src/stores/index.js': 'server/src/shims/stores.js',
-
     // vue-i18n instance; only `i18n.global.t` is reachable from the data layer.
     'src/plugins/i18n.js': 'server/src/shims/i18n.js',
 
-    // `openExternalLink` is the only symbol the data layer pulls from here, and
-    // the real module reaches for `window.open` / AppApi.
-    'src/shared/utils/index.js': 'server/src/shims/shared-utils.js',
+    // NOT the whole `src/shared/utils/index.js` barrel — that barrel's other
+    // ~31 sub-modules (group permissions, formatting, transforms, …) are
+    // real business logic with no browser dependency, and multiple stores in
+    // the phase 2b closure need them for real. Only these two pieces of it
+    // can't run under Node:
+    //
+    // Vite-only `import.meta.glob('./*.json', …)`, called at module scope
+    // regardless of which export a caller wants. `languageCodes` (the only
+    // thing the closure needs) lives in the real, Vite-free `./locales.js`.
+    'src/localization/index.js': 'server/src/shims/localization.js',
+    // UI actions (confirm dialog, clipboard, `<a download>` click, bare
+    // `AppApi.*` calls) reached via `src/shared/utils/common.js`'s
+    // backward-compat re-export. Phase 2b step 4.
+    'src/shared/utils/appActions.js': 'server/src/shims/app-actions.js',
 
     // The two edges that pull the 629-file component/view closure into any
     // background store that imports them (CLAUDE.md § "The store-graph
@@ -41,11 +48,29 @@ export const aliases = {
     'src/workers/activityWorkerRunner.js':
         'server/src/shims/activity-worker-runner.js',
 
+    // Same Vite-only `?worker&inline` problem as activityWorkerRunner.js
+    // above, but this worker's search logic is stateful and deliberately
+    // has zero imports (can't be split into an importable pure-function
+    // module), so this alias loads the real file for real instead of
+    // reimplementing it — see the shim's own header for how. Phase 2b step 4.
+    'src/stores/quickSearchWorker.js':
+        'server/src/shims/quick-search-worker.js',
+
     // Dialog bookkeeping only; calls `document.body.addEventListener` and
     // `useMagicKeys()` (@vueuse/core) at store-setup scope. A headless
     // process has no dialogs, so unlike the other phase 2b aliases this one
     // stays forever. Phase 2b step 3.
-    'src/stores/ui.js': 'server/src/shims/ui.js'
+    'src/stores/ui.js': 'server/src/shims/ui.js',
+
+    // `confirm`/`alert`/`prompt` resolve when a human clicks a dialog button
+    // that only exists in a mounted Vue app; headless, they'd hang forever.
+    // Stays stubbed permanently, same reasoning as `ui.js` just above.
+    'src/stores/modal.js': 'server/src/shims/modal.js'
+
+    // `src/stores/index.js` (the barrel) is intentionally NOT aliased here —
+    // phase 2b step 4 imports it for real. Everything it needs that can't
+    // run under Node is handled by the two aliases above plus the plugin
+    // aliases, not by stubbing the barrel itself.
 };
 
 /**
@@ -64,7 +89,13 @@ export const packageAliases = {
     // Every API error in `src/services/request.js` and the coordinators is
     // reported as a toast. Headless, those become structured log lines (and,
     // from phase 3, events on the client stream).
-    'vue-sonner': 'server/src/shims/toast.js'
+    'vue-sonner': 'server/src/shims/toast.js',
+
+    // `src/stores/auth.js` and `src/coordinators/authCoordinator.js` show a
+    // login/logout greeting via `new Noty(...).show()`. Unlike `vue-sonner`,
+    // `noty` runs `document.addEventListener` at module load, so it can't be
+    // deferred to call time — it has to be a package alias. Phase 2b step 4.
+    noty: 'server/src/shims/noty.js'
 };
 
 /**
