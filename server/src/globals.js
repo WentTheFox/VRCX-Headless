@@ -294,6 +294,52 @@ export function installDocumentPolyfill() {
 }
 
 /**
+ * `window = globalThis` (the previous behaviour) makes `typeof window !==
+ * 'undefined'` true everywhere, which defeats the SSR guards in
+ * `@tanstack/query-core` and `@vueuse/core` — nothing in the current server
+ * closure imports either yet, but that is exactly the kind of thing an
+ * upstream merge adds without anyone noticing until it silently starts
+ * running browser-only code path here. `window` should be a real, narrow
+ * object instead, carrying only what `src/**` actually needs from it.
+ *
+ * Two different things end up on it, found the same way as everything else
+ * in this file — read every `window.X` in the store/coordinator closure,
+ * not assumed:
+ *
+ * - **Assigned to it at module load**, by files this server imports
+ *   unmodified: `services/appConfig.js` (`$debug`, `utils`, `dayjs`),
+ *   `services/database/index.js` (`database`), `services/config.js`
+ *   (`configRepository`), `services/sqlite.js` (`sqliteService`),
+ *   `services/webapi.js` (`webApiService`), `services/gameLog.js`
+ *   (`gameLogService`), `api/index.js` (`request`). Nothing needs seeding
+ *   here for these — a plain mutable object is enough, and those files
+ *   populate it themselves as they load, same as they always have.
+ * - **Read off it**, expecting something to already be there:
+ *   `window.matchMedia` (`stores/settings/appearance.js:529` — written across
+ *   two lines, `window\n    .matchMedia(...)`, easy to miss with a one-line
+ *   grep) and `window.crypto` (`services/security.js`, reached through
+ *   `stores/auth.js`; this is CLAUDE.md §8's own "carried forward" note —
+ *   `window.crypto.subtle` exists natively in Node, so this just has to
+ *   keep pointing at it). These *do* need seeding, from the same globals
+ *   already installed above/natively, or narrowing `window` silently breaks
+ *   both the moment they are actually reached (`appearance.js` at store-setup
+ *   time; `security.js` only during a real login's crypto operations, which
+ *   nothing in phase 2b's own store-instantiation testing exercises).
+ *
+ * Must run after `installMatchMediaPolyfill()`, which is what
+ * `globalThis.matchMedia` below actually resolves to.
+ */
+export function installNarrowWindowPolyfill() {
+    if (globalThis.window !== undefined) {
+        return;
+    }
+    globalThis.window = {
+        matchMedia: globalThis.matchMedia,
+        crypto: globalThis.crypto
+    };
+}
+
+/**
  * Define `LINUX` / `WINDOWS` / `VERSION` / `NIGHTLY` as real globals so that
  * `src/**` — which references them as bare identifiers — can run under Node.
  *
@@ -303,15 +349,13 @@ export function installDocumentPolyfill() {
  * ./shims/sqlite.js implements `ExecuteJson` too, so either value works.
  */
 export function installGlobals() {
-    if (globalThis.window === undefined) {
-        globalThis.window = globalThis;
-    }
     installCloseEventPolyfill();
     installMatchMediaPolyfill();
     installVrcxStoragePolyfill();
     installAppApiPolyfill();
     installSpeechSynthesisPolyfill();
     installDocumentPolyfill();
+    installNarrowWindowPolyfill();
     if (globalThis.LINUX === undefined) {
         globalThis.LINUX = false;
     }
