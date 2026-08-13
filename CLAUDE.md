@@ -250,11 +250,15 @@ Do not grow that file. Anything added to it is divergence phase 2b has to unpick
 
 Upstream's default branch is **`master`**; ours is **`main`**. The `upstream` remote is `https://github.com/vrcx-team/VRCX.git`.
 
+**Sync to upstream's latest tagged release, never to `master` HEAD.** Upstream tags releases `vYYYY.MM.DD` (current latest: `v2026.07.18`, matching the repo-root `Version` file) roughly every few weeks; `master` moves under an active, UI-heavy project between them. Merging HEAD pulls in whatever landed since the last tag, sight unseen, and turns every sync into a moving target instead of a discrete, reviewable step tied to a version this fork can actually claim to track.
+
 ```bash
-git fetch upstream master
-git checkout -b sync/<date> main
-git merge upstream/master
+git fetch upstream --tags
+git checkout -b sync/<tag> main
+git merge v2026.07.18   # the tag being synced to, not upstream/master
 ```
+
+Pick the tag deliberately — check `git tag -l 'v*' | sort | tail -5` (or the [releases page](https://github.com/vrcx-team/VRCX/releases)) rather than always grabbing the newest one, in case a specific tag is what's actually being targeted for this sync.
 
 ### 6.1 Expected conflicts, ranked
 
