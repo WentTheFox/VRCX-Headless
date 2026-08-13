@@ -1,18 +1,32 @@
 #!/usr/bin/env node
 /**
- * Phase 2a CLI: database maintenance plus the VRChat session commands.
- * The HTTP `serve` command arrives in phase 3.
+ * Database maintenance plus the VRChat session commands. The VRChat-session
+ * commands (`login`, `whoami`, `logout`, `pipeline`) drive the real reactive
+ * stores (`src/stores/auth.js`, `src/services/websocket.js`) via
+ * `./session.js`, not a bespoke scaffold — see phase 2b step 7 in CLAUDE.md
+ * for why that's worth calling out. The HTTP `serve` command arrives in
+ * phase 3.
  *
  * Always run through the loader:
  *   node --import ./server/register-hooks.mjs server/src/cli.js <command>
  * or, from the repo root:  npm run server -- <command>
  */
+import { mountHeadlessApp } from './app.js';
 import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
-import { readVersion } from './globals.js';
+import { buildUserAgent, readVersion } from './globals.js';
 import { log } from './log.js';
 import { resolveDatabasePath } from './paths.js';
 import { ask, askHidden } from './prompt.js';
-import { buildUserAgent, PipelineConnection, VRChatSession } from './vrchat.js';
+import {
+    loginWithCredentials,
+    logoutSession,
+    restoreSession,
+    waitForPipelineConnected,
+    wsState
+} from './session.js';
+import { installWebApi } from './webapi-init.js';
+
+import { AppDebug } from '../../src/services/appConfig.js';
 
 const USAGE = `vrcx-headless server
 
@@ -64,13 +78,16 @@ function parseArgs(argv) {
 }
 
 /**
+ * Everything the VRChat-session commands need: `window.SQLite` (via
+ * `openDatabase`, already done by the caller), `window.WebApi`, and the
+ * mounted app so `login()`/`autoLoginAfterMounted()`/etc. can actually run.
+ *
  * @param {import('./db.js').DatabaseHandle} handle
- * @returns {VRChatSession}
+ * @returns {Promise<Awaited<ReturnType<typeof mountHeadlessApp>>>}
  */
-function createSession(handle) {
-    return new VRChatSession(handle, {
-        userAgent: buildUserAgent(readVersion())
-    });
+async function bootstrapSession(handle) {
+    installWebApi(handle, { userAgent: buildUserAgent(readVersion()) });
+    return mountHeadlessApp();
 }
 
 /**
@@ -78,12 +95,6 @@ function createSession(handle) {
  * @param {Record<string, any>} flags
  */
 async function runLogin(handle, flags) {
-    const session = createSession(handle);
-    session.useEndpoints({
-        endpoint: typeof flags.endpoint === 'string' ? flags.endpoint : '',
-        websocket: typeof flags.websocket === 'string' ? flags.websocket : ''
-    });
-
     const username =
         typeof flags.username === 'string'
             ? flags.username
@@ -95,56 +106,16 @@ async function runLogin(handle, flags) {
         throw new Error('A username and password are required');
     }
 
-    // `GET config` first, matching the desktop app's order; it also seeds cookies.
-    await session.getConfig();
-
-    let json = await session.login(username, password);
-    const twoFactorKind = VRChatSession.twoFactorKind(json);
-
-    if (twoFactorKind) {
-        const label =
-            twoFactorKind === 'emailotp'
-                ? 'Email one-time code: '
-                : 'Authenticator code: ';
-        const code = process.env.VRCHAT_2FA_CODE ?? (await ask(label));
-        if (!code) {
-            throw new Error('A two-factor code is required');
-        }
-        await session.verifyTwoFactor(twoFactorKind, code);
-        json = await session.getCurrentUser();
-    }
-
-    if (!json?.id) {
-        throw new Error(
-            'Login did not return a user; check the username and password'
-        );
-    }
-
-    await session.saveCredentials(json, {
+    const { stores } = await bootstrapSession(handle);
+    const user = await loginWithCredentials(stores, {
         username,
         password,
         endpoint: typeof flags.endpoint === 'string' ? flags.endpoint : '',
         websocket: typeof flags.websocket === 'string' ? flags.websocket : ''
     });
 
-    // The desktop app creates these after login; do the same so the account is
-    // immediately usable.
-    await handle.database.initUserTables(json.id);
-
-    console.log(`Logged in as ${json.displayName} (${json.id})`);
+    console.log(`Logged in as ${user.displayName} (${user.id})`);
     return 0;
-}
-
-/**
- * @param {import('./db.js').DatabaseHandle} handle
- */
-async function requireSession(handle) {
-    const session = createSession(handle);
-    const restored = await session.loadLastSession();
-    if (!restored) {
-        throw new Error('Not logged in. Run `login` first.');
-    }
-    return { session, restored };
 }
 
 async function main() {
@@ -249,17 +220,17 @@ async function main() {
     if (command === 'whoami') {
         const handle = await openDatabase({ ...openOptions, create: false });
         try {
-            const { session } = await requireSession(handle);
-            const user = await session.getCurrentUser();
+            const { stores } = await bootstrapSession(handle);
+            const user = await restoreSession(stores);
             if (!user?.id) {
                 throw new Error(
-                    'Stored session is no longer valid; log in again.'
+                    'Not logged in, or the stored session is no longer valid. Run `login`.'
                 );
             }
             console.log(`${user.displayName} (${user.id})`);
             console.log(`status   : ${user.status ?? 'unknown'}`);
             console.log(`friends  : ${user.friends?.length ?? 0}`);
-            console.log(`endpoint : ${session.endpoint}`);
+            console.log(`endpoint : ${AppDebug.endpointDomain}`);
             return 0;
         } finally {
             handle.close();
@@ -269,8 +240,8 @@ async function main() {
     if (command === 'logout') {
         const handle = await openDatabase({ ...openOptions, create: false });
         try {
-            const session = createSession(handle);
-            await session.logout();
+            const { stores } = await bootstrapSession(handle);
+            await logoutSession(stores);
             console.log('Logged out; saved credentials kept.');
             return 0;
         } finally {
@@ -280,20 +251,29 @@ async function main() {
 
     if (command === 'pipeline') {
         const handle = await openDatabase({ ...openOptions, create: false });
-        const { session } = await requireSession(handle);
-        const pipeline = new PipelineConnection(session, {
-            onEvent: (type) => console.log(`event: ${type}`)
-        });
-        await pipeline.connect();
+        const { stores } = await bootstrapSession(handle);
+        const user = await restoreSession(stores);
+        if (!user?.id) {
+            throw new Error(
+                'Not logged in, or the stored session is no longer valid. Run `login`.'
+            );
+        }
+        await waitForPipelineConnected();
         console.log('Streaming pipeline events. Press Ctrl-C to stop.');
+        let lastMessageCount = wsState.messageCount;
+        const interval = setInterval(() => {
+            if (wsState.messageCount === lastMessageCount) return;
+            lastMessageCount = wsState.messageCount;
+            console.log(`pipeline messages received: ${wsState.messageCount}`);
+        }, 1000);
         await new Promise((resolve) => {
             process.on('SIGINT', resolve);
             process.on('SIGTERM', resolve);
         });
-        pipeline.close();
+        clearInterval(interval);
         handle.close();
         console.log(
-            `\nReceived ${pipeline.stats.messageCount} events (${pipeline.stats.bytesReceived} chars)`
+            `\nReceived ${wsState.messageCount} events (${wsState.bytesReceived} bytes)`
         );
         return 0;
     }

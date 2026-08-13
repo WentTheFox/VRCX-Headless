@@ -4,7 +4,7 @@ The headless half of [VRCX-Headless](https://github.com/WentTheFox/VRCX-Headless
 
 It runs VRCX's **real** data layer — `src/services/database/**` and `src/services/config.js` are imported unmodified — so it stays in step with upstream instead of forking it. See [`CLAUDE.md`](../CLAUDE.md) for how that works and what the rules are.
 
-> **Status: phase 2a.** The server owns the database and the VRChat connection (login, cookies, pipeline). It does not yet run the background stores or serve clients over HTTP — that is phases 2b and 3. Today it is a CLI, not a daemon.
+> **Status: phase 2b.** The server owns the database and the VRChat connection (login, cookies, pipeline), and now runs the real background stores too — `login`/`whoami`/`pipeline` drive the same reactive code the desktop client does. It doesn't yet serve clients over HTTP or run the `updateLoop` daemon — that's the rest of phase 2b and phase 3. Today it is a CLI, not a daemon.
 
 ---
 

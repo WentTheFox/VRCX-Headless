@@ -30,6 +30,25 @@ export function readVersion() {
 }
 
 /**
+ * Reproduces `GetVersion()` in `Dotnet/Program.cs:67` — a 7-character
+ * trailing segment marks a nightly build. VRChat rate-limits generic user
+ * agents, so this is functional, not cosmetic. Was `server/src/vrchat.js`'s
+ * own export before phase 2b step 7 deleted that scaffold; lives here now
+ * since both `server/src/cli.js` (display) and
+ * `installWebSocketUserAgentPolyfill` below (the actual pipeline handshake)
+ * need it.
+ *
+ * @param {string} version contents of the repo-root `Version` file
+ * @returns {string}
+ */
+export function buildUserAgent(version) {
+    const parts = String(version).trim().split('-');
+    return parts.length > 0 && parts[parts.length - 1].length === 7
+        ? `VRCX Nightly ${version}`
+        : `VRCX ${version}`;
+}
+
+/**
  * Node has `WebSocket` but not `CloseEvent`.
  *
  * This matters more than it looks: `src/services/websocket.js:118` handles
@@ -54,6 +73,52 @@ export function installCloseEventPolyfill() {
             this.wasClean = init.wasClean ?? false;
         }
     };
+}
+
+/**
+ * Node's global `WebSocket` (undici) sends no default `User-Agent`, unlike a
+ * browser, which always attaches its own. Cloudflare in front of
+ * `pipeline.vrchat.cloud` drops the handshake silently without one —
+ * confirmed by hand-rolling the HTTP upgrade over raw TLS during phase 2a:
+ * succeeds with the header, never reaches `onopen` without it, surfacing
+ * only as an immediate `onerror` + 1006 close and an endless 5 s reconnect
+ * loop. `server/src/vrchat.js`'s own `PipelineConnection` (phase 2a) fixed
+ * this by passing `{ headers: {...} }` on its own `new WebSocket()` call —
+ * but phase 2b step 7 deleted that scaffold in favour of the real
+ * `src/services/websocket.js:82`, which makes the identical bare
+ * `new WebSocket(url)` call. Invariant 1 forbids editing that call site, so
+ * this wraps the *global* constructor instead — confirmed live (2026-08-14):
+ * `pipeline` failed with a `WebSocket Error` toast every 5s exactly like the
+ * original bug, until this was added.
+ *
+ * Only patches the zero-options call shape (`new WebSocket(url)`), which is
+ * the one real call site actually uses; a call that already passes its own
+ * second argument is left alone rather than merged with, since nothing in
+ * the closure does that today and guessing at a merge strategy for a case
+ * that doesn't exist yet is more likely to be wrong than helpful.
+ */
+export function installWebSocketUserAgentPolyfill() {
+    if (globalThis.WebSocket?.__vrcxUserAgentPatched) {
+        return;
+    }
+    const NativeWebSocket = globalThis.WebSocket;
+    const userAgent = buildUserAgent(readVersion());
+    class UserAgentWebSocket extends NativeWebSocket {
+        /**
+         * @param {string | URL} url
+         * @param {*} [options]
+         */
+        constructor(url, options) {
+            super(
+                url,
+                options === undefined
+                    ? { headers: { 'User-Agent': userAgent } }
+                    : options
+            );
+        }
+    }
+    UserAgentWebSocket.__vrcxUserAgentPatched = true;
+    globalThis.WebSocket = UserAgentWebSocket;
 }
 
 /**
@@ -299,44 +364,60 @@ export function installDocumentPolyfill() {
  * `@tanstack/query-core` and `@vueuse/core` — nothing in the current server
  * closure imports either yet, but that is exactly the kind of thing an
  * upstream merge adds without anyone noticing until it silently starts
- * running browser-only code path here. `window` should be a real, narrow
- * object instead, carrying only what `src/**` actually needs from it.
+ * running browser-only code paths here. `window` needs to stop being a
+ * literal alias for `globalThis`, so that random properties *other* code
+ * adds to `globalThis` (an unrelated library, a future polyfill) don't
+ * silently leak onto `window` and vice versa.
  *
- * Two different things end up on it, found the same way as everything else
- * in this file — read every `window.X` in the store/coordinator closure,
- * not assumed:
+ * That is not the same thing as "narrow the property list", which was this
+ * function's first version and turned out to be wrong: `services/
+ * appConfig.js` (`$debug`, `utils`, `dayjs`), `services/database/index.js`
+ * (`database`), `services/config.js` (`configRepository`), `services/
+ * sqlite.js` (`sqliteService`), `services/webapi.js` (`webApiService`),
+ * `services/gameLog.js` (`gameLogService`) and `api/index.js` (`request`)
+ * all do `window.X = Y` at module load — and in a real browser, where
+ * `window` *is* the global object, that assignment also creates a bare
+ * top-level `X`. `src/**` relies on exactly that everywhere it reads one of
+ * these as a plain identifier instead of `window.X` — found live, not
+ * predicted: `stores/vrcxUpdater.js:304` reads bare `webApiService` and
+ * threw `ReferenceError: webApiService is not defined` the first time
+ * `whoami` actually exercised that code path (phase 2b step 7), because a
+ * plain object narrowed to a fixed property list does not replicate that.
  *
- * - **Assigned to it at module load**, by files this server imports
- *   unmodified: `services/appConfig.js` (`$debug`, `utils`, `dayjs`),
- *   `services/database/index.js` (`database`), `services/config.js`
- *   (`configRepository`), `services/sqlite.js` (`sqliteService`),
- *   `services/webapi.js` (`webApiService`), `services/gameLog.js`
- *   (`gameLogService`), `api/index.js` (`request`). Nothing needs seeding
- *   here for these — a plain mutable object is enough, and those files
- *   populate it themselves as they load, same as they always have.
- * - **Read off it**, expecting something to already be there:
- *   `window.matchMedia` (`stores/settings/appearance.js:529` — written across
- *   two lines, `window\n    .matchMedia(...)`, easy to miss with a one-line
- *   grep) and `window.crypto` (`services/security.js`, reached through
- *   `stores/auth.js`; this is CLAUDE.md §8's own "carried forward" note —
- *   `window.crypto.subtle` exists natively in Node, so this just has to
- *   keep pointing at it). These *do* need seeding, from the same globals
- *   already installed above/natively, or narrowing `window` silently breaks
- *   both the moment they are actually reached (`appearance.js` at store-setup
- *   time; `security.js` only during a real login's crypto operations, which
- *   nothing in phase 2b's own store-instantiation testing exercises).
+ * So `window` is a `Proxy` instead: reads are narrow (only `matchMedia` and
+ * `crypto` are seeded — see below), but every *write* through `window.X = Y`
+ * mirrors onto `globalThis[X]` too, same as a real browser. This still
+ * solves the actual SSR-guard problem (`globalThis` pollution from
+ * elsewhere no longer appears on `window`, and `window` writes don't
+ * silently become permanent globalThis fixtures except for the ones `src/**`
+ * itself explicitly makes), while not breaking every bare-identifier read
+ * of something `src/**` assigns onto `window` on purpose.
  *
- * Must run after `installMatchMediaPolyfill()`, which is what
- * `globalThis.matchMedia` below actually resolves to.
+ * The two reads seeded up front are `window.matchMedia`
+ * (`stores/settings/appearance.js:529` — written across two lines,
+ * `window\n    .matchMedia(...)`, easy to miss with a one-line grep) and
+ * `window.crypto` (`services/security.js`, reached through `stores/auth.js`;
+ * this is CLAUDE.md §8's own "carried forward" note — `window.crypto.subtle`
+ * exists natively in Node). Must run after `installMatchMediaPolyfill()`,
+ * which is what `globalThis.matchMedia` here actually resolves to.
  */
 export function installNarrowWindowPolyfill() {
     if (globalThis.window !== undefined) {
         return;
     }
-    globalThis.window = {
+    const store = {
         matchMedia: globalThis.matchMedia,
         crypto: globalThis.crypto
     };
+    globalThis.window = new Proxy(store, {
+        set(target, prop, value) {
+            target[prop] = value;
+            if (typeof prop === 'string') {
+                globalThis[prop] = value;
+            }
+            return true;
+        }
+    });
 }
 
 /**
@@ -350,6 +431,7 @@ export function installNarrowWindowPolyfill() {
  */
 export function installGlobals() {
     installCloseEventPolyfill();
+    installWebSocketUserAgentPolyfill();
     installMatchMediaPolyfill();
     installVrcxStoragePolyfill();
     installAppApiPolyfill();
