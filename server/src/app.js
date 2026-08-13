@@ -53,9 +53,11 @@
  * The router is real (`vue-router`'s `createRouter`), not the plain-object
  * `router` singleton `server/src/shims/router.js` provides for direct
  * `import { router } from '../plugins/router'` call sites — those are two
- * different injection mechanisms and both are needed. Memory history and an
- * empty route table are enough: nothing server-side renders a matched
- * route, the stores that call `router.push(...)` do it from inside
+ * different injection mechanisms and both are needed. Memory history and a
+ * single catch-all route are enough: nothing server-side renders a matched
+ * route (the catch-all exists only so the initial navigation has *something*
+ * to match, silencing a startup warning), the stores that call
+ * `router.push(...)` do it from inside
  * UI-event handlers, and `router.currentRoute` is a real ref either way.
  *
  * i18n is real (`vue-i18n`'s `createI18n`) for the same reason, with no
@@ -104,7 +106,13 @@ export async function mountHeadlessApp() {
 
     await initPiniaPlugins();
 
-    const router = createRouter({ history: createMemoryHistory(), routes: [] });
+    const router = createRouter({
+        history: createMemoryHistory(),
+        // A catch-all, not a real route — nothing here ever renders one.
+        // Memory history's initial navigation target has no match otherwise,
+        // which vue-router logs as a startup warning on every boot.
+        routes: [{ path: '/:pathMatch(.*)*', component: {} }]
+    });
     const i18n = createI18n({
         legacy: false,
         locale: 'en',

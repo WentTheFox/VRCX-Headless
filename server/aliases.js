@@ -31,6 +31,12 @@ export const aliases = {
     // backward-compat re-export. Phase 2b step 4.
     'src/shared/utils/appActions.js': 'server/src/shims/app-actions.js',
 
+    // Theme/font/CSS DOM mutation (document.documentElement, injected
+    // <style>/<link> tags). Reached directly by
+    // src/stores/{settings/appearance,vrcx}.js, not just through the
+    // shared/utils barrel. Phase 2b step 5.
+    'src/shared/utils/base/ui.js': 'server/src/shims/base-ui.js',
+
     // The two edges that pull the 629-file component/view closure into any
     // background store that imports them (CLAUDE.md § "The store-graph
     // problem"). The real `plugins/index.js` re-exports `./components` (raw
