@@ -51,6 +51,7 @@ export class VRChatSession {
     #webApi;
     #endpoint = DEFAULT_ENDPOINT;
     #websocket = DEFAULT_WEBSOCKET;
+    #userAgent;
 
     /**
      * @param {import('./db.js').DatabaseHandle} db
@@ -58,10 +59,15 @@ export class VRChatSession {
      */
     constructor(db, { userAgent }) {
         this.#db = db;
+        this.#userAgent = userAgent;
         this.#cookies = new CookieStore().attach(db.sqlite).load();
         this.#webApi = installWebApiGlobal(
             new WebApiShim({ cookies: this.#cookies, userAgent })
         );
+    }
+
+    get userAgent() {
+        return this.#userAgent;
     }
 
     get webApi() {
@@ -330,7 +336,12 @@ export class PipelineConnection {
     async connect() {
         const token = await this.#session.getPipelineToken();
         const url = `${this.#session.websocketDomain}/?auth=${token}`;
-        const socket = new WebSocket(url);
+        // Cloudflare drops the handshake outright without a User-Agent, and
+        // Node's WebSocket sends none by default (unlike a browser, which
+        // always attaches its own). Same header WebApiShim sends over HTTP.
+        const socket = new WebSocket(url, {
+            headers: { 'User-Agent': this.#session.userAgent }
+        });
         this.#socket = socket;
 
         socket.onopen = () => {
