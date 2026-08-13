@@ -9,6 +9,8 @@ Upstream is a fast-moving, UI-heavy project, and `.github/CONTRIBUTING.md` says 
 
 **If you are an agent or contributor about to change something: read "Invariants" first. They are the whole reason this fork is maintainable.**
 
+**Status (2026-08-14):** Phases 0–2a are done, unit-tested, and now also verified live — `login`, `whoami` and the pipeline WebSocket all confirmed end-to-end against a real VRChat account in a real Linux + Steam + VRChat environment, which CI cannot do (`api.vrchat.cloud` isn't reachable from there). That pass found and fixed one real bug: the pipeline WebSocket needs an explicit `User-Agent` header or Cloudflare drops the handshake silently — see §3.7. **Phase 2b (Pinia-in-Node) is next**; its ordered recipe is in §8. Sections below covering finished, working machinery are collapsed (`<details>`) so this file reads as "what's left" first — expand them when you need the how-it-works reference, not to re-verify what's already proven.
+
 ---
 
 ## 1. Architecture
@@ -71,6 +73,9 @@ These six rules are what keep upstream merges cheap. Breaking one does not fail 
 6. **Every unavoidable `src/` edit gets an entry in §5**, with enough anchor context to re-find it after upstream reformats the file. If §5 passes ~15 entries, convert edits back into aliases.
 
 ---
+
+<details>
+<summary><strong>§3 — how it works (done, phase 0–2a; expand for the mechanism reference)</strong></summary>
 
 ## 3. How the server runs upstream code unmodified
 
@@ -147,9 +152,9 @@ Two details that are easy to miss and break logins if dropped:
 
 Nothing in `src/**` parses the blob — `src/stores/auth.js` only moves it between `WebApi.GetCookies()` and `savedCredentials` — so the format is ours to choose. We chose .NET's on purpose, for interoperability during the transition.
 
-### 3.7 Node's missing browser globals
+### 3.7 Node's missing — or browser-different — globals
 
-Verified against the running Node, not assumed. `fetch`, `WebSocket`, `crypto.subtle` and `Blob` are present. These are not:
+Verified against the running Node, not assumed. `fetch`, `WebSocket`, `crypto.subtle` and `Blob` exist as globals, but not all of them behave like their browser counterparts. Missing entirely:
 
 | Missing | Where it bites | Handling |
 |---|---|---|
@@ -158,9 +163,19 @@ Verified against the running Node, not assumed. `fetch`, `WebSocket`, `crypto.su
 | `navigator.onLine` | `src/coordinators/authAutoLoginCoordinator.js:14` reads it → falsy → "you're offline" forever | inject `() => true` (the function already takes it as a parameter) |
 | `speechSynthesis` | `src/stores/settings/notifications.js` TTS | phase 5: route to a desktop agent |
 
+Present, but behaving differently — **found in this fork's first live-VRChat test** (2026-08-14, real account, real network, outside CI), not by inspection:
+
+| Present but different | Where it bites | Handling |
+|---|---|---|
+| `WebSocket` sends no default `User-Agent` | `server/src/vrchat.js`'s `PipelineConnection` — Cloudflare in front of `pipeline.vrchat.cloud` drops the handshake silently without one (confirmed by hand-rolling the HTTP upgrade over raw TLS: succeeds with the header, never reaches `onopen` without it), surfacing only as an immediate `onerror` + 1006 close and an endless 5 s reconnect loop | fixed **in the phase 2a scaffold** by passing `{ headers: { 'User-Agent': ... } }` as the WebSocket constructor's second, non-standard argument |
+
+**Carries into phase 2b:** `src/services/websocket.js:82` makes the same bare `new WebSocket(url)` call and will hit the identical wall once it replaces `PipelineConnection` (step 7 below) — a browser sends its own real User-Agent automatically, so upstream has never needed to think about this. Invariant 1 forbids editing that call site, so the fix there has to be a global `WebSocket` wrapper installed in `server/src/globals.js`, the same way `CloseEvent` is polyfilled above.
+
 ### 3.8 Schema version
 
 `server/src/db.js` **reads the target version out of `src/stores/vrcx.js`** with a regex rather than duplicating the constant, so an upstream bump is picked up automatically instead of silently skipping migrations. If the regex stops matching, it logs a warning and falls back to 16 — treat that warning as a merge task.
+
+</details>
 
 ---
 
@@ -207,6 +222,9 @@ One benign-looking edge to leave alone: `src/stores/gameLog/index.js:5` imports 
 
 Every modification to an upstream-owned file. Keep this exhaustive and keep it short.
 
+<details>
+<summary>Full table (4 entries, all done — phase 4 adds one more)</summary>
+
 | File | Change | Why not an alias | Anchor |
 |---|---|---|---|
 | `package.json` | `name`, `description`, `homepage`, `bugs`, `repository` retargeted at the fork; added `test:server` and `server` scripts; added `tough-cookie` to `devDependencies` | Package identity and scripts cannot be aliased. `tough-cookie` is declared so local dev does not depend on it being hoisted as somebody else's transitive dep — it is also a real dependency in `server/package.json`, and `server/scripts/check-deps.js` enforces the two match | top-of-file metadata block; `scripts` after `"test:coverage"`; `devDependencies` after `"tailwindcss"` |
@@ -216,7 +234,9 @@ Every modification to an upstream-owned file. Keep this exhaustive and keep it s
 
 Nothing under `src/`, `Dotnet/`, or `src-electron/` has been modified. Phase 4 will add exactly one expected entry (`src/plugins/interopApi.js`) plus the `define` block in `src/vite.config.js`.
 
-### Temporary scaffolds (not patches, but debts)
+</details>
+
+### Temporary scaffolds (not patches, but debts) — this is the live phase 2b target
 
 | Where | What | Removed by |
 |---|---|---|
@@ -300,6 +320,8 @@ npm run server -- pipeline                  # stream VRChat events
 npm run test:server
 ```
 
+`login` → `whoami` → `pipeline` verified end-to-end against a real account on 2026-08-14, outside CI (see the status note at the top of this file).
+
 Environment: `VRCX_DATABASE`, `VRCX_DATA_DIR`, `VRCX_LOG_LEVEL` (`debug|info|warn|error`), `VRCHAT_PASSWORD` / `VRCHAT_2FA_CODE` for non-interactive login.
 
 `--user` is only needed to create per-user tables for an account the database has never seen; `login` does it automatically, and migrations for existing accounts discover their tables through `sqlite_schema` queries.
@@ -339,6 +361,7 @@ Ordered so each step is independently verifiable. Steps 1–2 are the ones that 
 
 Other notes carried forward:
 
+- `server/src/globals.js` must wrap the global `WebSocket` constructor to inject a `User-Agent` header before `src/services/websocket.js` takes over pipeline duties — found live on 2026-08-14 (§3.7); a browser supplies its own User-Agent automatically, upstream has never had to think about it, and Cloudflare drops the handshake silently without one. `server/src/vrchat.js`'s own fix (passing `headers` on its own `new WebSocket()` call) does not carry over, since the real module's call site can't be edited (invariant 1).
 - `src/services/request.js` performs auth side effects inline on 401/403 (`handleAutoLogin`, the 2FA dialog, a VPN modal on 403 `config`). Aliasing gets it running; its error *reporting* becomes a stream event. Most likely source of real conflicts in future merges.
 - It also holds an in-flight GET dedupe (10 s, keyed by URL) and a negative cache (15 min, keyed by endpoint, exported and mutable). Both become server-wide once it runs here — clear `failedGetRequests` on relogin.
 - `src/services/security.js` uses `window.crypto.subtle`, which exists natively in Node; reuse as-is.
@@ -348,7 +371,10 @@ Other notes carried forward:
 
 ## 10. The container
 
-`server/Dockerfile` (build context is the **repo root**, not `server/`), published by `.github/workflows/server-docker.yaml` to `ghcr.io/<owner>/vrcx-headless-server` for `linux/amd64` and `linux/arm64`. User-facing docs are in `server/README.md`.
+`server/Dockerfile` (build context is the **repo root**, not `server/`), published by `.github/workflows/server-docker.yaml` to `ghcr.io/<owner>/vrcx-headless-server` for `linux/amd64` and `linux/arm64`. Working and done — user-facing docs are in `server/README.md`.
+
+<details>
+<summary>Design rationale</summary>
 
 The one real design decision: **the image installs `server/package.json`, not the root manifest.** The root keeps everything in `devDependencies`, so `--omit=dev` installs nothing while `--include=dev` drags in electron and vite. The image layout mirrors a dev checkout — `/app/{node_modules,src,server}` — so Node resolves `src/**`'s bare imports upward exactly as it does locally, and `server/hooks.mjs` derives `repoRoot` from its own location with no special casing.
 
@@ -357,6 +383,8 @@ The cost is that dependency versions are stated twice. `server/scripts/check-dep
 Every dependency is pure JS — `node:sqlite` is built into the Node binary — so there is nothing to compile, Alpine/musl is safe, and the arm64 build under QEMU is cheap.
 
 CI builds the native-arch image and boots it (`migrate --create`, `--help`) **before** publishing, so a broken image never reaches the registry. Pull requests build and smoke-test without pushing.
+
+</details>
 
 ---
 
