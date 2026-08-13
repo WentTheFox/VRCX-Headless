@@ -341,20 +341,28 @@ Environment: `VRCX_DATABASE`, `VRCX_DATA_DIR`, `VRCX_LOG_LEVEL` (`debug|info|war
 | 0 | Fork hygiene: upstream remote, unshallow, identity, CI on PRs | **done** |
 | 1 | Server skeleton: SQLite shim, alias/loader layer, migrations, CLI, tests | **done** |
 | 2a | Server owns the VRChat connection: WebApi shim, cookie jar, login/2FA CLI, pipeline connection. Multi-arch container + GHCR publishing | **done** |
-| 2b | Pinia-in-Node: the background stores and the `updateLoop` daemon | next up |
+| 2b | Pinia-in-Node: the background stores and the `updateLoop` daemon | **in progress** — steps 1–4/9 done |
 | 3 | Transport: password auth → session cookie, generic `/api/rpc` dispatcher, `/api/stream` WebSocket fan-out | not started |
 | 4 | Web client: `PLATFORM=web`, `client-web/shims/**`, `capabilities` gating | not started |
 | 5 | Desktop client as native agent: log forwarding up, overlay/Discord/notification commands down; .NET stops touching SQLite | not started |
 | 6 | Hardening: single-writer lock, awaited client writes, packaging | not started |
 
-### Phase 2b recipe (next up)
+### Phase 2b recipe
 
-Ordered so each step is independently verifiable. Steps 1–2 are the ones that make the graph loadable at all.
+Ordered so each step is independently verifiable. Steps 1–4 are done (2026-08-14) and get the module graph loading for real; steps 5–9 are what's left.
 
-1. **Alias the two component/view edges** — `src/plugins/index.js` (must export `loadLocalizedStrings` plus the i18n re-exports) and `src/plugins/router.js` (must export a `router` with `currentRoute` as a ref and a `push()`). 629 files → 148.
-2. **Alias `src/stores/activity.js`** — it reaches `src/workers/activityWorkerRunner.js:1`, which imports `./activityWorker.js?worker&inline`. That is Vite-only syntax and fails at *resolve* time, so it cannot be deferred. Reached from `src/stores/auth.js:34`.
-3. **Alias `src/stores/ui.js`** — calls `document.body.addEventListener` at store-setup scope (`:273`) and pulls `@vueuse/core` via `useMagicKeys()` (`:31`).
-4. **Replace the `src/stores/index.js` stub with a real barrel** minus the UI stores. 17 files in the reduced closure import from it, including `src/services/request.js`, `src/services/websocket.js` and 10 modules under `src/api/**`.
+<details>
+<summary><strong>Steps 1–4 — done</strong> (expand for what actually shipped vs. what was originally planned)</summary>
+
+1. ~~Alias the two component/view edges~~ **Done as planned.** `src/plugins/index.js` (exports `loadLocalizedStrings` plus the i18n re-exports, plus `getSentry`/`isSentryOptedIn` once step 4 needed them too) and `src/plugins/router.js` (a `router` with `currentRoute` as a ref and a `push()`). 629 files → 148.
+2. ~~Alias `src/stores/activity.js`~~ **Aliased `src/workers/activityWorkerRunner.js` instead** — smaller, per invariant 3. Its only content is the Vite-only `./activityWorker.js?worker&inline` import, which fails at *resolve* time and can't be deferred; every message type it dispatches is a pure function from `activityEngine.js`, so the shim runs the same dispatch in-process and the real `useActivityStore` (DB-backed caching included) stays live rather than being stubbed away.
+3. ~~Alias `src/stores/ui.js`~~ **Done as planned.** Dialog bookkeeping only (`document.body.addEventListener`, `useMagicKeys()`); stubbed forever, same as `modal.js` below.
+4. ~~Replace the `src/stores/index.js` stub with a real barrel minus the UI stores~~ **Done, more surgically than "minus the UI stores" implied.** The barrel itself is real and unaliased now; only the specific pieces that can't run under Node are — `src/stores/modal.js` (dialogs, same reasoning as `ui.js`, split out of the old combined stub into its own file), `src/localization/index.js` (`import.meta.glob`; the real, Vite-free `locales.js` is re-exported for real), `src/shared/utils/appActions.js` (UI actions reached through `common.js`'s re-export — the other ~31 files in that barrel are real, browser-independent business logic and are no longer aliased away at all), and the `noty` package (runs `document.addEventListener` at module load, so — unlike `vue-sonner` — it needed a package alias, not just a deferred-call shim). Also fixed a real bug in `server/hooks.mjs` found along the way: `path.resolve` treats `?` as a literal filename character, so *any* specifier carrying a Vite suffix (`?worker&inline`, `?url`, `?raw`, …) never matched a real file and silently skipped both the alias map and `format: 'module'` forcing — not just for this step's `src/stores/quickSearchWorker.js` (loaded via a `data:` URL to dodge a self-referential alias deadlock; see that shim's own header), but for every such specifier, including future ones.
+
+`src/stores/index.js` imports cleanly with all 42 expected exports; `src/stores/auth.js` loads standalone. 43/43 server tests and the CLI pass throughout.
+
+</details>
+
 5. **Mount a throwaway `createApp({})`** with pinia, a memory router and real vue-i18n. `createPinia()` + `setActivePinia()` alone leaves `pinia._a` unset, so `inject()` returns `undefined` and `useRouter()` / `useI18n()` throw at store-setup time in ~20 stores. Mounting keeps upstream signatures intact (invariant 4) and is cheaper than aliasing `vue-router` and `vue-i18n`.
 6. **Narrow `window`.** `server/src/globals.js` currently sets `window = globalThis`, which makes `typeof window !== 'undefined'` true and defeats the SSR guards in `@tanstack/query-core` and `@vueuse/core`. Replace it with a narrow object carrying only the properties `src/**` actually assigns (`$debug`, `utils`, `dayjs`, `database`, `configRepository`, `sqliteService`, `webApiService`, `gameLogService`, `request`).
 7. **Delete the `server/src/vrchat.js` scaffold** in favour of `src/api/auth.js`, `src/services/request.js` and `src/services/websocket.js` + `handlePipeline`.
