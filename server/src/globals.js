@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { log } from './log.js';
+
 export const repoRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '..',
@@ -147,6 +149,151 @@ export function installVrcxStoragePolyfill() {
 }
 
 /**
+ * `AppApi` is a C# object bound over CEF/Electron IPC by
+ * `src/plugins/interopApi.js` (the client's only injection point), backing
+ * ~81 methods spread across `Dotnet/AppApi/**` — screenshot handling, VR
+ * overlay, registry, game-process detection, window focus, and so on. None
+ * of it has a headless equivalent (phase 2b step 9's own framing: "a Proxy
+ * over the ~81 methods returning no-ops"), and unlike `VRCXStorage` there's
+ * no fixed method list to enumerate up front — every call site in `src/**`
+ * is a bare `AppApi.SomeMethod(...)`, so a `Proxy` answers arbitrary method
+ * names instead of hand-listing all 81.
+ *
+ * Every call site found in the store/coordinator closure is fire-and-forget
+ * (grepped — nothing reads a return value), so a generic async no-op is
+ * enough; `CheckGameRunning`, `IPCAnnounceStart`, `FlashWindow` and
+ * `PopulateImageHosts` are the ones actually reached on the server's normal
+ * paths (`updateLoop.js`, `auth.js`, `userCoordinator.js`) rather than only
+ * from UI event handlers that never fire headless, but none needed special
+ * handling once confirmed. Logged at `debug`, not `info` like
+ * `server/src/shims/app-actions.js`'s UI-action suppressions — some of
+ * these (`CheckGameRunning`) are on `updateLoop`'s poll path and would
+ * otherwise spam the log every cycle.
+ *
+ * Phase 4 will want this same shape client-side for the web client's own
+ * `capabilities` gating — kept server-only for now rather than factored out
+ * pre-emptively, since there's nothing to share yet but the idea.
+ *
+ * One method needed a real return value rather than the blanket
+ * `undefined`, found the same way as `matchMedia`/`VRCXStorage` — by
+ * actually eager-instantiating every store and reading the next crash:
+ * `GetVersion()` feeds `src/stores/vrcxUpdater.js`'s update-check logic
+ * unconditionally at setup scope, with no null-check on the result before
+ * calling `.replace()` on it. `VERSION` (installed below, read from the
+ * repo-root `Version` file) is what the real implementation would return
+ * anyway.
+ */
+export function installAppApiPolyfill() {
+    if (globalThis.AppApi !== undefined) {
+        return;
+    }
+    const overrides = {
+        GetVersion: async () => globalThis.VERSION
+    };
+    const cache = new Map();
+    globalThis.AppApi = new Proxy(
+        {},
+        {
+            get(_target, prop) {
+                if (typeof prop !== 'string') {
+                    return undefined;
+                }
+                if (prop in overrides) {
+                    return overrides[prop];
+                }
+                let fn = cache.get(prop);
+                if (!fn) {
+                    fn = async (...args) => {
+                        log.debug(`AppApi.${prop} suppressed (headless)`, {
+                            args
+                        });
+                    };
+                    cache.set(prop, fn);
+                }
+                return fn;
+            }
+        }
+    );
+}
+
+/**
+ * `src/stores/settings/notifications.js` calls `speechSynthesis.getVoices()`
+ * at store-setup scope, and `.cancel()`/`.speak()` from its TTS actions.
+ * This is CLAUDE.md §3.7's `speechSynthesis` entry ("phase 5: route to a
+ * desktop agent") — real TTS output only ever makes sense coming out of a
+ * speaker on someone's desktop, so this stays a stub through phase 2b
+ * regardless; it exists only so eager store instantiation (step 5) doesn't
+ * crash on the empty voice list, not as an attempt at the phase 5 routing.
+ */
+export function installSpeechSynthesisPolyfill() {
+    if (globalThis.speechSynthesis !== undefined) {
+        return;
+    }
+    globalThis.speechSynthesis = {
+        getVoices: () => [],
+        cancel() {},
+        speak() {}
+    };
+}
+
+/**
+ * A handful of stores touch `document.*` directly rather than through
+ * `src/shared/utils/appActions.js` or `base/ui.js` (both already stubbed —
+ * `server/src/shims/app-actions.js`, `server/src/shims/base-ui.js`):
+ * `document.documentElement.classList` for CSS-class-driven UI density/
+ * accessibility toggles (`src/stores/settings/appearance.js`, two call
+ * sites reached eagerly at store-setup time), plus `getElementById` /
+ * `querySelector` / `querySelectorAll` for one-off cleanup of injected
+ * `<style>` tags and upload-button state (`src/stores/auth.js`,
+ * `src/stores/gallery.js`, `src/coordinators/imageUploadCoordinator.js`).
+ * Bounded surface, grepped across the whole store/coordinator closure —
+ * extend it if a new call site shows up rather than reaching for jsdom.
+ *
+ * `createElement` is not one of those call sites — it exists because
+ * `@vue/runtime-dom` (pulled in by the bare `'vue'` package, which is used
+ * everywhere for `ref`/`computed`/`watch`) does `doc &&
+ * doc.createElement("template")` at *module scope*, as a `<template>`
+ * feature check, the moment anything imports `'vue'`. That's harmless while
+ * `document` is `undefined` (the `&&` short-circuits) but breaks once this
+ * polyfill makes `document` truthy without providing the one method that
+ * gets called unconditionally at import time.
+ */
+export function installDocumentPolyfill() {
+    if (globalThis.document !== undefined) {
+        return;
+    }
+    const classList = {
+        add() {},
+        remove() {},
+        toggle() {
+            return false;
+        },
+        contains() {
+            return false;
+        }
+    };
+    function createElement() {
+        return {
+            classList,
+            style: {},
+            setAttribute() {},
+            removeAttribute() {},
+            appendChild() {},
+            removeChild() {},
+            addEventListener() {},
+            removeEventListener() {}
+        };
+    }
+    globalThis.document = {
+        documentElement: { classList },
+        createElement,
+        getElementById: () => null,
+        querySelector: () => null,
+        querySelectorAll: () => []
+    };
+}
+
+/**
  * Define `LINUX` / `WINDOWS` / `VERSION` / `NIGHTLY` as real globals so that
  * `src/**` — which references them as bare identifiers — can run under Node.
  *
@@ -162,6 +309,9 @@ export function installGlobals() {
     installCloseEventPolyfill();
     installMatchMediaPolyfill();
     installVrcxStoragePolyfill();
+    installAppApiPolyfill();
+    installSpeechSynthesisPolyfill();
+    installDocumentPolyfill();
     if (globalThis.LINUX === undefined) {
         globalThis.LINUX = false;
     }
