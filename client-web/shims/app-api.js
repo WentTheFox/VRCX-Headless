@@ -15,6 +15,8 @@
  * browser has no access to) are out of scope here; expanding capability
  * coverage is explicit follow-up work, not a gap to paper over.
  */
+import { toast } from 'vue-sonner';
+
 const IMPLEMENTED = {
     async GetVersion() {
         return VERSION;
@@ -122,9 +124,28 @@ export const appApiTarget = new Proxy(IMPLEMENTED, {
         if (typeof prop !== 'string') return undefined;
         if (prop in target) return target[prop];
         return () => {
-            throw new Error(
-                `AppApi.${prop} is not available in the web client`
-            );
+            const message = `AppApi.${prop} is not available in the web client`;
+            // Toasted here, at the throw site, rather than relying only on
+            // the generic unhandledrejection listener (src/plugins/
+            // interopApi.js, phase 6): that one only catches rejections
+            // nothing ever handles. A call site with its own .catch()/
+            // try-catch that just console.errors and moves on (several do —
+            // this Proxy's own header comment assumes a "UI handler can
+            // catch it and disable/hide the control", which several call
+            // sites don't actually do) would otherwise fail completely
+            // silently from the user's point of view. Throwing after the
+            // toast preserves the original catch/no-op behaviour for
+            // whatever a call site already does with it.
+            toast.error(message);
+            const error = new Error(message);
+            // Tells installUnhandledRejectionReporting (src/plugins/
+            // interopApi.js) not to toast this one a second time if it also
+            // turns out to be unhandled — found live: an unwrapped `await
+            // AppApi.X()` with no local catch reaches BOTH this throw site
+            // AND the window's unhandledrejection event, producing two
+            // toasts for one failure without this flag.
+            error['alreadyToasted'] = true;
+            throw error;
         };
     }
 });

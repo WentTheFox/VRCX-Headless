@@ -26,6 +26,16 @@ import vrcxJsonStorage from '../services/jsonStorage.js';
 function installUnhandledRejectionReporting() {
     window.addEventListener('unhandledrejection', (event) => {
         console.error('Unhandled rejection', event.reason);
+        // client-web/shims/app-api.js's Proxy already toasts unimplemented-
+        // capability errors itself, at throw time, specifically so a call
+        // site that catches and swallows the rejection still surfaces one —
+        // this listener exists for the complementary case, a rejection
+        // *nothing* handles. Without the alreadyToasted check both fire for
+        // the same failure, since a rejection nothing catches is both
+        // "thrown by the Proxy" and "unhandled".
+        if (event.reason?.alreadyToasted) {
+            return;
+        }
         const message =
             event.reason instanceof Error
                 ? event.reason.message
