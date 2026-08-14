@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { log } from './log.js';
+import { installPipelineRelayPolyfill } from './pipeline-relay.js';
 
 export const repoRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -432,6 +433,7 @@ export function installNarrowWindowPolyfill() {
 export function installGlobals() {
     installCloseEventPolyfill();
     installWebSocketUserAgentPolyfill();
+    installPipelineRelayPolyfill();
     installMatchMediaPolyfill();
     installVrcxStoragePolyfill();
     installAppApiPolyfill();

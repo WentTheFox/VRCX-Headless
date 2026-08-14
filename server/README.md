@@ -4,7 +4,7 @@ The headless half of [VRCX-Headless](https://github.com/WentTheFox/VRCX-Headless
 
 It runs VRCX's **real** data layer — `src/services/database/**` and `src/services/config.js` are imported unmodified — so it stays in step with upstream instead of forking it. See [`CLAUDE.md`](../CLAUDE.md) for how that works and what the rules are.
 
-> **Status: phase 2b.** The server owns the database and the VRChat connection (login, cookies, pipeline), and now runs the real background stores too — `login`/`whoami`/`pipeline` drive the same reactive code the desktop client does. It doesn't yet serve clients over HTTP or run the `updateLoop` daemon — that's the rest of phase 2b and phase 3. Today it is a CLI, not a daemon.
+> **Status: phase 3.** The server owns the database and the VRChat connection, runs the real background stores and the `updateLoop` daemon, and now serves an authenticated HTTP/WS API too (`serve`) — password auth, a generic `/api/rpc` dispatcher over `database`/`configRepository`, and `/api/stream` relaying the VRChat pipeline verbatim. There's no web client yet to talk to it (phase 4).
 
 ---
 
@@ -94,21 +94,28 @@ npm run server -- login
 | `whoami`                 | Shows the logged-in account                                 |
 | `logout`                 | Clears the session (keeps saved credentials)                |
 | `pipeline`               | Connects to the VRChat event pipeline and streams events    |
+| `set-password`           | Sets the password that protects `serve`'s HTTP/WS server    |
+| `serve`                  | Starts the HTTP/WS server and the `updateLoop` daemon        |
 
 Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`.
 
 `--user` is only needed to create per-user tables for an account the database has never seen; `login` does it for you, and existing accounts are discovered through `sqlite_schema`.
 
+`serve` requires a VRChat login to relay pipeline events over `/api/stream`, but not for `/api/rpc` — `database`/`configRepository` access works without one. It logs a warning and continues if there's no saved session, rather than refusing to start.
+
 ## Environment
 
-| Variable          | Meaning                                                 |
-| ----------------- | ------------------------------------------------------- |
-| `VRCX_DATABASE`   | Absolute path to `VRCX.sqlite3`                         |
-| `VRCX_DATA_DIR`   | VRCX app data directory (`/data` in the container)      |
-| `VRCX_LOG_LEVEL`  | `debug` \| `info` \| `warn` \| `error` (default `info`) |
-| `VRCHAT_PASSWORD` | Password for a non-interactive `login`                  |
-| `VRCHAT_2FA_CODE` | Two-factor code for a non-interactive `login`           |
-| `HTTPS_PROXY`     | Honoured when `NODE_USE_ENV_PROXY=1` (set in the image) |
+| Variable               | Meaning                                                 |
+| ----------------------- | -------------------------------------------------------- |
+| `VRCX_DATABASE`        | Absolute path to `VRCX.sqlite3`                         |
+| `VRCX_DATA_DIR`        | VRCX app data directory (`/data` in the container)      |
+| `VRCX_LOG_LEVEL`       | `debug` \| `info` \| `warn` \| `error` (default `info`) |
+| `VRCHAT_PASSWORD`      | Password for a non-interactive `login`                  |
+| `VRCHAT_2FA_CODE`      | Two-factor code for a non-interactive `login`           |
+| `VRCX_SERVER_PASSWORD` | Password for `serve`, instead of running `set-password` |
+| `VRCX_SERVER_HOST`     | HTTP/WS bind address (default `0.0.0.0`)                |
+| `VRCX_SERVER_PORT`     | HTTP/WS bind port (default `9000`)                      |
+| `HTTPS_PROXY`          | Honoured when `NODE_USE_ENV_PROXY=1` (set in the image) |
 
 ---
 
@@ -127,5 +134,7 @@ Cookies and saved credentials are stored in the same format the .NET app uses, s
 ## Security notes
 
 - **VRChat credentials are stored the way upstream VRCX stores them.** With no primary password set, the password is saved in `savedCredentials` in **plaintext**, exactly as the desktop app does it. This is upstream behaviour, not something this fork introduced; treat `VRCX.sqlite3` as a secret.
-- The server has **no authentication and no network listener** yet — it is a CLI. Password-protected HTTP access arrives in phase 3; do not expose the data directory or the eventual port to an untrusted network before then.
+- **`serve`'s cookie has no `Secure` flag by default.** The common deployment is a home-network Docker container over plain HTTP, so requiring TLS out of the box would just break that. Put a reverse proxy with TLS in front before exposing `serve` past a network you trust — `HttpOnly`/`SameSite=Strict` protect against XSS/CSRF, not eavesdropping on the wire.
+- **Sessions are process-lifetime only.** They live in memory, not the database; restarting `serve` signs everyone out. There's no rotation or expiry yet either — treat a leaked session cookie as equivalent to a leaked password until that lands.
+- **`/api/rpc` exposes `database`/`configRepository`'s full real method surface**, the same one the desktop app itself uses locally with no additional restriction — the authenticated session is the security boundary, not per-method filtering. Don't run `serve` on a database you wouldn't otherwise trust the network it's exposed to.
 - The container runs as the non-root `node` user and writes only to `/data`.

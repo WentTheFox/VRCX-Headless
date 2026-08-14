@@ -71,11 +71,18 @@
  * second, unused `createPinia()` instance would just be a confusing extra
  * universe no code actually needs.
  */
+// @vue/runtime-core avoids @vue/runtime-dom's window/SVGElement checks on
+// purpose here; see the header above.
+// eslint-disable-next-line vue/prefer-import-from-vue
 import { createRenderer } from '@vue/runtime-core';
 import { createI18n } from 'vue-i18n';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
-import { createGlobalStores, initPiniaPlugins, pinia } from '../../src/stores/index.js';
+import {
+    createGlobalStores,
+    initPiniaPlugins,
+    pinia
+} from '../../src/stores/index.js';
 
 /** Every DOM op this component could reach is a no-op — it never renders. */
 const inertNodeOps = {

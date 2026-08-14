@@ -14,6 +14,8 @@
 import { mountHeadlessApp } from './app.js';
 import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
 import { buildUserAgent, readVersion } from './globals.js';
+import { setServerPassword } from './http-auth.js';
+import { createHttpServer } from './http-server.js';
 import { log } from './log.js';
 import { resolveDatabasePath } from './paths.js';
 import { ask, askHidden } from './prompt.js';
@@ -44,6 +46,11 @@ VRChat session:
   logout               Clear the stored session (keeps saved credentials)
   pipeline             Connect to the VRChat event pipeline and stream events
 
+Transport:
+  set-password         Set the password that protects the HTTP/WS server
+  serve                Start the HTTP/WS server (password auth, /api/rpc,
+                        /api/stream) and the updateLoop daemon
+
 Options:
   --db=PATH            Use this database file instead of the resolved one
   --user=ID            VRChat user id, for per-user table creation
@@ -58,6 +65,9 @@ Environment:
   VRCX_LOG_LEVEL       debug | info | warn | error   (default: info)
   VRCHAT_PASSWORD      Password for a non-interactive login
   VRCHAT_2FA_CODE      Two-factor code for a non-interactive login
+  VRCX_SERVER_PASSWORD Password for \`serve\`, instead of \`set-password\`
+  VRCX_SERVER_HOST     HTTP/WS bind address                (default: 0.0.0.0)
+  VRCX_SERVER_PORT     HTTP/WS bind port                   (default: 9000)
 `;
 
 /**
@@ -281,6 +291,64 @@ async function main() {
         console.log(
             `\nReceived ${wsState.messageCount} events (${wsState.bytesReceived} bytes)`
         );
+        return 0;
+    }
+
+    if (command === 'set-password') {
+        const handle = await openDatabase({ ...openOptions, create: false });
+        try {
+            const password = await askHidden('New server password: ');
+            if (!password) {
+                throw new Error('A password is required');
+            }
+            const confirmation = await askHidden('Confirm password: ');
+            if (confirmation !== password) {
+                throw new Error('Passwords did not match');
+            }
+            await setServerPassword(handle, password);
+            console.log('Server password set.');
+            return 0;
+        } finally {
+            handle.close();
+        }
+    }
+
+    if (command === 'serve') {
+        const handle = await openDatabase({ ...openOptions, create: false });
+        const { stores } = await bootstrapSession(handle);
+
+        const user = await restoreSession(stores).catch(() => null);
+        if (user?.id) {
+            await waitForPipelineConnected().catch((err) => {
+                log.warn('Pipeline did not connect', { message: err.message });
+            });
+            stores.updateLoop.updateLoop();
+        } else {
+            log.warn(
+                'Not logged in to VRChat; serving db/config RPC only. Run `login` for the pipeline stream.'
+            );
+        }
+
+        const { server, streamClientCount } = await createHttpServer(handle);
+        const host = process.env.VRCX_SERVER_HOST || '0.0.0.0';
+        const port = Number(process.env.VRCX_SERVER_PORT) || 9000;
+
+        await new Promise((resolve, reject) => {
+            server.once('error', reject);
+            server.listen(port, host, resolve);
+        });
+        console.log(`Serving on http://${host}:${port}. Press Ctrl-C to stop.`);
+
+        await new Promise((resolve) => {
+            process.on('SIGINT', resolve);
+            process.on('SIGTERM', resolve);
+        });
+
+        console.log(
+            `\nShutting down (${streamClientCount()} stream client(s) connected).`
+        );
+        await new Promise((resolve) => server.close(resolve));
+        handle.close();
         return 0;
     }
 
