@@ -22,7 +22,20 @@ import { rpcCall } from './rpc-client.js';
 
 export const webApiTarget = {
     async Execute(options) {
-        return rpcCall('webapi', 'Execute', [options]);
+        // §3.5's contract for the real WebApi.Execute (server/src/shims/webapi.js)
+        // is load-bearing here too: it must never throw, always resolving to
+        // {Item1, Item2} even on failure, with Item2 a *string* — src/services/webapi.js:39
+        // does `throw item.Item2` on failure, and request.js's $throw does
+        // `JSON.stringify(error)` for anything that isn't already a string,
+        // which silently collapses an Error object to '{}'. rpcCall throws a
+        // plain Error on an RPC-level failure (the right behaviour for the
+        // db/config targets), so that has to be caught and re-wrapped here
+        // rather than left to propagate as a rejected promise.
+        try {
+            return await rpcCall('webapi', 'Execute', [options]);
+        } catch (err) {
+            return { Item1: -1, Item2: err.message ?? String(err) };
+        }
     },
     async GetCookies() {
         return '';
