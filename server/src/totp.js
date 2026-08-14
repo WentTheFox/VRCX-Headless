@@ -17,10 +17,12 @@ const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const SECRET_BYTES = 20; // 160 bits — RFC 4226's recommended HMAC-SHA1 key size
 const STEP_SECONDS = 30;
 const DIGITS = 6;
-// Tolerates +/-30s of clock skew between this machine and the one that
-// generated the code — standard TOTP verification practice, not a security
-// hole: it only ever widens the 30s window to 90s, never removes it.
-const VERIFY_WINDOW_STEPS = 1;
+// Tolerates +/-2 steps (60s) of clock skew/round-trip delay between this
+// machine and the one that generated the code — standard TOTP verification
+// practice (RFC 6238 itself recommends allowing a small number of steps for
+// exactly this), not a security hole: it only ever widens the 30s window,
+// never removes it, and 60s either side is still a short-lived credential.
+const VERIFY_WINDOW_STEPS = 2;
 
 /**
  * @param {Buffer} bytes
