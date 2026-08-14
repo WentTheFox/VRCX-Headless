@@ -18,6 +18,12 @@ import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
 import { buildUserAgent, readVersion } from './globals.js';
 import { setServerTotp } from './http-auth.js';
 import { createHttpServer } from './http-server.js';
+import {
+    acquireLock,
+    installLockReleaseOnExit,
+    isLocked,
+    releaseLock
+} from './lock.js';
 import { log } from './log.js';
 import { resolveDatabasePath } from './paths.js';
 import { ask, askHidden } from './prompt.js';
@@ -28,7 +34,11 @@ import {
     waitForPipelineConnected,
     wsState
 } from './session.js';
-import { generateTotpSecret, totpProvisioningUri, verifyTotpCode } from './totp.js';
+import {
+    generateTotpSecret,
+    totpProvisioningUri,
+    verifyTotpCode
+} from './totp.js';
 import { installWebApi } from './webapi-init.js';
 
 import { AppDebug } from '../../src/services/appConfig.js';
@@ -39,7 +49,10 @@ Usage: cli.js <command> [options]
 
 Database:
   info                 Show where the database lives and what version it is
-  migrate [--user=ID]  Run the JS migration layer against the database
+  migrate [--user=ID] [--force]
+                        Run the JS migration layer against the database.
+                        Refuses if \`serve\`/\`pipeline\` currently hold the
+                        database's write lock, unless --force is given.
   tables               Print row counts for the main tables
   query <sql>          Run a read-only SQL query and print positional rows
 
@@ -59,6 +72,7 @@ Options:
   --db=PATH            Use this database file instead of the resolved one
   --user=ID            VRChat user id, for per-user table creation
   --create             Allow creating the database if it does not exist
+  --force              For \`migrate\`: run even if the write lock is held
   --username=NAME      Skip the username prompt
   --endpoint=URL       Custom API endpoint
   --websocket=URL      Custom pipeline endpoint
@@ -220,6 +234,15 @@ async function main() {
 
     if (command === 'migrate') {
         const handle = await openDatabase(openOptions);
+        const lockState = isLocked(handle.databasePath);
+        if (lockState.locked && flags.force !== true) {
+            handle.close();
+            throw new Error(
+                `${handle.databasePath} is currently held by pid ${lockState.pid} (serve/pipeline). ` +
+                    'Migrating a live database is the riskiest way to corrupt it — stop that process first, ' +
+                    'or pass --force if you are certain it is safe.'
+            );
+        }
         const result = await migrate(handle, {
             userId: typeof flags.user === 'string' ? flags.user : undefined
         });
@@ -306,6 +329,13 @@ async function main() {
 
     if (command === 'pipeline') {
         const handle = await openDatabase({ ...openOptions, create: false });
+        try {
+            acquireLock(handle.databasePath);
+        } catch (err) {
+            handle.close();
+            throw err;
+        }
+        installLockReleaseOnExit(handle.databasePath);
         const { stores } = await bootstrapSession(handle);
         const user = await restoreSession(stores);
         if (!user?.id) {
@@ -332,6 +362,7 @@ async function main() {
             process.on('SIGTERM', resolve);
         });
         clearInterval(interval);
+        releaseLock(handle.databasePath);
         handle.close();
         console.log(
             `\nReceived ${wsState.messageCount} events (${wsState.bytesReceived} bytes)`
@@ -371,6 +402,13 @@ async function main() {
     if (command === 'serve') {
         const tls = resolveTlsOptions(flags);
         const handle = await openDatabase({ ...openOptions, create: false });
+        try {
+            acquireLock(handle.databasePath);
+        } catch (err) {
+            handle.close();
+            throw err;
+        }
+        installLockReleaseOnExit(handle.databasePath);
         const { stores } = await bootstrapSession(handle);
 
         const user = await restoreSession(stores).catch(() => null);
@@ -409,6 +447,7 @@ async function main() {
             `\nShutting down (${streamClientCount()} stream client(s) connected).`
         );
         await new Promise((resolve) => server.close(resolve));
+        releaseLock(handle.databasePath);
         handle.close();
         return 0;
     }
