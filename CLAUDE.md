@@ -161,15 +161,17 @@ Verified against the running Node, not assumed. `fetch`, `WebSocket`, `crypto.su
 | `CloseEvent` | `src/services/websocket.js:118` — reconnect dies silently | polyfilled in `server/src/globals.js` |
 | `Worker` | `worker-timers` builds its timer from a blob-URL Worker; **fails on first call, not on import** | `packageAliases` → `server/src/shims/worker-timers.js` |
 | `navigator.onLine` | `src/coordinators/authAutoLoginCoordinator.js:14` reads it → falsy → "you're offline" forever | inject `() => true` (the function already takes it as a parameter) |
-| `speechSynthesis` | `src/stores/settings/notifications.js` TTS | phase 5: route to a desktop agent |
+| `speechSynthesis` | `src/stores/settings/notifications.js` TTS | polyfilled in `server/src/globals.js` (`getVoices`/`cancel`/`speak`); stays a stub regardless — real TTS output only ever makes sense on a desktop speaker (phase 5: route to a desktop agent) |
+| `AppApi` | ~81 methods across `Dotnet/AppApi/**`, called as a bare global throughout `src/**` | a `Proxy` in `server/src/globals.js` (`installAppApiPolyfill`) — no fixed method list to enumerate, so it answers arbitrary names with a logged no-op; `GetVersion()` is the one override, returning the real `VERSION` global |
+| `VRCXStorage` | `VRCX.json` — explicitly desktop-owned (§1's ownership table), but `src/stores/{vrcx,friend}.js`, `settings/general.js` and two coordinators reference the bare global regardless | in-memory, process-lifetime `Map`-backed stub in `server/src/globals.js` (`installVrcxStoragePolyfill`) |
+| `document` | A bounded set of stores touch it directly (not through the `appActions.js`/`base-ui.js` aliases): `documentElement.classList`, `getElementById`, `querySelector(All)`, `createElement` | polyfilled in `server/src/globals.js` (`installDocumentPolyfill`) — `createElement` exists only because `@vue/runtime-dom` feature-checks it at module scope the moment anything imports `'vue'` |
 
 Present, but behaving differently — **found in this fork's first live-VRChat test** (2026-08-14, real account, real network, outside CI), not by inspection:
 
 | Present but different | Where it bites | Handling |
 |---|---|---|
-| `WebSocket` sends no default `User-Agent` | `server/src/vrchat.js`'s `PipelineConnection` — Cloudflare in front of `pipeline.vrchat.cloud` drops the handshake silently without one (confirmed by hand-rolling the HTTP upgrade over raw TLS: succeeds with the header, never reaches `onopen` without it), surfacing only as an immediate `onerror` + 1006 close and an endless 5 s reconnect loop | fixed **in the phase 2a scaffold** by passing `{ headers: { 'User-Agent': ... } }` as the WebSocket constructor's second, non-standard argument |
-
-**Carries into phase 2b:** `src/services/websocket.js:82` makes the same bare `new WebSocket(url)` call and will hit the identical wall once it replaces `PipelineConnection` (step 7 below) — a browser sends its own real User-Agent automatically, so upstream has never needed to think about this. Invariant 1 forbids editing that call site, so the fix there has to be a global `WebSocket` wrapper installed in `server/src/globals.js`, the same way `CloseEvent` is polyfilled above.
+| `WebSocket` sends no default `User-Agent` | Cloudflare in front of `pipeline.vrchat.cloud` drops the handshake silently without one (confirmed by hand-rolling the HTTP upgrade over raw TLS: succeeds with the header, never reaches `onopen` without it), surfacing only as an immediate `onerror` + 1006 close and an endless 5 s reconnect loop | Phase 2a: fixed locally, in the now-deleted `server/src/vrchat.js` scaffold's own `new WebSocket()` call. Phase 2b step 7: `src/services/websocket.js:82` makes the identical bare call and hit the identical wall — a browser sends its own User-Agent automatically, so upstream never had to think about this, and invariant 1 forbids editing that call site. Fixed for good with a global `WebSocket` wrap instead (`installWebSocketUserAgentPolyfill`, `server/src/globals.js`), which only patches the zero-options call shape. |
+| `window` is `globalThis` | Makes `typeof window !== 'undefined'` true everywhere, defeating `@tanstack/query-core`/`@vueuse/core`'s SSR guards | Phase 2b step 6 (§8) — a `Proxy` whose `set` trap mirrors writes onto `globalThis`, so bare-identifier reads of the properties `src/**` assigns through `window.X = Y` (`$debug`, `database`, `webApiService`, …) still work without `window` being a literal alias |
 
 ### 3.8 Schema version
 
@@ -189,21 +191,29 @@ The modules where the split happens. On an upstream merge, these are what to ins
 | DB repository | `src/services/database/index.js` | flat ~190-method facade, 206 call sites | imported unmodified | `Proxy` → `rpc('db', name, args)` |
 | Config KV | `src/services/config.js` | 12 methods, ~540 call sites | imported unmodified | RPC + write-through cache |
 | VRChat HTTP | `src/services/webapi.js` | 4 methods; the **only** `window.WebApi` caller | `fetch` + tough-cookie via `server/src/shims/webapi.js` | proxied via server |
-| Pipeline WS | `src/services/websocket.js` | `handlePipeline` switch | phase 2b (2a uses a temporary connector) | subscribes to server stream, calls the same `handlePipeline` |
+| Pipeline WS | `src/services/websocket.js` | `handlePipeline` switch | runs unmodified (phase 2b step 7) | subscribes to server stream, calls the same `handlePipeline` |
 | Daemon | `src/stores/updateLoop.js` | 1 Hz counter loop | runs here, and only here | no-op store |
 | Native globals | `src/plugins/interopApi.js` | 42 lines; the **only** injection point | n/a | third `WEB` branch |
 
 ### Current alias map (`server/aliases.js`)
 
-| Aliased upstream module | Replaced by | Why |
-|---|---|---|
-| `src/stores/index.js` | `server/src/shims/stores.js` | `src/services/sqlite.js` imports `useModalStore` to show DB-error dialogs. The real barrel pulls all 36 Pinia stores and, transitively, Vue components. |
-| `src/plugins/i18n.js` | `server/src/shims/i18n.js` | Builds a vue-i18n instance and eagerly imports every locale bundle; the data layer only calls `i18n.global.t`. |
-| `src/shared/utils/index.js` | `server/src/shims/shared-utils.js` | Only `openExternalLink` is needed; the real barrel re-exports a large DOM/canvas/AppApi tree. |
-| `worker-timers` *(package)* | `server/src/shims/worker-timers.js` | Schedules through a blob-URL Web Worker; `Worker` does not exist in Node, and it fails on first call rather than at import. Node has no timer throttling to dodge. |
-| `vue-sonner` *(package)* | `server/src/shims/toast.js` | `src/services/request.js`, `websocket.js` and 13 coordinators report every failure as a toast. Headless, they become log lines; from phase 3, stream events. |
+`src/stores/index.js` (the barrel) is **not** aliased — phase 2b step 4 imports it for real. Everything below is the specific pieces of its closure that can't run under Node; `server/aliases.js`'s own comments are the source of truth if this table and the code ever disagree.
 
-Phase 2b replaces the `stores` alias with a real Pinia barrel for the background stores. The modal stub stays forever — a headless process has no dialogs.
+| Aliased upstream module | Replaced by | Why | Permanent? |
+|---|---|---|---|
+| `src/plugins/i18n.js` | `server/src/shims/i18n.js` | Builds a vue-i18n instance and eagerly imports every locale bundle; the data layer only calls `i18n.global.t` (plus `loadLocalizedStrings` et al., now stubbed too). | yes |
+| `src/plugins/index.js` | `server/src/shims/plugins-index.js` | Re-exports `./components` (raw `.vue` imports, unparseable under Node) and `./router` — one of the two 629-file closure edges. | yes |
+| `src/plugins/router.js` | `server/src/shims/router.js` | Imports every view directly to build its route table — the other closure edge. | yes |
+| `src/stores/ui.js` | `server/src/shims/ui.js` | Dialog bookkeeping only (`document.body.addEventListener`, `useMagicKeys()`). | **yes — a headless process has no dialogs** |
+| `src/stores/modal.js` | `server/src/shims/modal.js` | `confirm`/`alert`/`prompt` resolve when a human clicks a dialog button. `otpPrompt` is the one exception: reads a real 2FA code from stdin (phase 2b step 7). | **yes**, `otpPrompt` aside |
+| `src/workers/activityWorkerRunner.js` | `server/src/shims/activity-worker-runner.js` | Its only content is a Vite-only `?worker&inline` import. Every message type it dispatches is a pure function from `activityEngine.js`, run in-process instead. | yes (Vite syntax) |
+| `src/stores/quickSearchWorker.js` | `server/src/shims/quick-search-worker.js` | Same Vite-only problem, but this worker's search index is stateful with zero imports — loads the real file's source via a `data:` URL instead of reimplementing it. | yes (Vite syntax) |
+| `src/localization/index.js` | `server/src/shims/localization.js` | Two module-scope `import.meta.glob(...)` calls. `languageCodes` (the only thing reached) is re-exported for real from the Vite-free `./locales.js`. | yes (Vite syntax) |
+| `src/shared/utils/appActions.js` | `server/src/shims/app-actions.js` | UI actions (confirm dialog, clipboard, `<a download>`, bare `AppApi.*` calls), reached via `common.js`'s backward-compat re-export. The other ~31 files in the `shared/utils` barrel are real, unaliased business logic. | yes |
+| `src/shared/utils/base/ui.js` | `server/src/shims/base-ui.js` | Theme/font/CSS DOM mutation. `HueToHex`/`HSVtoRGB`/`getThemeMode` are reimplemented for real (pure math + a real `configRepository` read); everything else is a no-op. | yes |
+| `worker-timers` *(package)* | `server/src/shims/worker-timers.js` | Schedules through a blob-URL Web Worker; `Worker` does not exist in Node, and it fails on first call rather than at import. Node has no timer throttling to dodge — plain timers are correct. | yes |
+| `vue-sonner` *(package)* | `server/src/shims/toast.js` | Every API error in `request.js`/`websocket.js`/13 coordinators is a toast. Headless, structured log lines (from phase 3, stream events too). | yes |
+| `noty` *(package)* | `server/src/shims/noty.js` | Login/logout greeting via `new Noty(...).show()`. Unlike `vue-sonner`, runs `document.addEventListener` at module load — can't be deferred to call time, has to be a package alias. | yes |
 
 ### The store-graph problem (measured, not estimated)
 
