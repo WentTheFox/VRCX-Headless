@@ -4,7 +4,7 @@ The headless half of [VRCX-Headless](https://github.com/WentTheFox/VRCX-Headless
 
 It runs VRCX's **real** data layer — `src/services/database/**` and `src/services/config.js` are imported unmodified — so it stays in step with upstream instead of forking it. See [`CLAUDE.md`](../CLAUDE.md) for how that works and what the rules are.
 
-> **Status: phase 3.** The server owns the database and the VRChat connection, runs the real background stores and the `updateLoop` daemon, and now serves an authenticated HTTP/WS API too (`serve`) — password auth, a generic `/api/rpc` dispatcher over `database`/`configRepository`, and `/api/stream` relaying the VRChat pipeline verbatim. There's no web client yet to talk to it (phase 4).
+> **Status: phases 0–5 done** (see [`CLAUDE.md`](../CLAUDE.md) for the full roadmap). The server owns the database and the VRChat connection, runs the real background stores and the `updateLoop` daemon, and serves an authenticated HTTP/WS API (`serve`) — TOTP auth, a generic `/api/rpc` dispatcher over `database`/`configRepository`/`WebApi`, and `/api/stream` relaying the VRChat pipeline verbatim. Both a browser client (`client-web/`) and an Electron desktop agent (`client-desktop/`) talk to it.
 
 ---
 
@@ -48,11 +48,15 @@ services:
         image: ghcr.io/wentthefox/vrcx-headless-server:main
         volumes:
             - ./vrcx-data:/data
+        ports:
+            - '9000:9000'
         environment:
             VRCX_LOG_LEVEL: info
-        # Phase 2a has no long-running service yet; `pipeline` is the closest
-        # thing. Phase 3 replaces this with `serve`.
-        command: pipeline
+            # Skips browser-driven enrollment (see "TOTP setup" below) —
+            # generate one from a checkout with:
+            #   node --input-type=module -e "import('./server/src/totp.js').then(({generateTotpSecret}) => console.log(generateTotpSecret()))"
+            VRCX_SERVER_TOTP_SECRET: ...
+        command: serve
         restart: unless-stopped
 ```
 
@@ -105,7 +109,45 @@ Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=UR
 
 If `npm run prod-web` has been built (`build/html-web`), `serve` also serves it as the static web client at `/` — same-origin, so the browser never needs CORS. Without a build there, `serve` still works as an API-only server (`/api/*` and `/api/stream`).
 
-**TOTP setup doesn't require the CLI.** The first time `serve` runs with no secret configured yet, opening the web client shows a QR code (and the raw secret, for manual entry) instead of a login form — scan it with any 2FA app (Bitwarden, Google Authenticator, 1Password, Authy, …), enter the current code to confirm, and you're logged in immediately, no separate login step. This is one-shot: once a secret exists, the browser can never see it (or a new one) again — `setup-totp` is the only way to rotate it afterwards, which needs shell access to the box on purpose.
+## TOTP setup
+
+`serve` is protected by a rotating 6-digit code from a standard 2FA app — not a static password. There's no default, and no backup/recovery codes, so pick whichever of these fits how you're setting it up.
+
+### First time, via the browser (recommended)
+
+Nothing to run up front. The moment `serve` starts with no secret configured yet, it logs a warning and starts anyway — opening the web client shows a QR code and the raw secret instead of a login form:
+
+1. Scan the QR with any 2FA app (Bitwarden, Google Authenticator, 1Password, Authy, …) — or type the secret in by hand if your app doesn't scan.
+2. Enter the current 6-digit code to confirm.
+3. You're logged in immediately — no separate login step afterward.
+
+This only works **once**. The instant a code is confirmed, the secret is saved, and the browser can never see it — or a new one — again: `/api/totp/setup`/`/api/totp/confirm` both refuse unconditionally from then on, logged in or not. There is no "regenerate" button anywhere in the UI, on purpose (see Resetting, below).
+
+### First time, via the CLI
+
+Useful before a web client is built, or for a fully non-interactive/scripted setup:
+
+```bash
+npm run server -- setup-totp
+# or, in the container (needs -it — it's an interactive prompt):
+docker run --rm -it -v ~/vrcx-data:/data ghcr.io/wentthefox/vrcx-headless-server:main setup-totp
+```
+
+Prints the secret and an `otpauth://` URI (most 2FA apps can import directly from the URI; paste the secret in by hand otherwise), then asks for the current code before saving anything — same confirm-before-persist behaviour as the browser flow.
+
+`VRCX_SERVER_TOTP_SECRET` (below) skips enrollment entirely, if you'd rather generate a secret yourself and hand it to `serve` as a fixed environment variable.
+
+### Resetting / rotating
+
+Lost your 2FA device, or just want to re-pair? Run `setup-totp` again — **from the CLI only**, meaning shell access to the machine running `serve`. This is deliberate, not a missing feature: the browser is never trusted to reset TOTP on its own, even from an already-logged-in session, so a compromised browser tab alone can never lock you out or hand your account to someone else. `setup-totp` overwrites the existing secret unconditionally — there's no "are you sure", since running it at all already requires the access level that would make one meaningless.
+
+If you've lost your 2FA device **and** don't have shell access either, there's no recovery — that's the tradeoff of no backup codes. The only way out is to clear the stored secret directly in the database with `serve` stopped:
+
+```bash
+sqlite3 ~/.config/VRCX/VRCX.sqlite3 "DELETE FROM configs WHERE name = 'VRCX_ServerTotpSecret'"
+```
+
+(The CLI's own `query` command can't do this — it opens the database read-only on purpose.) `serve`'s next start picks up the missing secret and falls back to first-time enrollment.
 
 ## Environment
 
@@ -140,7 +182,7 @@ Cookies and saved credentials are stored in the same format the .NET app uses, s
 ## Security notes
 
 - **VRChat credentials are stored the way upstream VRCX stores them.** With no primary password set, the password is saved in `savedCredentials` in **plaintext**, exactly as the desktop app does it. This is upstream behaviour, not something this fork introduced; treat `VRCX.sqlite3` as a secret.
-- **`serve`'s own auth is TOTP, not a static password.** A rotating 6-digit code from a 2FA app is worthless outside its 30-second window even if sniffed in transit — a real improvement over a static password given the common deployment is plain HTTP on a home network. The *secret* backing it is still the one long-lived credential (same threat model a password hash had), so `VRCX.sqlite3` remains something to treat as a secret either way. Enrollment is one-shot: the browser only ever sees the secret/QR once, on first setup; rotating afterwards needs shell access (`setup-totp`).
+- **`serve`'s own auth is TOTP, not a static password** (see "TOTP setup" above for setup/reset). A rotating 6-digit code from a 2FA app is worthless outside its 30-second window even if sniffed in transit — a real improvement over a static password given the common deployment is plain HTTP on a home network. The *secret* backing it is still the one long-lived credential (same threat model a password hash had), so `VRCX.sqlite3` remains something to treat as a secret either way.
 - **`serve`'s cookie has no `Secure` flag by default.** The common deployment is a home-network Docker container over plain HTTP, so requiring TLS out of the box would just break that. Two ways to get TLS: put a reverse proxy in front, or point `serve` at a cert/key pair directly (`--tls-cert`/`--tls-key`, or `VRCX_SERVER_TLS_CERT`/`VRCX_SERVER_TLS_KEY`) — when either is used, the session cookie gains `Secure` automatically. `HttpOnly`/`SameSite=Strict` alone protect against XSS/CSRF, not eavesdropping on the wire, so exposing `serve` past a network you trust without one of these two is not safe.
 - **Sessions are process-lifetime only.** They live in memory, not the database; restarting `serve` signs everyone out. There's no rotation or expiry yet either — treat a leaked session token as equivalent to a leaked TOTP code until that lands.
 - **`/api/rpc` exposes `database`/`configRepository`'s full real method surface**, the same one the desktop app itself uses locally with no additional restriction — the authenticated session is the security boundary, not per-method filtering. Don't run `serve` on a database you wouldn't otherwise trust the network it's exposed to.
