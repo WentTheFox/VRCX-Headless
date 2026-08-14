@@ -137,6 +137,8 @@
         "files": [
             "build/html/**/*",
             "src-electron/*",
+            "client-desktop/setup.html",
+            "client-desktop/setup.js",
             "images/VRCX.png",
             "images/VRCX.ico",
             "images/VRCX_notify.png",
