@@ -14,6 +14,7 @@ const {
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const https = require('https');
+const { WebSocket: WsClient } = require('ws');
 
 //app.disableHardwareAcceleration();
 
@@ -117,10 +118,13 @@ function createOverlayWindowShm() {
 interopApi.getDotNetObject('ProgramElectron').PreInit(version, args);
 interopApi.getDotNetObject('VRCXStorage').Load();
 interopApi.getDotNetObject('ProgramElectron').Init();
-interopApi.getDotNetObject('SQLite').Init();
+// Phase 5: SQLite and WebApi are no longer initialized here at all. §1's
+// ownership table says the .NET side stops opening VRCX.sqlite3 and
+// talking to api.vrchat.cloud directly, entirely — both are server-owned
+// now, exactly like the web client. VRCXStorage (above) is unaffected: it
+// manages VRCX.json, genuinely machine-local config, a separate concern.
 interopApi.getDotNetObject('AppApiElectron').Init();
 interopApi.getDotNetObject('Discord').Init();
-interopApi.getDotNetObject('WebApi').Init();
 interopApi.getDotNetObject('LogWatcher').Init();
 
 interopApi.getDotNetObject('SystemMonitorElectron').Init();
@@ -129,6 +133,223 @@ interopApi.getDotNetObject('AppApiVrElectron').Init();
 ipcMain.handle('callDotNetMethod', (event, className, methodName, args) => {
     return interopApi.callMethod(className, methodName, args);
 });
+
+// #region | Phase 5: headless server connection (agent channel + RPC relay)
+//
+// "Always external" (decided with the user): this process never spawns or
+// embeds a server itself, it always connects to a `serve` instance running
+// elsewhere. The renderer never talks to that server directly — a fetch
+// from the renderer to a remote origin hits real browser CORS, which the
+// server has deliberately never had to answer (phase 4's own design note).
+// Routing everything through the main process instead sidesteps that
+// entirely, using the exact same "renderer asks main, main does the real
+// work" shape `callDotNetMethod` above already uses for native calls.
+
+/** @type {string | null} */
+let serverUrl = null;
+/** @type {string | null} */
+let serverToken = null;
+/** @type {import('ws').WebSocket | null} */
+let agentSocket = null;
+/** @type {NodeJS.Timeout | null} */
+let agentReconnectTimer = null;
+
+/**
+ * @param {string} url
+ * @param {import('node:https').RequestOptions & { body?: string }} options
+ * @returns {Promise<{ status: number, body: any }>}
+ */
+async function fetchJson(url, options) {
+    const response = await fetch(url, options);
+    let body = null;
+    try {
+        body = await response.json();
+    } catch {
+        // A non-JSON or empty response (e.g. a proxy's own error page)
+        // leaves body as null; callers treat that as "no usable body"
+        // rather than throwing.
+    }
+    return { status: response.status, body };
+}
+
+/**
+ * Opens the agent WebSocket to the currently configured server, answering
+ * every forwarded `(className, methodName, args)` call with the *same*
+ * `interopApi.callMethod` the renderer's own direct native calls already
+ * use (`callDotNetMethod` above) — the agent channel is the server reaching
+ * into this same capability, not a separate implementation of it.
+ * Reconnects after 5s on close, mirroring `src/services/websocket.js`'s own
+ * pipeline-reconnect interval, for as long as a server URL/token is set.
+ */
+function connectAgentSocket() {
+    if (agentReconnectTimer) {
+        clearTimeout(agentReconnectTimer);
+        agentReconnectTimer = null;
+    }
+    if (agentSocket) {
+        agentSocket.removeAllListeners();
+        try {
+            agentSocket.close();
+        } catch {
+            // already closed/closing
+        }
+        agentSocket = null;
+    }
+    if (!serverUrl || !serverToken) {
+        return;
+    }
+    const wsUrl = `${serverUrl.replace(/^http/, 'ws')}/api/agent`;
+    const ws = new WsClient(wsUrl, {
+        headers: { Authorization: `Bearer ${serverToken}` }
+    });
+    ws.on('open', () => console.log('Connected to server agent channel'));
+    ws.on('message', async (data) => {
+        /** @type {{ requestId?: unknown, className?: unknown, methodName?: unknown, args?: unknown }} */
+        let message;
+        try {
+            message = JSON.parse(data.toString());
+        } catch {
+            return;
+        }
+        const { requestId, className, methodName, args } = message;
+        if (typeof requestId !== 'string') {
+            return;
+        }
+        try {
+            const result = await interopApi.callMethod(
+                className,
+                methodName,
+                Array.isArray(args) ? args : []
+            );
+            ws.send(JSON.stringify({ requestId, ok: true, result }));
+        } catch (err) {
+            ws.send(
+                JSON.stringify({
+                    requestId,
+                    ok: false,
+                    error: err?.message ?? String(err)
+                })
+            );
+        }
+    });
+    ws.on('close', () => {
+        if (agentSocket === ws) {
+            agentSocket = null;
+        }
+        if (serverUrl && serverToken) {
+            agentReconnectTimer = setTimeout(connectAgentSocket, 5000);
+        }
+    });
+    ws.on('error', (err) => {
+        console.error('Agent channel error:', err.message);
+    });
+    agentSocket = ws;
+}
+
+/**
+ * A harmless RPC call: 401 means the stored token is missing or the server
+ * rejected it (expected after any `serve` restart — sessions are
+ * process-lifetime only, per phase 3), anything else means it's still
+ * good. Same probe shape as `client-web/bootstrap.js`'s `hasValidSession()`.
+ * @returns {Promise<boolean>}
+ */
+async function hasValidServerSession() {
+    if (!serverUrl || !serverToken) {
+        return false;
+    }
+    try {
+        const { status: httpStatus } = await fetchJson(
+            `${serverUrl}/api/rpc`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${serverToken}`
+                },
+                body: JSON.stringify({
+                    target: 'config',
+                    method: 'getString',
+                    args: ['lastUserLoggedIn', '']
+                })
+            }
+        );
+        return httpStatus !== 401;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * @param {string} url
+ * @param {string} password
+ * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
+ */
+async function connectToServer(url, password) {
+    const normalizedUrl = String(url).replace(/\/+$/, '');
+    let response;
+    try {
+        response = await fetchJson(`${normalizedUrl}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+    } catch (err) {
+        return { ok: false, error: `Could not reach the server: ${err.message}` };
+    }
+    if (response.status !== 200 || !response.body?.ok || !response.body.token) {
+        return {
+            ok: false,
+            error: response.body?.error ?? `Login failed (${response.status})`
+        };
+    }
+    serverUrl = normalizedUrl;
+    serverToken = response.body.token;
+    VRCXStorage.Set('VRCX_ServerUrl', serverUrl);
+    VRCXStorage.Set('VRCX_ServerToken', serverToken);
+    VRCXStorage.Save();
+    connectAgentSocket();
+    return { ok: true };
+}
+
+ipcMain.handle('vrcx-connect-server', async (_event, url, password) => {
+    const result = await connectToServer(url, password);
+    if (result.ok) {
+        loadRealApp();
+    }
+    return result;
+});
+
+ipcMain.handle('vrcx-rpc', async (_event, target, method, args) => {
+    if (!serverUrl || !serverToken) {
+        return { ok: false, error: 'Not connected to a server' };
+    }
+    try {
+        const { status: httpStatus, body } = await fetchJson(
+            `${serverUrl}/api/rpc`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${serverToken}`
+                },
+                body: JSON.stringify({ target, method, args })
+            }
+        );
+        if (httpStatus === 401) {
+            return {
+                ok: false,
+                error: 'Not authenticated with the VRCX server'
+            };
+        }
+        return (
+            body ?? { ok: false, error: `Unexpected response (${httpStatus})` }
+        );
+    } catch (err) {
+        return { ok: false, error: err?.message ?? String(err) };
+    }
+});
+
+// #endregion
 
 /** @type {Electron.CrossProcessExports.BrowserWindow} */
 let mainWindow = undefined;
@@ -314,6 +535,31 @@ function tryRelaunchWithArgs(args) {
     app.exit(0);
 }
 
+/**
+ * Loads the real, unmodified upstream app — same debug/hot-reload branch as
+ * before phase 5, just factored out so both the initial boot path and a
+ * successful `vrcx-connect-server` call (from the setup screen) can reach
+ * it.
+ */
+function loadRealApp() {
+    const indexPath = path.join(rootDir, 'build/html/index.html');
+    mainWindow.loadFile(indexPath);
+    if (debug) {
+        mainWindow.loadURL('http://localhost:9000/index.html');
+        mainWindow.webContents.openDevTools();
+    }
+}
+
+/**
+ * `client-desktop/setup.html` needs no Vite build of its own — it's a
+ * plain password-and-server-URL form with no dependency on `src/**`, same
+ * reasoning as `client-web/bootstrap.js`'s login form being hand-rolled DOM
+ * rather than a Vue component.
+ */
+function loadServerSetup() {
+    mainWindow.loadFile(path.join(rootDir, 'client-desktop/setup.html'));
+}
+
 function createWindow() {
     app.commandLine.appendSwitch('enable-speech-dispatcher');
 
@@ -335,12 +581,22 @@ function createWindow() {
         }
     });
     applyWindowState();
-    const indexPath = path.join(rootDir, 'build/html/index.html');
-    mainWindow.loadFile(indexPath);
-    if (debug) {
-        mainWindow.loadURL('http://localhost:9000/index.html');
-        mainWindow.webContents.openDevTools();
-    }
+
+    // Phase 5: gate on an already-connected, still-valid server session
+    // before loading the real app at all — mirrors client-web/bootstrap.js's
+    // own hasValidSession() check. Sessions are process-lifetime only on the
+    // server (phase 3), so this is expected to fail and fall through to the
+    // setup screen after every `serve` restart, not just on first launch.
+    serverUrl = VRCXStorage.Get('VRCX_ServerUrl') || null;
+    serverToken = VRCXStorage.Get('VRCX_ServerToken') || null;
+    hasValidServerSession().then((connected) => {
+        if (connected) {
+            connectAgentSocket();
+            loadRealApp();
+        } else {
+            loadServerSetup();
+        }
+    });
 
     // add proxy config, doesn't work, thanks electron
     // const proxy = VRCXStorage.Get('VRCX_Proxy');

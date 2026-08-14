@@ -10,6 +10,7 @@ import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 
+import { clientDesktopAliases } from '../client-desktop/aliases.js';
 import { clientWebAliases } from '../client-web/aliases.js';
 import { headlessAliasPlugin } from '../server/vite-alias-plugin.js';
 import { languageCodes } from './localization/locales';
@@ -111,6 +112,10 @@ export default defineConfig(({ mode }) => {
         mode === 'development' || version.split('-').at(-1).length === 7;
 
     const isWeb = process.env.PLATFORM === 'web';
+    // The Windows/CefSharp build (`PLATFORM=windows`) is out of scope for
+    // this fork's phase 5 — it only ships the Linux/Electron desktop build,
+    // per client-desktop/aliases.js's own doc comment.
+    const isLinuxDesktop = process.env.PLATFORM === 'linux';
 
     return {
         base: '',
@@ -121,8 +126,13 @@ export default defineConfig(({ mode }) => {
             // Second arg {} : none of the server's package aliases apply —
             // worker-timers/vue-sonner/noty all work fine in a real
             // browser, unlike headless Node (see the plugin's own doc
-            // comment for how this was found).
+            // comment for how this was found). Phase 5 reuses the same
+            // plugin a third time for the Electron/Linux build
+            // (client-desktop/aliases.js) — its package-alias surface is
+            // identical to the web client's for the same reason (real
+            // Electron renderer, not headless Node).
             isWeb && headlessAliasPlugin(clientWebAliases, {}),
+            isLinuxDesktop && headlessAliasPlugin(clientDesktopAliases, {}),
             remixiconWoff2Only(),
             vue(),
             vueJsx({

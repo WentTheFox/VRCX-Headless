@@ -40,6 +40,18 @@ contextBridge.exposeInMainWorld('interopApi', {
     }
 });
 
+// Phase 5: routes client-desktop/shims/*.js's database/config/webapi calls
+// (and client-desktop/setup.js's initial connect) through the main
+// process, which does the actual authenticated fetch to the headless
+// server — see src-electron/main.js's own doc comment on why (CORS from a
+// renderer to a remote origin).
+contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
+    connectToServer: (url, password) =>
+        ipcRenderer.invoke('vrcx-connect-server', url, password),
+    rpc: (target, method, args) =>
+        ipcRenderer.invoke('vrcx-rpc', target, method, args)
+});
+
 const validChannels = ['launch-command'];
 
 contextBridge.exposeInMainWorld('electron', {
