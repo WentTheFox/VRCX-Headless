@@ -109,6 +109,8 @@ Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=UR
 
 If `npm run prod-web` has been built (`build/html-web`), `serve` also serves it as the static web client at `/` — same-origin, so the browser never needs CORS. Without a build there, `serve` still works as an API-only server (`/api/*` and `/api/stream`).
 
+Looking for the Electron desktop client instead? See [`client-desktop/README.md`](../client-desktop/README.md) for how to build and connect it to a `serve` instance.
+
 ## TOTP setup
 
 `serve` is protected by a rotating 6-digit code from a standard 2FA app — not a static password. There's no default, and no backup/recovery codes, so pick whichever of these fits how you're setting it up.
