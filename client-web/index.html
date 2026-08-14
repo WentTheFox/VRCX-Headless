@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, user-scalable=no" />
+        <meta name="referrer" content="no-referrer" />
+        <title>VRCX</title>
+        <style>
+            /* Only used before the real app mounts (server login gate) —
+               the real app brings its own theme via @/styles/globals.css. */
+            body {
+                margin: 0;
+                background: #1a1a1e;
+                color: #eee;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="./bootstrap.js"></script>
+    </body>
+</html>

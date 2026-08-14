@@ -16,14 +16,24 @@
  *
  * Return shape mirrors `server/src/shims/webapi.js`'s `{ Item1, Item2 }`
  * tuple in spirit — one error contract, not "sometimes throws, sometimes
- * rejects, sometimes returns null" — so a future client-side RPC proxy
- * (phase 4) only has to handle it once.
+ * rejects, sometimes returns null" — so a client-side RPC proxy only has to
+ * handle it once.
+ *
+ * Phase 4 adds a third target, `webapi`, mapping to the already-installed
+ * `globalThis.WebApi` (`server/src/webapi-init.js`) rather than anything on
+ * `handle` — it's a single global instance, not per-database state. This is
+ * how the web client's `Execute`/`GetCookies`/etc. calls (proxied from
+ * `src/services/webapi.js`, unmodified, via a `window.WebApi` shim installed
+ * client-side) actually reach VRChat: the browser never talks to
+ * `api.vrchat.cloud` directly, only to this dispatcher, which runs with the
+ * server's real cookie jar.
  */
 
 /** @type {Record<string, (handle: import('./db.js').DatabaseHandle) => any>} */
 const targets = {
     db: (handle) => handle.database,
-    config: (handle) => handle.configRepository
+    config: (handle) => handle.configRepository,
+    webapi: () => globalThis.WebApi
 };
 
 /**
@@ -44,6 +54,12 @@ export async function dispatchRpc(handle, request) {
         return { ok: false, error: 'RPC method must be a string' };
     }
     const targetObject = targets[target](handle);
+    if (!targetObject) {
+        // Only reachable for 'webapi' if a caller wires up dispatchRpc
+        // without installWebApi() having run first — 'db'/'config' always
+        // exist on a successfully opened handle.
+        return { ok: false, error: `RPC target not available: ${target}` };
+    }
     const fn = targetObject[method];
     // `method in Object.prototype` catches `constructor`, `__proto__`,
     // `hasOwnProperty`, `toString`, etc. in one check — every real method on

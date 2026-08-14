@@ -4,7 +4,7 @@
  * test, not `database.js`/`config.js`'s real methods (covered by
  * `db.test.js`).
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { dispatchRpc } from '../src/rpc.js';
 
@@ -30,6 +30,38 @@ function fakeHandle() {
 }
 
 describe('dispatchRpc', () => {
+    afterEach(() => {
+        delete globalThis.WebApi;
+    });
+
+    it('dispatches to the webapi target, backed by globalThis.WebApi', async () => {
+        globalThis.WebApi = {
+            async Execute(options) {
+                return { status: 200, data: options };
+            }
+        };
+        const result = await dispatchRpc(fakeHandle(), {
+            target: 'webapi',
+            method: 'Execute',
+            args: [{ url: '/auth/user' }]
+        });
+        expect(result).toEqual({
+            ok: true,
+            result: { status: 200, data: { url: '/auth/user' } }
+        });
+    });
+
+    it('returns ok:false for the webapi target when it is not installed', async () => {
+        delete globalThis.WebApi;
+        const result = await dispatchRpc(fakeHandle(), {
+            target: 'webapi',
+            method: 'Execute',
+            args: []
+        });
+        expect(result.ok).toBe(false);
+        expect(result.error).toMatch(/not available/i);
+    });
+
     it('dispatches to the db target and returns the result', async () => {
         const result = await dispatchRpc(fakeHandle(), {
             target: 'db',
@@ -80,7 +112,7 @@ describe('dispatchRpc', () => {
 
     it('rejects an unknown target', async () => {
         const result = await dispatchRpc(fakeHandle(), {
-            target: 'webapi',
+            target: 'bogus',
             method: 'echo',
             args: []
         });

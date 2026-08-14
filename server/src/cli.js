@@ -11,6 +11,8 @@
  *   node --import ./server/register-hooks.mjs server/src/cli.js <command>
  * or, from the repo root:  npm run server -- <command>
  */
+import { readFileSync } from 'node:fs';
+
 import { mountHeadlessApp } from './app.js';
 import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
 import { buildUserAgent, readVersion } from './globals.js';
@@ -58,6 +60,8 @@ Options:
   --username=NAME      Skip the username prompt
   --endpoint=URL       Custom API endpoint
   --websocket=URL      Custom pipeline endpoint
+  --tls-cert=PATH      PEM certificate file, for \`serve\` over HTTPS
+  --tls-key=PATH       PEM private key file, for \`serve\` over HTTPS
 
 Environment:
   VRCX_DATABASE        Absolute path to VRCX.sqlite3
@@ -68,6 +72,13 @@ Environment:
   VRCX_SERVER_PASSWORD Password for \`serve\`, instead of \`set-password\`
   VRCX_SERVER_HOST     HTTP/WS bind address                (default: 0.0.0.0)
   VRCX_SERVER_PORT     HTTP/WS bind port                   (default: 9000)
+  VRCX_SERVER_TLS_CERT PEM certificate file, instead of --tls-cert
+  VRCX_SERVER_TLS_KEY  PEM private key file, instead of --tls-key
+
+  Both a cert and a key are required to serve over HTTPS; \`serve\` refuses
+  to start on a partial pair rather than silently falling back to HTTP.
+  Without either, \`serve\` stays plain HTTP — put a reverse proxy in front
+  for TLS instead, or provide both here directly.
 `;
 
 /**
@@ -98,6 +109,37 @@ function parseArgs(argv) {
 async function bootstrapSession(handle) {
     installWebApi(handle, { userAgent: buildUserAgent(readVersion()) });
     return mountHeadlessApp();
+}
+
+/**
+ * Reads `--tls-cert`/`--tls-key` (or their env var equivalents) into PEM
+ * file contents for `createHttpServer`'s `tls` option. A cert with no key
+ * (or vice versa) is a config mistake, not a fallback-to-HTTP situation —
+ * `serve` should refuse to start rather than silently serve plaintext when
+ * the operator clearly intended HTTPS.
+ *
+ * @param {Record<string, any>} flags
+ * @returns {{ cert: Buffer, key: Buffer } | undefined}
+ */
+function resolveTlsOptions(flags) {
+    const certPath =
+        typeof flags['tls-cert'] === 'string'
+            ? flags['tls-cert']
+            : process.env.VRCX_SERVER_TLS_CERT;
+    const keyPath =
+        typeof flags['tls-key'] === 'string'
+            ? flags['tls-key']
+            : process.env.VRCX_SERVER_TLS_KEY;
+
+    if (!certPath && !keyPath) {
+        return undefined;
+    }
+    if (!certPath || !keyPath) {
+        throw new Error(
+            'Both a TLS certificate and key are required for HTTPS (--tls-cert/--tls-key or VRCX_SERVER_TLS_CERT/VRCX_SERVER_TLS_KEY) — only one was given.'
+        );
+    }
+    return { cert: readFileSync(certPath), key: readFileSync(keyPath) };
 }
 
 /**
@@ -314,6 +356,7 @@ async function main() {
     }
 
     if (command === 'serve') {
+        const tls = resolveTlsOptions(flags);
         const handle = await openDatabase({ ...openOptions, create: false });
         const { stores } = await bootstrapSession(handle);
 
@@ -329,7 +372,10 @@ async function main() {
             );
         }
 
-        const { server, streamClientCount } = await createHttpServer(handle);
+        const { server, streamClientCount, useHttps } = await createHttpServer(
+            handle,
+            { tls }
+        );
         const host = process.env.VRCX_SERVER_HOST || '0.0.0.0';
         const port = Number(process.env.VRCX_SERVER_PORT) || 9000;
 
@@ -337,7 +383,9 @@ async function main() {
             server.once('error', reject);
             server.listen(port, host, resolve);
         });
-        console.log(`Serving on http://${host}:${port}. Press Ctrl-C to stop.`);
+        console.log(
+            `Serving on ${useHttps ? 'https' : 'http'}://${host}:${port}. Press Ctrl-C to stop.`
+        );
 
         await new Promise((resolve) => {
             process.on('SIGINT', resolve);
