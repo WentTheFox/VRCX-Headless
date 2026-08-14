@@ -9,7 +9,7 @@ Upstream is a fast-moving, UI-heavy project, and `.github/CONTRIBUTING.md` says 
 
 **If you are an agent or contributor about to change something: read "Invariants" first. They are the whole reason this fork is maintainable.**
 
-**Status (2026-08-14):** Phases 0 through 2b are done. `login`, `whoami`, `logout` and `pipeline` all drive the real reactive stores (`src/stores/**`, `src/services/websocket.js`) rather than a bespoke scaffold, verified end-to-end against a real VRChat account in a real Linux + Steam + VRChat environment, which CI cannot do (`api.vrchat.cloud` isn't reachable from there). That work found and fixed several real bugs along the way — a pipeline WebSocket needs an explicit `User-Agent` header or Cloudflare drops the handshake silently (§3.7), a Pinia/Vue injection re-entrancy bug that only surfaces once stores compose each other outside a mounted component, and a narrowed `window` breaking bare-global reads unless writes through it mirror onto `globalThis` — all in §8's phase 2b recipe. **Phase 3 (transport) is next.** Sections below covering finished, working machinery are collapsed (`<details>`) so this file reads as "what's left" first — expand them when you need the how-it-works reference, not to re-verify what's already proven.
+**Status (2026-08-14):** Phases 0 through 3 are done. `login`, `whoami`, `logout` and `pipeline` all drive the real reactive stores (`src/stores/**`, `src/services/websocket.js`) rather than a bespoke scaffold, verified end-to-end against a real VRChat account in a real Linux + Steam + VRChat environment, which CI cannot do (`api.vrchat.cloud` isn't reachable from there). Phase 2b found and fixed several real bugs along the way — a pipeline WebSocket needs an explicit `User-Agent` header or Cloudflare drops the handshake silently (§3.7), a Pinia/Vue injection re-entrancy bug that only surfaces once stores compose each other outside a mounted component, and a narrowed `window` breaking bare-global reads unless writes through it mirror onto `globalThis`. Phase 3 (§8) had no pre-written recipe — just the roadmap's one-line spec — and added `serve`: password auth, a generic `/api/rpc` dispatcher over `database`/`configRepository`, and `/api/stream` relaying the VRChat pipeline verbatim to connected clients. **Phase 4 (web client) is next.** Sections below covering finished, working machinery are collapsed (`<details>`) so this file reads as "what's left" first — expand them when you need the how-it-works reference, not to re-verify what's already proven.
 
 ---
 
@@ -212,7 +212,7 @@ The modules where the split happens. On an upstream merge, these are what to ins
 | `src/shared/utils/appActions.js` | `server/src/shims/app-actions.js` | UI actions (confirm dialog, clipboard, `<a download>`, bare `AppApi.*` calls), reached via `common.js`'s backward-compat re-export. The other ~31 files in the `shared/utils` barrel are real, unaliased business logic. | yes |
 | `src/shared/utils/base/ui.js` | `server/src/shims/base-ui.js` | Theme/font/CSS DOM mutation. `HueToHex`/`HSVtoRGB`/`getThemeMode` are reimplemented for real (pure math + a real `configRepository` read); everything else is a no-op. | yes |
 | `worker-timers` *(package)* | `server/src/shims/worker-timers.js` | Schedules through a blob-URL Web Worker; `Worker` does not exist in Node, and it fails on first call rather than at import. Node has no timer throttling to dodge — plain timers are correct. | yes |
-| `vue-sonner` *(package)* | `server/src/shims/toast.js` | Every API error in `request.js`/`websocket.js`/13 coordinators is a toast. Headless, structured log lines (from phase 3, stream events too). | yes |
+| `vue-sonner` *(package)* | `server/src/shims/toast.js` | Every API error in `request.js`/`websocket.js`/13 coordinators is a toast. Headless, structured log lines — `/api/stream` (phase 3) only relays raw pipeline frames so far, not toasts; making those a stream event too is unclaimed follow-up work, not something phase 3 turned out to need. | yes |
 | `noty` *(package)* | `server/src/shims/noty.js` | Login/logout greeting via `new Noty(...).show()`. Unlike `vue-sonner`, runs `document.addEventListener` at module load — can't be deferred to call time, has to be a package alias. | yes |
 
 ### The store-graph problem (measured, not estimated)
@@ -352,8 +352,8 @@ Environment: `VRCX_DATABASE`, `VRCX_DATA_DIR`, `VRCX_LOG_LEVEL` (`debug|info|war
 | 1 | Server skeleton: SQLite shim, alias/loader layer, migrations, CLI, tests | **done** |
 | 2a | Server owns the VRChat connection: WebApi shim, cookie jar, login/2FA CLI, pipeline connection. Multi-arch container + GHCR publishing | **done** |
 | 2b | Pinia-in-Node: the background stores and the `updateLoop` daemon | **done** |
-| 3 | Transport: password auth → session cookie, generic `/api/rpc` dispatcher, `/api/stream` WebSocket fan-out | **next up** |
-| 4 | Web client: `PLATFORM=web`, `client-web/shims/**`, `capabilities` gating | not started |
+| 3 | Transport: password auth → session cookie, generic `/api/rpc` dispatcher, `/api/stream` WebSocket fan-out | **done** |
+| 4 | Web client: `PLATFORM=web`, `client-web/shims/**`, `capabilities` gating | **next up** |
 | 5 | Desktop client as native agent: log forwarding up, overlay/Discord/notification commands down; .NET stops touching SQLite | not started |
 | 6 | Hardening: single-writer lock, awaited client writes, packaging | not started |
 
@@ -395,6 +395,24 @@ Other notes carried forward:
 - It also holds an in-flight GET dedupe (10 s, keyed by URL) and a negative cache (15 min, keyed by endpoint, exported and mutable). Both become server-wide once it runs here — clear `failedGetRequests` on relogin.
 - `src/services/security.js` uses `window.crypto.subtle`, which exists natively in Node; reuse as-is.
 - Standardise the game-log delivery path on the queue/poll side (`LogWatcher.GetLogLines()`). The Windows path currently pushes via `ExecuteScriptAsync("window?.$pinia?.gameLog.addGameLogEvent", ...)`, a string coupling that cannot survive the split.
+
+### Phase 3 — done (2026-08-14)
+
+Unlike phase 2b, phase 3 had no pre-written recipe — the roadmap's one line ("password auth → session cookie, generic `/api/rpc` dispatcher, `/api/stream` WebSocket fan-out") was the whole spec. All server-owned, ours-to-maintain code, entirely under `server/**` — nothing in `src/**` needed a new alias for this phase.
+
+<details>
+<summary><strong>What shipped</strong> (expand for the design and why)</summary>
+
+- **Password auth → session cookie** (`server/src/http-auth.js`): `scryptSync` + a random salt, timing-safe compare, no new dependency (`node:crypto` is built in). Password source, checked in order: `VRCX_SERVER_PASSWORD` env var (compared directly, timing-safe — non-interactive/Docker setup, same convention as the existing `VRCHAT_PASSWORD`), then a hash stored via the new `set-password` CLI command. Neither set → `serve` refuses to start rather than open an unauthenticated listener. Sessions are `crypto.randomBytes(32)` tokens in an in-memory `Map` — process-lifetime only, a deliberate scope cut for this first slice, not an oversight; restarting `serve` signs everyone out. Cookie is `HttpOnly`/`SameSite=Strict`, no `Secure` by default (documented in `server/README.md`'s security notes: the common deployment is a home-network Docker container over plain HTTP, and requiring TLS out of the box would just break that).
+- **Generic `/api/rpc` dispatcher** (`server/src/rpc.js`): `database.*` and `configRepository.*` are both flat method-bag objects (the seam table above), which is what makes one generic dispatcher possible at all — `{ target: 'db' | 'config', method, args }` → `target[method](...args)`, no per-method wiring. No allowlist beyond a real safety hole found by a test, not guessed: `typeof targetObject[method] === 'function'` alone lets `constructor` straight through (`typeof Object === 'function'`), so the actual guard is `method in Object.prototype` — catches `constructor`, `__proto__`, `hasOwnProperty`, `toString`, etc. in one check, since no real method on either target is ever named one of those.
+- **`/api/stream` WebSocket fan-out** (`server/src/pipeline-relay.js`): the pipeline connection (`src/services/websocket.js`) is the *only* reachable `new WebSocket()` call site in the whole server closure, so tapping the global `WebSocket` constructor sees every pipeline frame with no risk of catching unrelated traffic. `installPipelineRelayPolyfill` runs after `installWebSocketUserAgentPolyfill` (`server/src/globals.js`) and further subclasses the already-patched constructor, adding one `addEventListener('message', …)` per instance. Verified empirically before relying on it (not assumed): assigning `.onmessage` and calling `.addEventListener('message', …)` on the same `WebSocket` are independent — both fire, neither replaces the other — so `websocket.js`'s own handling (parsing, `handlePipeline`, reconnect-on-close) is completely undisturbed. The server relays frames verbatim, doing no interpretation of them — matching the seam table's phase-4 design: the *client* subscribes and calls the same `handlePipeline` itself, the same way the desktop app does.
+- **HTTP server + `serve`/`set-password` CLI commands** (`server/src/http-server.js`): raw `node:http` — three routes plus one WS upgrade doesn't justify a framework — plus the `ws` package (added to both `package.json`s, `server/scripts/check-deps.js`-checked) for the WebSocket *server* role specifically, since Node's built-in `WebSocket` only covers the client role already used for the pipeline connection. `serve` requires a VRChat session for the pipeline relay but not for `/api/rpc` — `db`/`config` access works without one, so a missing session is a logged warning, not a hard failure.
+
+No CORS handling yet — phase 4's web client shape (same-origin vs. a separate dev server) isn't decided, so there is nothing concrete to configure against.
+
+Verified live: `curl` round-trips for `/api/login` (wrong password → 401, correct → session cookie), `/api/rpc` against real `configRepository`/`database` data (rejects `constructor`, unauthenticated requests get 401), and the WS relay end-to-end with a synthetic frame injected directly into `pipelineRelay` (VRChat wasn't running during this pass to generate a real one, but the same tap mechanism the earlier `onmessage`/`addEventListener` coexistence check proved is what carries real frames too). 63/63 server tests pass (43 from before phase 3 + 20 new, for `http-auth.js` and `rpc.js`).
+
+</details>
 
 ---
 
