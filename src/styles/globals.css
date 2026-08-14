@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+/* VRCX-Headless: explicit for PLATFORM=web (client-web/ is a Vite root
+   sibling of src/, not an ancestor — Tailwind's automatic content
+   detection missed classes like sr-only that are only used deep in
+   src/**). No-op for the desktop build, which already scans this tree by
+   default from its own root. */
+@source '..';
 @import 'tw-animate-css';
 
 @import 'noty/lib/noty.css';

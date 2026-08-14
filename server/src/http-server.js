@@ -126,13 +126,36 @@ function readJsonBody(req) {
 }
 
 /**
+ * Found live: `database.getInstanceJoinHistory()` (and presumably other
+ * `database.*` methods) returns a real `Map`, which `JSON.stringify`
+ * silently serializes to `{}` (a Map has no own enumerable properties) —
+ * the client then threw `TypeError: e is not iterable` trying to loop over
+ * it. `[key, value]` array-of-entries is exactly what every observed
+ * caller already loops over (`for (const [k, v] of data)` reads the same
+ * off a Map or its `.entries()` array), so this is a lossless, generic fix
+ * for every RPC response rather than special-casing one method.
+ * @param {string} key
+ * @param {any} value
+ * @returns {any}
+ */
+function jsonReplacer(key, value) {
+    if (value instanceof Map) {
+        return Array.from(value.entries());
+    }
+    if (value instanceof Set) {
+        return Array.from(value.values());
+    }
+    return value;
+}
+
+/**
  * @param {http.ServerResponse} res
  * @param {number} status
  * @param {any} body
  * @param {Record<string,string>} [headers]
  */
 function sendJson(res, status, body, headers = {}) {
-    const payload = JSON.stringify(body);
+    const payload = JSON.stringify(body, jsonReplacer);
     res.writeHead(status, {
         'Content-Type': 'application/json;charset=utf-8',
         'Content-Length': Buffer.byteLength(payload),
@@ -207,7 +230,15 @@ export async function createHttpServer(handle, options = {}) {
 
     server.on('upgrade', (req, socket, head) => {
         const url = new URL(req.url, 'http://localhost');
-        if (url.pathname !== '/api/stream') {
+        // src/services/websocket.js (unmodified) always builds its URL as
+        // `${AppDebug.websocketDomain}/?auth=${token}` — an extra '/' the
+        // client-web/bootstrap.js override can't avoid adding, since it
+        // only controls websocketDomain, not the concatenation. So the
+        // real request path is '/api/stream/', not '/api/stream'.
+        if (
+            url.pathname !== '/api/stream' &&
+            url.pathname !== '/api/stream/'
+        ) {
             socket.destroy();
             return;
         }
