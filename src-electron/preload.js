@@ -46,8 +46,12 @@ contextBridge.exposeInMainWorld('interopApi', {
 // server — see src-electron/main.js's own doc comment on why (CORS from a
 // renderer to a remote origin).
 contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
-    connectToServer: (url, password) =>
-        ipcRenderer.invoke('vrcx-connect-server', url, password),
+    connectToServer: (url, code) =>
+        ipcRenderer.invoke('vrcx-connect-server', url, code),
+    checkTotpSetupNeeded: (url) =>
+        ipcRenderer.invoke('vrcx-totp-setup', url),
+    confirmTotpSetup: (url, secret, code) =>
+        ipcRenderer.invoke('vrcx-totp-confirm', url, secret, code),
     rpc: (target, method, args) =>
         ipcRenderer.invoke('vrcx-rpc', target, method, args)
 });

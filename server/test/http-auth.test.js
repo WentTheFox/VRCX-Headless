@@ -1,6 +1,8 @@
 /**
- * Password hashing, password source precedence, and session token
- * lifecycle for the phase 3 HTTP/WS transport (`server/src/http-auth.js`).
+ * TOTP secret source precedence and session token lifecycle for the phase 3
+ * HTTP/WS transport (`server/src/http-auth.js`). The TOTP algorithm itself
+ * (RFC 6238 test vectors etc.) is covered by `totp.test.js` — this file is
+ * about the *source precedence* (env var vs. stored secret) and sessions.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -10,44 +12,16 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { openDatabase } from '../src/db.js';
 import {
-    checkPassword,
+    checkTotpCode,
     createSession,
     destroySession,
-    hasServerPassword,
-    hashPassword,
+    hasServerTotp,
     readSessionCookie,
     readSessionToken,
-    setServerPassword,
-    validateSession,
-    verifyPassword
+    setServerTotp,
+    validateSession
 } from '../src/http-auth.js';
-
-describe('hashPassword / verifyPassword', () => {
-    it('round-trips a correct password', () => {
-        const stored = hashPassword('correct horse battery staple');
-        expect(verifyPassword('correct horse battery staple', stored)).toBe(
-            true
-        );
-    });
-
-    it('rejects a wrong password', () => {
-        const stored = hashPassword('correct horse battery staple');
-        expect(verifyPassword('wrong password', stored)).toBe(false);
-    });
-
-    it('salts each hash differently', () => {
-        const a = hashPassword('same password');
-        const b = hashPassword('same password');
-        expect(a).not.toBe(b);
-        expect(verifyPassword('same password', a)).toBe(true);
-        expect(verifyPassword('same password', b)).toBe(true);
-    });
-
-    it('rejects a malformed stored value instead of throwing', () => {
-        expect(verifyPassword('anything', 'not-a-valid-hash')).toBe(false);
-        expect(verifyPassword('anything', '')).toBe(false);
-    });
-});
+import { generateTotpCode, generateTotpSecret } from '../src/totp.js';
 
 describe('session tokens', () => {
     it('validates a token it created and rejects an unknown one', () => {
@@ -119,7 +93,7 @@ describe('readSessionToken', () => {
     });
 });
 
-describe('password source precedence', () => {
+describe('TOTP secret source precedence', () => {
     /** @type {string} */
     let dir;
     /** @type {Awaited<ReturnType<typeof openDatabase>>} */
@@ -144,25 +118,34 @@ describe('password source precedence', () => {
     });
 
     afterEach(() => {
-        delete process.env.VRCX_SERVER_PASSWORD;
+        delete process.env.VRCX_SERVER_TOTP_SECRET;
     });
 
-    it('reports no password configured until one is set', async () => {
-        expect(await hasServerPassword(handle)).toBe(false);
-        expect(await checkPassword(handle, 'anything')).toBe(false);
+    it('reports no secret configured until one is set', async () => {
+        expect(await hasServerTotp(handle)).toBe(false);
+        expect(await checkTotpCode(handle, '123456')).toBe(false);
     });
 
-    it('accepts a password set via setServerPassword', async () => {
-        await setServerPassword(handle, 'stored-password');
-        expect(await hasServerPassword(handle)).toBe(true);
-        expect(await checkPassword(handle, 'stored-password')).toBe(true);
-        expect(await checkPassword(handle, 'wrong')).toBe(false);
+    it('accepts a code generated from a secret set via setServerTotp', async () => {
+        const secret = generateTotpSecret();
+        await setServerTotp(handle, secret);
+        expect(await hasServerTotp(handle)).toBe(true);
+        expect(await checkTotpCode(handle, generateTotpCode(secret))).toBe(
+            true
+        );
+        expect(await checkTotpCode(handle, '000000')).toBe(false);
     });
 
-    it('prefers VRCX_SERVER_PASSWORD over the stored hash', async () => {
-        await setServerPassword(handle, 'stored-password');
-        process.env.VRCX_SERVER_PASSWORD = 'env-password';
-        expect(await checkPassword(handle, 'stored-password')).toBe(false);
-        expect(await checkPassword(handle, 'env-password')).toBe(true);
+    it('prefers VRCX_SERVER_TOTP_SECRET over the stored secret', async () => {
+        const storedSecret = generateTotpSecret();
+        const envSecret = generateTotpSecret();
+        await setServerTotp(handle, storedSecret);
+        process.env.VRCX_SERVER_TOTP_SECRET = envSecret;
+        expect(
+            await checkTotpCode(handle, generateTotpCode(storedSecret))
+        ).toBe(false);
+        expect(await checkTotpCode(handle, generateTotpCode(envSecret))).toBe(
+            true
+        );
     });
 });

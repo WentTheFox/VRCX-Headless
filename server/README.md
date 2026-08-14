@@ -94,7 +94,7 @@ npm run server -- login
 | `whoami`                 | Shows the logged-in account                                 |
 | `logout`                 | Clears the session (keeps saved credentials)                |
 | `pipeline`               | Connects to the VRChat event pipeline and streams events    |
-| `set-password`           | Sets the password that protects `serve`'s HTTP/WS server    |
+| `setup-totp`             | Sets the TOTP secret that protects `serve`'s HTTP/WS server  |
 | `serve`                  | Starts the HTTP/WS server and the `updateLoop` daemon        |
 
 Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`, `--tls-cert=PATH`, `--tls-key=PATH`.
@@ -105,6 +105,8 @@ Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=UR
 
 If `npm run prod-web` has been built (`build/html-web`), `serve` also serves it as the static web client at `/` — same-origin, so the browser never needs CORS. Without a build there, `serve` still works as an API-only server (`/api/*` and `/api/stream`).
 
+**TOTP setup doesn't require the CLI.** The first time `serve` runs with no secret configured yet, opening the web client shows a QR code (and the raw secret, for manual entry) instead of a login form — scan it with any 2FA app (Bitwarden, Google Authenticator, 1Password, Authy, …), enter the current code to confirm, and you're logged in immediately, no separate login step. This is one-shot: once a secret exists, the browser can never see it (or a new one) again — `setup-totp` is the only way to rotate it afterwards, which needs shell access to the box on purpose.
+
 ## Environment
 
 | Variable               | Meaning                                                 |
@@ -114,7 +116,7 @@ If `npm run prod-web` has been built (`build/html-web`), `serve` also serves it 
 | `VRCX_LOG_LEVEL`       | `debug` \| `info` \| `warn` \| `error` (default `info`) |
 | `VRCHAT_PASSWORD`      | Password for a non-interactive `login`                  |
 | `VRCHAT_2FA_CODE`      | Two-factor code for a non-interactive `login`           |
-| `VRCX_SERVER_PASSWORD` | Password for `serve`, instead of running `set-password` |
+| `VRCX_SERVER_TOTP_SECRET` | Base32 TOTP secret for `serve`, instead of running `setup-totp` |
 | `VRCX_SERVER_HOST`     | HTTP/WS bind address (default `0.0.0.0`)                |
 | `VRCX_SERVER_PORT`     | HTTP/WS bind port (default `9000`)                      |
 | `VRCX_SERVER_TLS_CERT` | PEM certificate file, instead of `--tls-cert`           |
@@ -138,7 +140,8 @@ Cookies and saved credentials are stored in the same format the .NET app uses, s
 ## Security notes
 
 - **VRChat credentials are stored the way upstream VRCX stores them.** With no primary password set, the password is saved in `savedCredentials` in **plaintext**, exactly as the desktop app does it. This is upstream behaviour, not something this fork introduced; treat `VRCX.sqlite3` as a secret.
+- **`serve`'s own auth is TOTP, not a static password.** A rotating 6-digit code from a 2FA app is worthless outside its 30-second window even if sniffed in transit — a real improvement over a static password given the common deployment is plain HTTP on a home network. The *secret* backing it is still the one long-lived credential (same threat model a password hash had), so `VRCX.sqlite3` remains something to treat as a secret either way. Enrollment is one-shot: the browser only ever sees the secret/QR once, on first setup; rotating afterwards needs shell access (`setup-totp`).
 - **`serve`'s cookie has no `Secure` flag by default.** The common deployment is a home-network Docker container over plain HTTP, so requiring TLS out of the box would just break that. Two ways to get TLS: put a reverse proxy in front, or point `serve` at a cert/key pair directly (`--tls-cert`/`--tls-key`, or `VRCX_SERVER_TLS_CERT`/`VRCX_SERVER_TLS_KEY`) — when either is used, the session cookie gains `Secure` automatically. `HttpOnly`/`SameSite=Strict` alone protect against XSS/CSRF, not eavesdropping on the wire, so exposing `serve` past a network you trust without one of these two is not safe.
-- **Sessions are process-lifetime only.** They live in memory, not the database; restarting `serve` signs everyone out. There's no rotation or expiry yet either — treat a leaked session cookie as equivalent to a leaked password until that lands.
+- **Sessions are process-lifetime only.** They live in memory, not the database; restarting `serve` signs everyone out. There's no rotation or expiry yet either — treat a leaked session token as equivalent to a leaked TOTP code until that lands.
 - **`/api/rpc` exposes `database`/`configRepository`'s full real method surface**, the same one the desktop app itself uses locally with no additional restriction — the authenticated session is the security boundary, not per-method filtering. Don't run `serve` on a database you wouldn't otherwise trust the network it's exposed to.
 - The container runs as the non-root `node` user and writes only to `/data`.

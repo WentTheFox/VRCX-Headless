@@ -1,5 +1,5 @@
 /**
- * The phase 3 HTTP/WS transport: password auth → session cookie, the
+ * The phase 3 HTTP/WS transport: TOTP auth → session cookie, the
  * generic `/api/rpc` dispatcher (`server/src/rpc.js`), and the `/api/stream`
  * pipeline fan-out (`server/src/pipeline-relay.js`). Raw `node:http` — three
  * routes plus one WS upgrade doesn't justify a framework — with the `ws`
@@ -22,18 +22,24 @@ import { WebSocketServer } from 'ws';
 
 import { desktopAgent } from './agent.js';
 import {
-    checkPassword,
+    checkTotpCode,
     createSession,
     destroySession,
-    hasServerPassword,
+    hasServerTotp,
     readSessionToken,
     SESSION_COOKIE_NAME,
+    setServerTotp,
     validateSession
 } from './http-auth.js';
 import { log } from './log.js';
 import { pipelineRelay } from './pipeline-relay.js';
 import { repoRoot } from './globals.js';
 import { dispatchRpc } from './rpc.js';
+import {
+    generateTotpSecret,
+    totpProvisioningUri,
+    verifyTotpCode
+} from './totp.js';
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MiB — generous for an RPC call, not for abuse
 
@@ -186,6 +192,28 @@ function expiredSessionCookieHeader(secure) {
 }
 
 /**
+ * Shared by `/api/login` and `/api/totp/confirm` — a freshly-confirmed TOTP
+ * code is just as good as an existing session's code for starting a new
+ * session, so enrollment doesn't need a separate "now log in again" step.
+ * @param {http.ServerResponse} res
+ * @param {boolean} secure
+ */
+function sendNewSession(res, secure) {
+    const token = createSession();
+    // The raw token rides alongside the cookie so a non-browser client
+    // (phase 5's desktop agent — not same-origin, can't rely on an
+    // HttpOnly cookie) can pull it out of the JSON body and send it back as
+    // `Authorization: Bearer <token>` instead. The browser client already
+    // ignores response fields it doesn't know about.
+    sendJson(
+        res,
+        200,
+        { ok: true, token },
+        { 'Set-Cookie': sessionCookieHeader(token, secure) }
+    );
+}
+
+/**
  * @param {import('./db.js').DatabaseHandle} handle
  * @param {{ tls?: { cert: Buffer | string, key: Buffer | string } }} [options]
  *   `tls`, when given, must have both `cert` and `key` — the CLI's `serve`
@@ -195,9 +223,17 @@ function expiredSessionCookieHeader(secure) {
  *   something this function silently papers over.
  */
 export async function createHttpServer(handle, options = {}) {
-    if (!(await hasServerPassword(handle))) {
-        throw new Error(
-            'No server password configured. Run `set-password`, or set VRCX_SERVER_PASSWORD.'
+    // Unlike phase 3's original password-auth design, an unconfigured
+    // server is allowed to start: /api/totp/setup and /api/totp/confirm
+    // are exactly what let the browser itself complete first-run
+    // enrollment, and neither route can do anything without a request
+    // that either proves possession of the about-to-be-confirmed secret
+    // or (per the one-shot refusal both routes already enforce) fails
+    // outright once a secret exists. Every *other* route needs a valid
+    // session, which is simply unreachable until enrollment finishes.
+    if (!(await hasServerTotp(handle))) {
+        log.warn(
+            'No TOTP secret configured yet — open the web client to finish enrollment, or run `setup-totp` / set VRCX_SERVER_TOTP_SECRET.'
         );
     }
 
@@ -275,26 +311,62 @@ async function handleRequest(handle, req, res, secure) {
 
     if (req.method === 'POST' && url.pathname === '/api/login') {
         const body = await readJsonBody(req);
-        if (typeof body.password !== 'string' || !body.password) {
-            sendJson(res, 400, { ok: false, error: 'password is required' });
+        if (typeof body.code !== 'string' || !body.code) {
+            sendJson(res, 400, { ok: false, error: 'code is required' });
             return;
         }
-        if (!(await checkPassword(handle, body.password))) {
-            sendJson(res, 401, { ok: false, error: 'Invalid password' });
+        if (!(await checkTotpCode(handle, body.code))) {
+            sendJson(res, 401, { ok: false, error: 'Invalid code' });
             return;
         }
-        const token = createSession();
-        // The raw token rides alongside the cookie so a non-browser client
-        // (phase 5's desktop agent — not same-origin, can't rely on an
-        // HttpOnly cookie) can pull it out of the JSON body and send it back
-        // as `Authorization: Bearer <token>` instead. The browser client
-        // already ignores response fields it doesn't know about.
-        sendJson(
-            res,
-            200,
-            { ok: true, token },
-            { 'Set-Cookie': sessionCookieHeader(token, secure) }
-        );
+        sendNewSession(res, secure);
+        return;
+    }
+
+    // Lets the client itself drive first-run TOTP enrollment (QR code +
+    // confirm code, rather than requiring the setup-totp CLI command):
+    // setup generates a secret without persisting it, confirm verifies a
+    // code against it and only then saves it. Deliberately one-shot —
+    // once a secret exists, both routes refuse unconditionally, with no
+    // authenticated-rotation escape hatch. Rotating is `setup-totp`-only
+    // (shell access to the box), so the browser never has an opportunity
+    // to show the secret/QR again after the first successful enrollment.
+    if (req.method === 'POST' && url.pathname === '/api/totp/setup') {
+        if (await hasServerTotp(handle)) {
+            sendJson(res, 403, {
+                ok: false,
+                error: 'Already configured — use the setup-totp CLI command to rotate'
+            });
+            return;
+        }
+        const secret = generateTotpSecret();
+        sendJson(res, 200, {
+            ok: true,
+            secret,
+            uri: totpProvisioningUri(secret, 'serve')
+        });
+        return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/totp/confirm') {
+        if (await hasServerTotp(handle)) {
+            sendJson(res, 403, {
+                ok: false,
+                error: 'Already configured — use the setup-totp CLI command to rotate'
+            });
+            return;
+        }
+        const body = await readJsonBody(req);
+        if (typeof body.secret !== 'string' || !body.secret) {
+            sendJson(res, 400, { ok: false, error: 'secret is required' });
+            return;
+        }
+        if (!verifyTotpCode(body.secret, body.code)) {
+            sendJson(res, 400, { ok: false, error: 'Invalid code' });
+            return;
+        }
+        await setServerTotp(handle, body.secret);
+        sendNewSession(res, secure);
         return;
     }
 
