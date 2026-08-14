@@ -12,6 +12,7 @@ import {
     installAppApiPolyfill,
     installAssetBundleManagerPolyfill,
     installDiscordPolyfill,
+    installHistoryPolyfill,
     installLogWatcherPolyfill
 } from '../src/globals.js';
 
@@ -58,9 +59,7 @@ describe('agent-aware globals', () => {
 
     it('forwards AssetBundleManager calls', async () => {
         vi.spyOn(desktopAgent, 'isConnected').mockReturnValue(true);
-        const call = vi
-            .spyOn(desktopAgent, 'call')
-            .mockResolvedValue(1024);
+        const call = vi.spyOn(desktopAgent, 'call').mockResolvedValue(1024);
         installAssetBundleManagerPolyfill();
 
         const result = await globalThis.AssetBundleManager.GetCacheSize();
@@ -73,7 +72,7 @@ describe('agent-aware globals', () => {
         expect(result).toBe(1024);
     });
 
-    it("AppApi.GetVersion stays a real override, never forwarded", async () => {
+    it('AppApi.GetVersion stays a real override, never forwarded', async () => {
         globalThis.VERSION = '2026.99.99-test';
         vi.spyOn(desktopAgent, 'isConnected').mockReturnValue(true);
         const call = vi.spyOn(desktopAgent, 'call');
@@ -95,5 +94,28 @@ describe('agent-aware globals', () => {
         await expect(globalThis.LogWatcher.Get()).rejects.toThrow(
             'native call exploded'
         );
+    });
+});
+
+describe('installHistoryPolyfill', () => {
+    afterEach(() => {
+        delete globalThis.history;
+    });
+
+    it('provides the state property vue-router reads in finalizeNavigation', () => {
+        installHistoryPolyfill();
+
+        expect(globalThis.history.state).toBeNull();
+        expect(() => globalThis.history.pushState()).not.toThrow();
+        expect(() => globalThis.history.replaceState()).not.toThrow();
+        expect(() => globalThis.history.go()).not.toThrow();
+    });
+
+    it('does not override an existing history global', () => {
+        globalThis.history = { state: 'real' };
+
+        installHistoryPolyfill();
+
+        expect(globalThis.history.state).toBe('real');
     });
 });

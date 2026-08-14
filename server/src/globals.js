@@ -339,9 +339,8 @@ export function installAssetBundleManagerPolyfill() {
     if (globalThis.AssetBundleManager !== undefined) {
         return;
     }
-    globalThis.AssetBundleManager = createAgentAwarePolyfill(
-        'AssetBundleManager'
-    );
+    globalThis.AssetBundleManager =
+        createAgentAwarePolyfill('AssetBundleManager');
 }
 
 /**
@@ -418,6 +417,48 @@ export function installDocumentPolyfill() {
         getElementById: () => null,
         querySelector: () => null,
         querySelectorAll: () => []
+    };
+}
+
+/**
+ * `history` (the browser History API) is a Node-missing global `vue-router`
+ * itself references — not `src/**` — so it never showed up in any grep of
+ * this codebase and stayed undiscovered until a live `serve` run's own
+ * console showed a cosmetic-looking `[VUE_ROUTER_R0011] Unexpected error
+ * when starting the router` warning with no visible cause (`nostics`, the
+ * diagnostic library vue-router uses, deliberately never prints
+ * `Diagnostic.cause` — found by temporarily patching
+ * `node_modules/vue-router/dist/vue-router.js` to log it, which surfaced
+ * `ReferenceError: history is not defined` inside vue-router's own
+ * `finalizeNavigation`).
+ *
+ * The real bug is upstream-of-upstream: vue-router's `history.state` read
+ * is already guarded by its own `isBrowser` check
+ * (`const state = !isBrowser ? {} : history.state`) — but `isBrowser` is
+ * `typeof document !== 'undefined'`, and `installDocumentPolyfill()` above
+ * makes that true on the server for unrelated reasons (`src/**` stores
+ * touching `documentElement.classList` etc.). So vue-router's own
+ * Node-safety check misfires here specifically *because* of one of this
+ * file's other polyfills, and reaches for a global nothing installs.
+ * `mountHeadlessApp()` (`server/src/app.js`) uses `createMemoryHistory()`
+ * exclusively — never `createWebHistory()`/`createWebHashHistory()`, the
+ * only real consumers of most of the History API surface — so this is
+ * scoped to the one property (`state`) that specific in-memory-history path
+ * actually reads; the rest is filled in for shape-completeness, all inert.
+ */
+export function installHistoryPolyfill() {
+    if (globalThis.history !== undefined) {
+        return;
+    }
+    globalThis.history = {
+        state: null,
+        length: 0,
+        scrollRestoration: 'auto',
+        pushState() {},
+        replaceState() {},
+        go() {},
+        back() {},
+        forward() {}
     };
 }
 
@@ -504,6 +545,7 @@ export function installGlobals() {
     installAssetBundleManagerPolyfill();
     installSpeechSynthesisPolyfill();
     installDocumentPolyfill();
+    installHistoryPolyfill();
     installNarrowWindowPolyfill();
     if (globalThis.LINUX === undefined) {
         globalThis.LINUX = false;
