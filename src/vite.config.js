@@ -119,6 +119,22 @@ export default defineConfig(({ mode }) => {
 
     return {
         base: '',
+        // Found live: Vite resolves `publicDir` relative to `root` by
+        // default (`<root>/public`), and `client-web/` — the web build's
+        // root — has no `public/` of its own, so `copyPublicDir: true`
+        // below silently copied nothing at all for that platform. The
+        // symptom was exactly as confusing as a missing-asset bug gets:
+        // every avatar in the friends list rendered as fully invisible
+        // (not broken-image, not blank-but-present) because
+        // `src/shared/utils/base/ui.js`'s user-avatar CSS `mask-image`
+        // pointed at `images/masks/usercutout.svg`, which the SPA
+        // fallback (server/src/http-server.js's `serveWebClient`) quietly
+        // served `index.html` in place of — a masked element with a
+        // failed/invalid mask resource renders as blank, not unmasked, so
+        // there was no visual hint anything was even missing. Pinning
+        // `publicDir` to the real `src/public` absolutely, independent of
+        // which platform's root is active, fixes it for every build.
+        publicDir: resolve(import.meta.dirname, 'public'),
         plugins: [
             // Must run before vue()/vueJsx() resolve anything — phase 4's
             // client-side seams (client-web/aliases.js), same mechanism the
