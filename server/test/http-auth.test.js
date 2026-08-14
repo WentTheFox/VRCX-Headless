@@ -16,6 +16,7 @@ import {
     hasServerPassword,
     hashPassword,
     readSessionCookie,
+    readSessionToken,
     setServerPassword,
     validateSession,
     verifyPassword
@@ -73,6 +74,48 @@ describe('readSessionCookie', () => {
     it('returns undefined when absent', () => {
         expect(readSessionCookie('other=1')).toBeUndefined();
         expect(readSessionCookie(undefined)).toBeUndefined();
+    });
+});
+
+describe('readSessionToken', () => {
+    /**
+     * @param {Record<string, string | undefined>} headers
+     * @returns {import('node:http').IncomingMessage}
+     */
+    function fakeRequest(headers) {
+        return /** @type {any} */ ({ headers });
+    }
+
+    it('prefers the Authorization: Bearer header over a cookie', () => {
+        expect(
+            readSessionToken(
+                fakeRequest({
+                    authorization: 'Bearer from-header',
+                    cookie: 'vrcx_session=from-cookie'
+                })
+            )
+        ).toBe('from-header');
+    });
+
+    it('falls back to the cookie when there is no Authorization header', () => {
+        expect(
+            readSessionToken(fakeRequest({ cookie: 'vrcx_session=from-cookie' }))
+        ).toBe('from-cookie');
+    });
+
+    it('ignores a non-Bearer Authorization header', () => {
+        expect(
+            readSessionToken(
+                fakeRequest({
+                    authorization: 'Basic dXNlcjpwYXNz',
+                    cookie: 'vrcx_session=from-cookie'
+                })
+            )
+        ).toBe('from-cookie');
+    });
+
+    it('returns undefined when neither is present', () => {
+        expect(readSessionToken(fakeRequest({}))).toBeUndefined();
     });
 });
 

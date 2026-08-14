@@ -173,3 +173,22 @@ export function readSessionCookie(cookieHeader) {
     }
     return undefined;
 }
+
+/**
+ * Phase 5's desktop agent isn't same-origin, so it can't rely on the
+ * `HttpOnly` cookie the way the browser client does — it authenticates with
+ * `Authorization: Bearer <token>` instead, using the same token
+ * `/api/login`'s JSON response now also returns alongside the `Set-Cookie`
+ * header. Checked first since it's the cheaper parse; falls back to the
+ * cookie so nothing about the existing browser-client flow changes.
+ *
+ * @param {import('node:http').IncomingMessage} req
+ * @returns {string | undefined}
+ */
+export function readSessionToken(req) {
+    const authHeader = req.headers.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+        return authHeader.slice('Bearer '.length);
+    }
+    return readSessionCookie(req.headers.cookie);
+}

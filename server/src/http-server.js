@@ -20,12 +20,13 @@ import path from 'node:path';
 
 import { WebSocketServer } from 'ws';
 
+import { desktopAgent } from './agent.js';
 import {
     checkPassword,
     createSession,
     destroySession,
     hasServerPassword,
-    readSessionCookie,
+    readSessionToken,
     SESSION_COOKIE_NAME,
     validateSession
 } from './http-auth.js';
@@ -235,20 +236,26 @@ export async function createHttpServer(handle, options = {}) {
         // client-web/bootstrap.js override can't avoid adding, since it
         // only controls websocketDomain, not the concatenation. So the
         // real request path is '/api/stream/', not '/api/stream'.
-        if (
-            url.pathname !== '/api/stream' &&
-            url.pathname !== '/api/stream/'
-        ) {
+        const isStream =
+            url.pathname === '/api/stream' || url.pathname === '/api/stream/';
+        const isAgent = url.pathname === '/api/agent';
+        if (!isStream && !isAgent) {
             socket.destroy();
             return;
         }
-        const token = readSessionCookie(req.headers.cookie);
-        if (!validateSession(token)) {
+        // The desktop agent (phase 5) isn't same-origin, so it authenticates
+        // with `Authorization: Bearer <token>` instead of the cookie the
+        // browser client relies on — readSessionToken accepts either.
+        if (!validateSession(readSessionToken(req))) {
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
             return;
         }
         wss.handleUpgrade(req, socket, head, (ws) => {
+            if (isAgent) {
+                desktopAgent.attach(ws);
+                return;
+            }
             streamClients.add(ws);
             ws.on('close', () => streamClients.delete(ws));
         });
@@ -277,17 +284,22 @@ async function handleRequest(handle, req, res, secure) {
             return;
         }
         const token = createSession();
+        // The raw token rides alongside the cookie so a non-browser client
+        // (phase 5's desktop agent — not same-origin, can't rely on an
+        // HttpOnly cookie) can pull it out of the JSON body and send it back
+        // as `Authorization: Bearer <token>` instead. The browser client
+        // already ignores response fields it doesn't know about.
         sendJson(
             res,
             200,
-            { ok: true },
+            { ok: true, token },
             { 'Set-Cookie': sessionCookieHeader(token, secure) }
         );
         return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/logout') {
-        destroySession(readSessionCookie(req.headers.cookie));
+        destroySession(readSessionToken(req));
         sendJson(
             res,
             200,
@@ -298,7 +310,7 @@ async function handleRequest(handle, req, res, secure) {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/rpc') {
-        if (!validateSession(readSessionCookie(req.headers.cookie))) {
+        if (!validateSession(readSessionToken(req))) {
             sendJson(res, 401, { ok: false, error: 'Not authenticated' });
             return;
         }
