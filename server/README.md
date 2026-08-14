@@ -177,7 +177,9 @@ The server resolves the database exactly the way the desktop app does, so it wil
 
 Cookies and saved credentials are stored in the same format the .NET app uses, so both can read the same file.
 
-> **Back up `VRCX.sqlite3` before pointing the server at a real install**, and do not run the desktop app and the server against the same file at the same time. SQLite is in WAL mode and will not corrupt, but VRCX assumes it is the only writer, and enforcing that is phase 6.
+> **Back up `VRCX.sqlite3` before pointing the server at a real install**, and do not run the desktop app and the server against the same file at the same time. SQLite is in WAL mode and will not corrupt, but VRCX assumes it is the only writer.
+
+`serve` and `pipeline` enforce this for **this fork's own processes**: each takes an exclusive lock (a `<database>.lock` PID file next to it) the moment it opens the database, and a second `serve`/`pipeline` against the same file refuses to start with a clear "already running (pid N)" error instead of racing the first one. `migrate` checks the same lock and refuses to run against a live `serve`/`pipeline` unless `--force` is passed — migrating out from under a live writer is the single riskiest way to corrupt the database. The lock releases automatically on a clean shutdown (Ctrl-C/SIGTERM) and is cleaned up automatically if a previous process crashed and left a stale one behind. This can't stop an old, unmodified desktop build from opening the same file directly — it has no idea this lockfile convention exists — which is exactly why the warning above still applies regardless.
 
 ## Security notes
 
