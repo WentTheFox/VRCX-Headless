@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { desktopAgent } from './agent.js';
 import { log } from './log.js';
 import { installPipelineRelayPolyfill } from './pipeline-relay.js';
 
@@ -215,49 +216,36 @@ export function installVrcxStoragePolyfill() {
 }
 
 /**
- * `AppApi` is a C# object bound over CEF/Electron IPC by
- * `src/plugins/interopApi.js` (the client's only injection point), backing
- * ~81 methods spread across `Dotnet/AppApi/**` — screenshot handling, VR
- * overlay, registry, game-process detection, window focus, and so on. None
- * of it has a headless equivalent (phase 2b step 9's own framing: "a Proxy
- * over the ~81 methods returning no-ops"), and unlike `VRCXStorage` there's
- * no fixed method list to enumerate up front — every call site in `src/**`
- * is a bare `AppApi.SomeMethod(...)`, so a `Proxy` answers arbitrary method
- * names instead of hand-listing all 81.
+ * Shared `Proxy` factory behind `AppApi`/`LogWatcher`/`Discord`/
+ * `AssetBundleManager` below. Each backs a C# object bound over CEF/Electron
+ * IPC by `src/plugins/interopApi.js` (the client's only injection point) —
+ * none has a headless equivalent, and none has a fixed method list worth
+ * enumerating up front (every call site in `src/**` is a bare
+ * `SomeGlobal.SomeMethod(...)`), so a `Proxy` answers arbitrary method names
+ * instead of hand-listing all of them, same as phase 2b's original `AppApi`
+ * shape.
  *
- * Every call site found in the store/coordinator closure is fire-and-forget
- * (grepped — nothing reads a return value), so a generic async no-op is
- * enough; `CheckGameRunning`, `IPCAnnounceStart`, `FlashWindow` and
- * `PopulateImageHosts` are the ones actually reached on the server's normal
- * paths (`updateLoop.js`, `auth.js`, `userCoordinator.js`) rather than only
- * from UI event handlers that never fire headless, but none needed special
- * handling once confirmed. Logged at `debug`, not `info` like
- * `server/src/shims/app-actions.js`'s UI-action suppressions — some of
- * these (`CheckGameRunning`) are on `updateLoop`'s poll path and would
- * otherwise spam the log every cycle.
+ * Phase 5 changes what happens when one of those methods is actually
+ * called: if a desktop agent is connected (`server/src/agent.js` — the
+ * *real* `InteropApi.callMethod` running in an Electron main process
+ * elsewhere), the call forwards there and returns whatever the real native
+ * object answers. With no agent connected, it falls back to exactly phase
+ * 2b's original behaviour — a logged no-op — so a DB/API-only deployment
+ * with no desktop client attached keeps working completely unchanged.
  *
- * Phase 4 will want this same shape client-side for the web client's own
- * `capabilities` gating — kept server-only for now rather than factored out
- * pre-emptively, since there's nothing to share yet but the idea.
+ * `overrides` are real, non-forwarded implementations that take priority
+ * either way — `AppApi.GetVersion` is the one example, needed because
+ * `src/stores/vrcxUpdater.js`'s update-check logic calls `.replace()` on the
+ * result with no null-check, at store-setup scope, found live in phase 2b
+ * by actually eager-instantiating every store and reading the next crash.
  *
- * One method needed a real return value rather than the blanket
- * `undefined`, found the same way as `matchMedia`/`VRCXStorage` — by
- * actually eager-instantiating every store and reading the next crash:
- * `GetVersion()` feeds `src/stores/vrcxUpdater.js`'s update-check logic
- * unconditionally at setup scope, with no null-check on the result before
- * calling `.replace()` on it. `VERSION` (installed below, read from the
- * repo-root `Version` file) is what the real implementation would return
- * anyway.
+ * @param {string} className
+ * @param {Record<string, (...args: any[]) => Promise<any>>} [overrides]
+ * @returns {object}
  */
-export function installAppApiPolyfill() {
-    if (globalThis.AppApi !== undefined) {
-        return;
-    }
-    const overrides = {
-        GetVersion: async () => globalThis.VERSION
-    };
+function createAgentAwarePolyfill(className, overrides = {}) {
     const cache = new Map();
-    globalThis.AppApi = new Proxy(
+    return new Proxy(
         {},
         {
             get(_target, prop) {
@@ -270,15 +258,89 @@ export function installAppApiPolyfill() {
                 let fn = cache.get(prop);
                 if (!fn) {
                     fn = async (...args) => {
-                        log.debug(`AppApi.${prop} suppressed (headless)`, {
-                            args
-                        });
+                        if (desktopAgent.isConnected()) {
+                            return desktopAgent.call(className, prop, args);
+                        }
+                        // Logged at `debug`, not `info` like
+                        // `server/src/shims/app-actions.js`'s UI-action
+                        // suppressions — some of these (`CheckGameRunning`)
+                        // are on `updateLoop`'s poll path and would
+                        // otherwise spam the log every cycle.
+                        log.debug(
+                            `${className}.${prop} suppressed (no desktop agent connected)`,
+                            { args }
+                        );
                     };
                     cache.set(prop, fn);
                 }
                 return fn;
             }
         }
+    );
+}
+
+/**
+ * ~81 methods spread across `Dotnet/AppApi/**` — screenshot handling, VR
+ * overlay, registry, game-process detection, window focus, and so on. Every
+ * call site found in the store/coordinator closure is fire-and-forget
+ * (grepped — nothing reads a return value beyond `GetVersion`), so a
+ * generic agent-forward-or-no-op is enough; `CheckGameRunning`,
+ * `IPCAnnounceStart`, `FlashWindow` and `PopulateImageHosts` are the ones
+ * actually reached on the server's normal paths (`updateLoop.js`,
+ * `auth.js`, `userCoordinator.js`) rather than only from UI event handlers
+ * that never fire headless, but none needed special handling once
+ * confirmed.
+ */
+export function installAppApiPolyfill() {
+    if (globalThis.AppApi !== undefined) {
+        return;
+    }
+    globalThis.AppApi = createAgentAwarePolyfill('AppApi', {
+        GetVersion: async () => globalThis.VERSION
+    });
+}
+
+/**
+ * `Dotnet/LogWatcher.cs` — tails VRChat's local log files, structurally
+ * something only the machine actually running VRChat can do.
+ * `src/coordinators/gameLogCoordinator.js`'s `updateGameLog()` calls
+ * `gameLogService.getAll()` → `LogWatcher.Get()` unconditionally (not
+ * `LINUX`-gated, unlike `updateLoop.js`'s own `LogWatcher.GetLogLines()`
+ * poll) — this is the concrete, already-reachable payoff for agent-aware
+ * forwarding: no upstream edit needed to "unlock" it, it just starts doing
+ * something instead of nothing once a desktop agent connects.
+ */
+export function installLogWatcherPolyfill() {
+    if (globalThis.LogWatcher !== undefined) {
+        return;
+    }
+    globalThis.LogWatcher = createAgentAwarePolyfill('LogWatcher');
+}
+
+/**
+ * `Dotnet/Discord.cs` — Discord Rich Presence, native IPC to the local
+ * Discord client. `src/stores/settings/discordPresence.js`'s
+ * `updateDiscord()` calls `Discord.SetAssets`/`SetActive` unconditionally,
+ * from `saveDiscordOption()` — same "already reachable, just inert until an
+ * agent connects" shape as `LogWatcher` above.
+ */
+export function installDiscordPolyfill() {
+    if (globalThis.Discord !== undefined) {
+        return;
+    }
+    globalThis.Discord = createAgentAwarePolyfill('Discord');
+}
+
+/**
+ * `Dotnet/AssetBundleManager.cs` — VRChat's local asset cache on disk,
+ * equally structurally desktop-only.
+ */
+export function installAssetBundleManagerPolyfill() {
+    if (globalThis.AssetBundleManager !== undefined) {
+        return;
+    }
+    globalThis.AssetBundleManager = createAgentAwarePolyfill(
+        'AssetBundleManager'
     );
 }
 
@@ -437,6 +499,9 @@ export function installGlobals() {
     installMatchMediaPolyfill();
     installVrcxStoragePolyfill();
     installAppApiPolyfill();
+    installLogWatcherPolyfill();
+    installDiscordPolyfill();
+    installAssetBundleManagerPolyfill();
     installSpeechSynthesisPolyfill();
     installDocumentPolyfill();
     installNarrowWindowPolyfill();
