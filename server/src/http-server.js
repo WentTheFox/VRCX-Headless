@@ -21,6 +21,7 @@ import path from 'node:path';
 import { WebSocketServer } from 'ws';
 
 import { desktopAgent } from './agent.js';
+import { groupInstanceRelay } from './group-instance-relay.js';
 import {
     checkTotpCode,
     createSession,
@@ -265,6 +266,32 @@ export async function createHttpServer(handle, options = {}) {
         }
     });
 
+    // Shaped to look like a real pipeline frame (see group-instance-relay.js's
+    // own header) so it rides the exact same connection/client set as the
+    // frames above, rather than needing a second WebSocket.
+    //
+    // Cached and replayed to each newly-connecting client below: the real
+    // poll this relays (src/stores/updateLoop.js) runs on a 5-minute cycle
+    // starting the instant `serve` boots — well before the HTTP server even
+    // starts listening — so without a replay, any client connecting after
+    // that first tick (i.e. every real client) would see an empty Groups
+    // sidebar for up to 5 minutes rather than the state the server already
+    // has. Found live, not predicted: a fresh browser login landed with
+    // `groupInstances.length === 0` despite the server's own poll having
+    // already run.
+    let lastGroupInstancesFrame = null;
+    groupInstanceRelay.on('update', (payload) => {
+        lastGroupInstancesFrame = JSON.stringify({
+            type: 'vrcx-headless-group-instances',
+            content: JSON.stringify(payload)
+        });
+        for (const client of streamClients) {
+            if (client.readyState === client.OPEN) {
+                client.send(lastGroupInstancesFrame);
+            }
+        }
+    });
+
     server.on('upgrade', (req, socket, head) => {
         const url = new URL(req.url, 'http://localhost');
         // src/services/websocket.js (unmodified) always builds its URL as
@@ -294,6 +321,9 @@ export async function createHttpServer(handle, options = {}) {
             }
             streamClients.add(ws);
             ws.on('close', () => streamClients.delete(ws));
+            if (lastGroupInstancesFrame !== null) {
+                ws.send(lastGroupInstancesFrame);
+            }
         });
     });
 

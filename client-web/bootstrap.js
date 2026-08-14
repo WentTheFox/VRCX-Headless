@@ -40,6 +40,55 @@ const root = document.getElementById('root');
 
 AppDebug.websocketDomain = `${location.origin.replace(/^http/, 'ws')}/api/stream`;
 
+/**
+ * `server/src/group-instance-relay.js`'s client-side counterpart: the
+ * server ships a synthetic pipeline-shaped frame
+ * (`type: 'vrcx-headless-group-instances'`) over the same `/api/stream`
+ * connection so the Groups sidebar (`groupStore.groupInstances`) gets
+ * populated here too — that state is normally computed only by
+ * `src/stores/updateLoop.js`'s server-only loop and never reaches any
+ * client otherwise. Tapping the `WebSocket` constructor, rather than
+ * editing `src/services/websocket.js`, mirrors the server's own
+ * `pipeline-relay.js` tap and is proven side-effect-free alongside that
+ * file's own unmodified `.onmessage` handling (both listeners fire
+ * independently on the same message).
+ */
+function installGroupInstanceRelayTap() {
+    const NativeWebSocket = window.WebSocket;
+    class TappedWebSocket extends NativeWebSocket {
+        constructor(url, protocols) {
+            super(url, protocols);
+            if (typeof url !== 'string' || !url.includes('/api/stream')) {
+                return;
+            }
+            this.addEventListener('message', (event) => {
+                let frame;
+                try {
+                    frame = JSON.parse(event.data);
+                } catch {
+                    return;
+                }
+                if (frame?.type !== 'vrcx-headless-group-instances') {
+                    return;
+                }
+                let payload;
+                try {
+                    payload = JSON.parse(frame.content);
+                } catch {
+                    return;
+                }
+                import('../src/coordinators/groupCoordinator.js').then(
+                    ({ handleGroupUserInstances }) => {
+                        handleGroupUserInstances({ json: payload });
+                    }
+                );
+            });
+        }
+    }
+    window.WebSocket = TappedWebSocket;
+}
+installGroupInstanceRelayTap();
+
 const FORM_STYLE =
     'display:flex;flex-direction:column;gap:0.75rem;width:22rem;padding:2rem;border-radius:0.5rem;background:#25252b;';
 const TITLE_STYLE = 'margin:0 0 0.5rem;font-size:1.25rem;';
