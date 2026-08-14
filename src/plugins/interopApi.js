@@ -1,7 +1,38 @@
 // @ts-nocheck
+import { toast } from 'vue-sonner';
+
 import InteropApi from '../ipc-electron/interopApi.js';
 import configRepository from '../services/config.js';
 import vrcxJsonStorage from '../services/jsonStorage.js';
+
+/**
+ * Phase 6 part 2: `database`/`configRepository`'s ~86 fire-and-forget write
+ * call sites across `src/**` were audited (see CLAUDE.md §9) and found to
+ * contain no correctness bugs — upstream never consumed their return value
+ * either, by design. What *was* missing is that a failed write is
+ * completely silent client-side: on the server these calls run in-process
+ * and a thrown error surfaces normally, but on `WEB`/the Electron client
+ * they're RPC calls returning a rejected promise nothing awaits, which
+ * Node/the browser would otherwise just drop. This is the one generic
+ * catch-all for that gap, reusing the same `vue-sonner` toast convention
+ * `src/services/request.js` and 13 coordinators already use for API
+ * failures, rather than inventing new UX.
+ *
+ * Not installed on the `WINDOWS`/CefSharp branch: `window.SQLite` is real
+ * and local there, so upstream's original fire-and-forget assumption still
+ * holds — there is no RPC hop to swallow a rejection, and adding this
+ * listener would just be toast noise for a gap that branch doesn't have.
+ */
+function installUnhandledRejectionReporting() {
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled rejection', event.reason);
+        const message =
+            event.reason instanceof Error
+                ? event.reason.message
+                : String(event.reason);
+        toast.error(`Something went wrong: ${message}`);
+    });
+}
 
 export async function initInteropApi(isVrOverlay = false) {
     if (isVrOverlay) {
@@ -50,6 +81,7 @@ export async function initInteropApi(isVrOverlay = false) {
             window.AppApi = appApiTarget;
             window.VRCXStorage = vrcxStorageTarget;
             window.LogWatcher = logWatcherTarget;
+            installUnhandledRejectionReporting();
         } else {
             // Phase 5: the desktop build stops opening VRCX.sqlite3 and
             // talking to api.vrchat.cloud directly (§1's ownership table —
@@ -78,9 +110,8 @@ export async function initInteropApi(isVrOverlay = false) {
             // branch above: a WINDOWS/CefSharp build tree-shakes this whole
             // subtree away instead of bundling client-desktop/** dead
             // weight.
-            const { webApiTarget } = await import(
-                '../../client-desktop/shims/webapi-target.js'
-            );
+            const { webApiTarget } =
+                await import('../../client-desktop/shims/webapi-target.js');
             window.AppApi = InteropApi.AppApiElectron;
             window.WebApi = webApiTarget;
             window.VRCXStorage = InteropApi.VRCXStorage;
@@ -88,6 +119,7 @@ export async function initInteropApi(isVrOverlay = false) {
             window.Discord = InteropApi.Discord;
             window.AssetBundleManager = InteropApi.AssetBundleManager;
             window.AppApiVrElectron = InteropApi.AppApiVrElectron;
+            installUnhandledRejectionReporting();
         }
 
         await configRepository.init();
