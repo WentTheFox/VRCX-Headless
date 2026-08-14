@@ -259,6 +259,12 @@ async function main() {
             );
         }
         await waitForPipelineConnected();
+        // Real self-rescheduling daemon loop (phase 2b step 8): friend/group
+        // refresh, DB optimize, etc. Started here rather than in
+        // bootstrapSession/mountHeadlessApp, since one-shot commands
+        // (login/whoami/logout) have no use for a recurring timer that
+        // outlives them by one tick before the process exits anyway.
+        stores.updateLoop.updateLoop();
         console.log('Streaming pipeline events. Press Ctrl-C to stop.');
         let lastMessageCount = wsState.messageCount;
         const interval = setInterval(() => {
