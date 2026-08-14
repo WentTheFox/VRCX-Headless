@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import { mountHeadlessApp } from './app.js';
 import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
 import { buildUserAgent, readVersion } from './globals.js';
+import { installGroupInstanceRelay } from './group-instance-relay.js';
 import { setServerTotp } from './http-auth.js';
 import { createHttpServer } from './http-server.js';
 import {
@@ -410,6 +411,7 @@ async function main() {
         }
         installLockReleaseOnExit(handle.databasePath);
         const { stores } = await bootstrapSession(handle);
+        installGroupInstanceRelay(globalThis.WebApi);
 
         const user = await restoreSession(stores).catch(() => null);
         if (user?.id) {
