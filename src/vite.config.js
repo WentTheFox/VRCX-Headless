@@ -10,6 +10,8 @@ import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 
+import { clientWebAliases } from '../client-web/aliases.js';
+import { headlessAliasPlugin } from '../server/vite-alias-plugin.js';
 import { languageCodes } from './localization/locales';
 
 /**
@@ -108,9 +110,19 @@ export default defineConfig(({ mode }) => {
     const nightly =
         mode === 'development' || version.split('-').at(-1).length === 7;
 
+    const isWeb = process.env.PLATFORM === 'web';
+
     return {
         base: '',
         plugins: [
+            // Must run before vue()/vueJsx() resolve anything — phase 4's
+            // client-side seams (client-web/aliases.js), same mechanism the
+            // server's Vitest config already uses (server/vite-alias-plugin.js).
+            // Second arg {} : none of the server's package aliases apply —
+            // worker-timers/vue-sonner/noty all work fine in a real
+            // browser, unlike headless Node (see the plugin's own doc
+            // comment for how this was found).
+            isWeb && headlessAliasPlugin(clientWebAliases, {}),
             remixiconWoff2Only(),
             vue(),
             vueJsx({
@@ -166,16 +178,35 @@ export default defineConfig(({ mode }) => {
         define: {
             LINUX: JSON.stringify(process.env.PLATFORM === 'linux'),
             WINDOWS: JSON.stringify(process.env.PLATFORM === 'windows'),
+            WEB: JSON.stringify(isWeb),
             VERSION: JSON.stringify(version),
             NIGHTLY: JSON.stringify(nightly)
         },
-        server: {
-            port: 9000,
-            strictPort: true
-        },
+        server: isWeb
+            ? {
+                  // Vite's own dev port, not 9000 — the headless server's
+                  // `serve` command already claims that one. `/api/*` and the
+                  // `/api/stream` WS upgrade proxy through to a `serve`
+                  // instance running alongside `npm run dev-web`; production
+                  // is same-origin for real once `serve` serves this build's
+                  // output directly (server/src/http-server.js).
+                  port: 5173,
+                  strictPort: true,
+                  proxy: {
+                      '/api': {
+                          target: 'http://localhost:9000',
+                          ws: true,
+                          changeOrigin: true
+                      }
+                  }
+              }
+            : {
+                  port: 9000,
+                  strictPort: true
+              },
         build: {
             target: 'chrome145',
-            outDir: '../build/html',
+            outDir: isWeb ? '../build/html-web' : '../build/html',
             license: true,
             emptyOutDir: true,
             copyPublicDir: true,
@@ -189,10 +220,20 @@ export default defineConfig(({ mode }) => {
             },
             rolldownOptions: {
                 preserveEntrySignatures: false,
-                input: {
-                    index: resolve(import.meta.dirname, './index.html'),
-                    vr: resolve(import.meta.dirname, './vr.html')
-                },
+                input: isWeb
+                    ? {
+                          // No `vr` entry: VR overlay is a desktop-only
+                          // capability (§1's ownership table) with no web
+                          // client build at all.
+                          index: resolve(
+                              import.meta.dirname,
+                              '../client-web/index.html'
+                          )
+                      }
+                    : {
+                          index: resolve(import.meta.dirname, './index.html'),
+                          vr: resolve(import.meta.dirname, './vr.html')
+                      },
                 output: {
                     assetFileNames: getAssetFilename,
                     manualChunks: getManualChunk

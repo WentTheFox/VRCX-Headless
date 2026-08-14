@@ -97,11 +97,13 @@ npm run server -- login
 | `set-password`           | Sets the password that protects `serve`'s HTTP/WS server    |
 | `serve`                  | Starts the HTTP/WS server and the `updateLoop` daemon        |
 
-Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`.
+Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`, `--tls-cert=PATH`, `--tls-key=PATH`.
 
 `--user` is only needed to create per-user tables for an account the database has never seen; `login` does it for you, and existing accounts are discovered through `sqlite_schema`.
 
 `serve` requires a VRChat login to relay pipeline events over `/api/stream`, but not for `/api/rpc` — `database`/`configRepository` access works without one. It logs a warning and continues if there's no saved session, rather than refusing to start.
+
+If `npm run prod-web` has been built (`build/html-web`), `serve` also serves it as the static web client at `/` — same-origin, so the browser never needs CORS. Without a build there, `serve` still works as an API-only server (`/api/*` and `/api/stream`).
 
 ## Environment
 
@@ -115,6 +117,8 @@ Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=UR
 | `VRCX_SERVER_PASSWORD` | Password for `serve`, instead of running `set-password` |
 | `VRCX_SERVER_HOST`     | HTTP/WS bind address (default `0.0.0.0`)                |
 | `VRCX_SERVER_PORT`     | HTTP/WS bind port (default `9000`)                      |
+| `VRCX_SERVER_TLS_CERT` | PEM certificate file, instead of `--tls-cert`           |
+| `VRCX_SERVER_TLS_KEY`  | PEM private key file, instead of `--tls-key`            |
 | `HTTPS_PROXY`          | Honoured when `NODE_USE_ENV_PROXY=1` (set in the image) |
 
 ---
@@ -134,7 +138,7 @@ Cookies and saved credentials are stored in the same format the .NET app uses, s
 ## Security notes
 
 - **VRChat credentials are stored the way upstream VRCX stores them.** With no primary password set, the password is saved in `savedCredentials` in **plaintext**, exactly as the desktop app does it. This is upstream behaviour, not something this fork introduced; treat `VRCX.sqlite3` as a secret.
-- **`serve`'s cookie has no `Secure` flag by default.** The common deployment is a home-network Docker container over plain HTTP, so requiring TLS out of the box would just break that. Put a reverse proxy with TLS in front before exposing `serve` past a network you trust — `HttpOnly`/`SameSite=Strict` protect against XSS/CSRF, not eavesdropping on the wire.
+- **`serve`'s cookie has no `Secure` flag by default.** The common deployment is a home-network Docker container over plain HTTP, so requiring TLS out of the box would just break that. Two ways to get TLS: put a reverse proxy in front, or point `serve` at a cert/key pair directly (`--tls-cert`/`--tls-key`, or `VRCX_SERVER_TLS_CERT`/`VRCX_SERVER_TLS_KEY`) — when either is used, the session cookie gains `Secure` automatically. `HttpOnly`/`SameSite=Strict` alone protect against XSS/CSRF, not eavesdropping on the wire, so exposing `serve` past a network you trust without one of these two is not safe.
 - **Sessions are process-lifetime only.** They live in memory, not the database; restarting `serve` signs everyone out. There's no rotation or expiry yet either — treat a leaked session cookie as equivalent to a leaked password until that lands.
 - **`/api/rpc` exposes `database`/`configRepository`'s full real method surface**, the same one the desktop app itself uses locally with no additional restriction — the authenticated session is the security boundary, not per-method filtering. Don't run `serve` on a database you wouldn't otherwise trust the network it's exposed to.
 - The container runs as the non-root `node` user and writes only to `/data`.

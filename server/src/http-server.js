@@ -7,11 +7,16 @@
  * built-in `WebSocket` only covers the client role (already what the
  * pipeline connection itself uses).
  *
- * No CORS handling yet: phase 4's web client shape (same-origin vs. a
- * separate dev server) isn't decided, so there is nothing concrete to
- * configure against. Add it when that decision exists instead of guessing.
+ * Phase 4 settled the previously-open "same-origin vs. separate deployment"
+ * question in favour of same-origin: this file also serves the built web
+ * client (`npm run prod-web`'s `build/html-web`) as static files, so the
+ * browser only ever talks to its own origin and CORS never becomes a
+ * question that needs an answer.
  */
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import http from 'node:http';
+import https from 'node:https';
+import path from 'node:path';
 
 import { WebSocketServer } from 'ws';
 
@@ -26,9 +31,66 @@ import {
 } from './http-auth.js';
 import { log } from './log.js';
 import { pipelineRelay } from './pipeline-relay.js';
+import { repoRoot } from './globals.js';
 import { dispatchRpc } from './rpc.js';
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MiB — generous for an RPC call, not for abuse
+
+const WEB_CLIENT_DIR = path.join(repoRoot, 'build', 'html-web');
+
+const CONTENT_TYPES = {
+    '.html': 'text/html;charset=utf-8',
+    '.js': 'text/javascript;charset=utf-8',
+    '.css': 'text/css;charset=utf-8',
+    '.json': 'application/json;charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.woff2': 'font/woff2',
+    '.ico': 'image/x-icon',
+    '.map': 'application/json;charset=utf-8'
+};
+
+/**
+ * Serves `npm run prod-web`'s output, with an SPA fallback to `index.html`
+ * for any path that isn't a real file under `WEB_CLIENT_DIR` — client-side
+ * routes like `/user/usr_...` have no matching file on disk, only the
+ * bundle's own router (`src/plugins/router.js`, real and unaliased) knows
+ * about them.
+ *
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ * @returns {boolean} whether this request was handled
+ */
+function serveWebClient(req, res) {
+    if (!existsSync(WEB_CLIENT_DIR)) {
+        return false;
+    }
+    const url = new URL(req.url, 'http://localhost');
+    // path.resolve treats a leading '/' as "discard everything before it",
+    // and `..` segments can walk back out past WEB_CLIENT_DIR either way —
+    // neither join() nor resolve() is a sandbox by itself. The actual guard
+    // is the prefix check below, against the *resolved* path.
+    let filePath = path.resolve(WEB_CLIENT_DIR, `.${url.pathname}`);
+    if (
+        filePath !== WEB_CLIENT_DIR &&
+        !filePath.startsWith(WEB_CLIENT_DIR + path.sep)
+    ) {
+        return false;
+    }
+
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+        filePath = path.join(WEB_CLIENT_DIR, 'index.html');
+        if (!existsSync(filePath)) {
+            return false;
+        }
+    }
+
+    const contentType =
+        CONTENT_TYPES[path.extname(filePath)] ?? 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': contentType });
+    createReadStream(filePath).pipe(res);
+    return true;
+}
 
 /**
  * @param {http.IncomingMessage} req
@@ -81,32 +143,55 @@ function sendJson(res, status, body, headers = {}) {
 
 /**
  * @param {string} token
+ * @param {boolean} secure Adds `; Secure` when the listener is HTTPS — safe
+ *   to always do in that case (there is no plain-HTTP endpoint on the same
+ *   server for the cookie to still need to reach) and strictly better
+ *   hygiene than leaving it off.
  * @returns {string}
  */
-function sessionCookieHeader(token) {
-    return `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/`;
+function sessionCookieHeader(token, secure) {
+    return `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/${secure ? '; Secure' : ''}`;
 }
 
-const EXPIRED_SESSION_COOKIE_HEADER = `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`;
+/**
+ * @param {boolean} secure
+ * @returns {string}
+ */
+function expiredSessionCookieHeader(secure) {
+    return `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure ? '; Secure' : ''}`;
+}
 
 /**
  * @param {import('./db.js').DatabaseHandle} handle
+ * @param {{ tls?: { cert: Buffer | string, key: Buffer | string } }} [options]
+ *   `tls`, when given, must have both `cert` and `key` — the CLI's `serve`
+ *   command is what reads the actual PEM files off disk
+ *   (`VRCX_SERVER_TLS_CERT`/`VRCX_SERVER_TLS_KEY`, or `--tls-cert`/
+ *   `--tls-key`) and validates that a partial pair is a config error, not
+ *   something this function silently papers over.
  */
-export async function createHttpServer(handle) {
+export async function createHttpServer(handle, options = {}) {
     if (!(await hasServerPassword(handle))) {
         throw new Error(
             'No server password configured. Run `set-password`, or set VRCX_SERVER_PASSWORD.'
         );
     }
 
-    const server = http.createServer((req, res) => {
-        handleRequest(handle, req, res).catch((err) => {
+    const useHttps = Boolean(options.tls);
+    const requestListener = (req, res) => {
+        handleRequest(handle, req, res, useHttps).catch((err) => {
             log.error('HTTP request handler error', { message: err.message });
             if (!res.headersSent) {
                 sendJson(res, 500, { ok: false, error: 'Internal error' });
             }
         });
-    });
+    };
+    const server = useHttps
+        ? https.createServer(
+              { cert: options.tls.cert, key: options.tls.key },
+              requestListener
+          )
+        : http.createServer(requestListener);
 
     const wss = new WebSocketServer({ noServer: true });
     /** @type {Set<import('ws').WebSocket>} */
@@ -138,15 +223,16 @@ export async function createHttpServer(handle) {
         });
     });
 
-    return { server, streamClientCount: () => streamClients.size };
+    return { server, streamClientCount: () => streamClients.size, useHttps };
 }
 
 /**
  * @param {import('./db.js').DatabaseHandle} handle
  * @param {http.IncomingMessage} req
  * @param {http.ServerResponse} res
+ * @param {boolean} secure
  */
-async function handleRequest(handle, req, res) {
+async function handleRequest(handle, req, res, secure) {
     const url = new URL(req.url, 'http://localhost');
 
     if (req.method === 'POST' && url.pathname === '/api/login') {
@@ -164,7 +250,7 @@ async function handleRequest(handle, req, res) {
             res,
             200,
             { ok: true },
-            { 'Set-Cookie': sessionCookieHeader(token) }
+            { 'Set-Cookie': sessionCookieHeader(token, secure) }
         );
         return;
     }
@@ -175,7 +261,7 @@ async function handleRequest(handle, req, res) {
             res,
             200,
             { ok: true },
-            { 'Set-Cookie': EXPIRED_SESSION_COOKIE_HEADER }
+            { 'Set-Cookie': expiredSessionCookieHeader(secure) }
         );
         return;
     }
@@ -188,6 +274,18 @@ async function handleRequest(handle, req, res) {
         const body = await readJsonBody(req);
         const result = await dispatchRpc(handle, body);
         sendJson(res, 200, result);
+        return;
+    }
+
+    // Everything under /api/* is handled above; anything else is a request
+    // for the built web client (or a 404 if it was never built — `serve`
+    // still works API-only, e.g. a container that only needs the RPC/stream
+    // surface, no bundled client).
+    if (
+        req.method === 'GET' &&
+        !url.pathname.startsWith('/api/') &&
+        serveWebClient(req, res)
+    ) {
         return;
     }
 

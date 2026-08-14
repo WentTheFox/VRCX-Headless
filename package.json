@@ -19,6 +19,7 @@
     "scripts": {
         "dev": "cross-env PLATFORM=windows vite serve src",
         "dev-linux": "cross-env PLATFORM=linux vite serve src",
+        "dev-web": "cross-env PLATFORM=web vite serve client-web --config src/vite.config.js",
         "localization": "node ./src/shared/utils/localizationHelperCLI.js",
         "format": "oxfmt src src-electron eslint.config.mjs vitest.config.js vitest.setup.js",
         "format:check": "oxfmt --check src src-electron eslint.config.mjs vitest.config.js vitest.setup.js",
@@ -35,6 +36,7 @@
         "build:licenses": "node ./build-scripts/generate-third-party-licenses.js",
         "prod": "cross-env PLATFORM=windows vite build src && npm run build:licenses",
         "prod-linux": "cross-env PLATFORM=linux vite build src && npm run build:licenses",
+        "prod-web": "cross-env PLATFORM=web vite build client-web --config src/vite.config.js && npm run build:licenses",
         "build-electron": "node ./src-electron/download-dotnet-runtime.js --arch=x64 && node ./src-electron/patch-package-version.js && electron-builder --x64 --publish never",
         "build-electron-arm64": "node ./src-electron/download-dotnet-runtime.js --arch=arm64 && node ./src-electron/patch-package-version.js && electron-builder --arm64 --publish never",
         "postbuild-electron": "node ./src-electron/patch-node-api-dotnet.js --arch=x64 && node ./src-electron/rename-builds.js --arch=x64",
