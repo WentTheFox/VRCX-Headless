@@ -280,18 +280,34 @@ async function hasValidServerSession() {
 }
 
 /**
+ * Shared by `connectToServer` and `confirmTotpSetup` — both end with "we
+ * have a fresh session token for this server, remember it and open the
+ * agent channel."
+ * @param {string} normalizedUrl
+ * @param {string} token
+ */
+function completeSession(normalizedUrl, token) {
+    serverUrl = normalizedUrl;
+    serverToken = token;
+    VRCXStorage.Set('VRCX_ServerUrl', serverUrl);
+    VRCXStorage.Set('VRCX_ServerToken', serverToken);
+    VRCXStorage.Save();
+    connectAgentSocket();
+}
+
+/**
  * @param {string} url
- * @param {string} password
+ * @param {string} code the 6-digit TOTP code from the user's authenticator app
  * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
  */
-async function connectToServer(url, password) {
+async function connectToServer(url, code) {
     const normalizedUrl = String(url).replace(/\/+$/, '');
     let response;
     try {
         response = await fetchJson(`${normalizedUrl}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
+            body: JSON.stringify({ code })
         });
     } catch (err) {
         return { ok: false, error: `Could not reach the server: ${err.message}` };
@@ -302,17 +318,81 @@ async function connectToServer(url, password) {
             error: response.body?.error ?? `Login failed (${response.status})`
         };
     }
-    serverUrl = normalizedUrl;
-    serverToken = response.body.token;
-    VRCXStorage.Set('VRCX_ServerUrl', serverUrl);
-    VRCXStorage.Set('VRCX_ServerToken', serverToken);
-    VRCXStorage.Save();
-    connectAgentSocket();
+    completeSession(normalizedUrl, response.body.token);
     return { ok: true };
 }
 
-ipcMain.handle('vrcx-connect-server', async (_event, url, password) => {
-    const result = await connectToServer(url, password);
+/**
+ * `/api/totp/setup`'s status code doubles as "is this server already
+ * enrolled?" — same convention `client-web/bootstrap.js` relies on. 200
+ * means no (hands back a fresh secret + QR URI), 403 means yes.
+ * @param {string} url
+ * @returns {Promise<{ needed: true, secret: string, uri: string } | { needed: false }>}
+ */
+async function checkTotpSetupNeeded(url) {
+    const normalizedUrl = String(url).replace(/\/+$/, '');
+    const response = await fetchJson(`${normalizedUrl}/api/totp/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+    });
+    if (response.status === 403) {
+        return { needed: false };
+    }
+    if (response.status !== 200 || !response.body?.ok) {
+        throw new Error(
+            response.body?.error ?? `Could not reach the server (${response.status})`
+        );
+    }
+    return { needed: true, secret: response.body.secret, uri: response.body.uri };
+}
+
+/**
+ * @param {string} url
+ * @param {string} secret
+ * @param {string} code
+ * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
+ */
+async function confirmTotpSetup(url, secret, code) {
+    const normalizedUrl = String(url).replace(/\/+$/, '');
+    let response;
+    try {
+        response = await fetchJson(`${normalizedUrl}/api/totp/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secret, code })
+        });
+    } catch (err) {
+        return { ok: false, error: `Could not reach the server: ${err.message}` };
+    }
+    if (response.status !== 200 || !response.body?.ok || !response.body.token) {
+        return {
+            ok: false,
+            error: response.body?.error ?? `Confirm failed (${response.status})`
+        };
+    }
+    completeSession(normalizedUrl, response.body.token);
+    return { ok: true };
+}
+
+ipcMain.handle('vrcx-connect-server', async (_event, url, code) => {
+    const result = await connectToServer(url, code);
+    if (result.ok) {
+        loadRealApp();
+    }
+    return result;
+});
+
+ipcMain.handle('vrcx-totp-setup', async (_event, url) => {
+    try {
+        return { ok: true, ...(await checkTotpSetupNeeded(url)) };
+    } catch (err) {
+        return { ok: false, error: err.message ?? String(err) };
+    }
+});
+
+ipcMain.handle('vrcx-totp-confirm', async (_event, url, secret, code) => {
+    const result = await confirmTotpSetup(url, secret, code);
     if (result.ok) {
         loadRealApp();
     }

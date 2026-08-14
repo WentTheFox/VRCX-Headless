@@ -22,6 +22,14 @@
     </head>
     <body>
         <div id="root"></div>
+        <!-- Plain classic script, not a module import: this page is loaded
+             raw via file://, with no Vite bundling step, so a bare
+             `import qrcode from 'qrcode-generator'` specifier can't
+             resolve. The UMD build's top-level `var qrcode = ...` still
+             becomes a real global in a classic script regardless of its
+             own (here-inert) AMD/CJS wrapper — verified directly, not
+             assumed. -->
+        <script src="../node_modules/qrcode-generator/dist/qrcode.js"></script>
         <script type="module" src="./setup.js"></script>
     </body>
 </html>

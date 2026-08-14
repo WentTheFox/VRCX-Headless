@@ -45,7 +45,8 @@
     },
     "dependencies": {
         "hazardous": "^0.3.0",
-        "node-api-dotnet": "^0.9.21"
+        "node-api-dotnet": "^0.9.21",
+        "qrcode-generator": "^2.0.4"
     },
     "devDependencies": {
         "@dnd-kit/vue": "^0.5.0",
@@ -139,6 +140,7 @@
             "src-electron/*",
             "client-desktop/setup.html",
             "client-desktop/setup.js",
+            "node_modules/qrcode-generator/dist/qrcode.js",
             "images/VRCX.png",
             "images/VRCX.ico",
             "images/VRCX_notify.png",

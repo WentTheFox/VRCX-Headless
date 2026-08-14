@@ -6,10 +6,20 @@
  * `initPlugins()`/`initPiniaPlugins()` and creates the real Vue app the
  * moment it's imported — there is no hook inside it to gate on. So instead,
  * this file gates *whether `src/app.js` gets imported at all*: render a
- * minimal password form, and only `import('../src/app.js')` once
- * `/api/login` (phase 3) has set a valid session cookie. Everything the
- * real app needs (stores, `App.vue`, the router) stays completely
- * untouched.
+ * minimal TOTP form, and only `import('../src/app.js')` once `/api/login`
+ * (phase 3) has set a valid session cookie. Everything the real app needs
+ * (stores, `App.vue`, the router) stays completely untouched.
+ *
+ * Originally a static password form; replaced with a TOTP code (RFC 6238,
+ * `server/src/totp.js`) at the user's request. `/api/totp/setup` doubles as
+ * a "is this server already enrolled?" probe (its status code *is* the
+ * answer — 200 means no, 403 means yes), so first-run enrollment (QR code +
+ * confirm code, this file) and every later login (just a code) share the
+ * same entry point without a separate "is this the first visit" flag
+ * anywhere. Deliberately one-shot: once enrolled, the server refuses both
+ * TOTP routes unconditionally (`server/src/http-server.js`), so this file
+ * never has an opportunity to show the secret/QR again after the first
+ * successful confirmation — rotating is `setup-totp`-CLI-only from then on.
  *
  * Also sets `AppDebug.websocketDomain` before that import, so
  * `src/services/websocket.js`'s unmodified `connectWebSocket()` — which
@@ -22,11 +32,40 @@
  * (from a real, RPC-proxied VRChat `/auth` call) and is harmless — the
  * server's upgrade handler only checks the path and the session cookie.
  */
+import qrcode from 'qrcode-generator';
+
 import { AppDebug } from '../src/services/appConfig.js';
 
 const root = document.getElementById('root');
 
 AppDebug.websocketDomain = `${location.origin.replace(/^http/, 'ws')}/api/stream`;
+
+const FORM_STYLE =
+    'display:flex;flex-direction:column;gap:0.75rem;width:22rem;padding:2rem;border-radius:0.5rem;background:#25252b;';
+const TITLE_STYLE = 'margin:0 0 0.5rem;font-size:1.25rem;';
+const BUTTON_STYLE =
+    'padding:0.5rem;border-radius:0.25rem;border:none;background:#4a4af0;color:#fff;cursor:pointer;';
+const ERROR_STYLE = 'margin:0;color:#f87171;font-size:0.875rem;';
+
+/**
+ * A 6-digit code input with the exact hints password managers (Bitwarden,
+ * 1Password, …) key off of to recognize and autofill a TOTP field.
+ * @returns {HTMLInputElement}
+ */
+function createCodeInput() {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'otp';
+    input.placeholder = '6-digit code';
+    input.autocomplete = 'one-time-code';
+    input.inputMode = 'numeric';
+    input.pattern = '[0-9]*';
+    input.maxLength = 6;
+    input.autofocus = true;
+    input.style.cssText =
+        'padding:0.5rem;border-radius:0.25rem;border:1px solid #444;background:#1a1a1e;color:#eee;letter-spacing:0.2em;';
+    return input;
+}
 
 /**
  * @param {string} [error]
@@ -39,44 +78,37 @@ function renderLoginForm(error) {
         'display:flex;align-items:center;justify-content:center;height:100vh;';
 
     const form = document.createElement('form');
-    form.style.cssText =
-        'display:flex;flex-direction:column;gap:0.75rem;width:20rem;padding:2rem;border-radius:0.5rem;background:#25252b;';
+    form.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
     title.textContent = 'VRCX';
-    title.style.cssText = 'margin:0 0 0.5rem;font-size:1.25rem;';
+    title.style.cssText = TITLE_STYLE;
 
-    const input = document.createElement('input');
-    input.type = 'password';
-    input.placeholder = 'Server password';
-    input.autofocus = true;
-    input.style.cssText =
-        'padding:0.5rem;border-radius:0.25rem;border:1px solid #444;background:#1a1a1e;color:#eee;';
+    const input = createCodeInput();
 
     const button = document.createElement('button');
     button.type = 'submit';
     button.textContent = 'Connect';
-    button.style.cssText =
-        'padding:0.5rem;border-radius:0.25rem;border:none;background:#4a4af0;color:#fff;cursor:pointer;';
+    button.style.cssText = BUTTON_STYLE;
 
     form.append(title, input, button);
 
     if (error) {
         const errorText = document.createElement('p');
         errorText.textContent = error;
-        errorText.style.cssText = 'margin:0;color:#f87171;font-size:0.875rem;';
+        errorText.style.cssText = ERROR_STYLE;
         form.append(errorText);
     }
 
-    form.addEventListener('submit', (event) => {
-        event.preventDefault();
+    form.addEventListener('submit', (submitEvent) => {
+        submitEvent.preventDefault();
         button.disabled = true;
         login(input.value)
             .then((ok) => {
                 if (ok) {
                     startApp();
                 } else {
-                    renderLoginForm('Wrong password.');
+                    renderLoginForm('Wrong code.');
                 }
             })
             .catch((err) => {
@@ -89,17 +121,137 @@ function renderLoginForm(error) {
 }
 
 /**
- * @param {string} password
+ * First-run enrollment: a QR code for `uri` (any TOTP app — Bitwarden,
+ * Google Authenticator, 1Password, Authy, …), the raw secret for manual
+ * entry, and a confirm-code field proving it was actually scanned/entered
+ * correctly before anything is persisted server-side.
+ * @param {string} secret
+ * @param {string} uri
+ * @param {string} [error]
+ */
+function renderSetupForm(secret, uri, error) {
+    root.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText =
+        'display:flex;align-items:center;justify-content:center;height:100vh;';
+
+    const form = document.createElement('form');
+    form.style.cssText = FORM_STYLE;
+
+    const title = document.createElement('h1');
+    title.textContent = 'Set up VRCX';
+    title.style.cssText = TITLE_STYLE;
+
+    const instructions = document.createElement('p');
+    instructions.textContent =
+        'Scan this with a 2FA app, then enter the current code to confirm.';
+    instructions.style.cssText = 'margin:0;font-size:0.875rem;color:#bbb;';
+
+    const qr = qrcode(0, 'M');
+    qr.addData(uri);
+    qr.make();
+    const qrImage = document.createElement('img');
+    qrImage.src = qr.createDataURL(6, 4);
+    qrImage.alt = 'TOTP QR code';
+    qrImage.style.cssText =
+        'align-self:center;border-radius:0.25rem;background:#fff;padding:0.5rem;';
+
+    const secretText = document.createElement('p');
+    secretText.textContent = secret;
+    secretText.style.cssText =
+        'margin:0;font-size:0.75rem;color:#888;word-break:break-all;text-align:center;font-family:monospace;';
+
+    const input = createCodeInput();
+
+    const button = document.createElement('button');
+    button.type = 'submit';
+    button.textContent = 'Confirm';
+    button.style.cssText = BUTTON_STYLE;
+
+    form.append(title, instructions, qrImage, secretText, input, button);
+
+    if (error) {
+        const errorText = document.createElement('p');
+        errorText.textContent = error;
+        errorText.style.cssText = ERROR_STYLE;
+        form.append(errorText);
+    }
+
+    form.addEventListener('submit', (submitEvent) => {
+        submitEvent.preventDefault();
+        button.disabled = true;
+        confirmSetup(secret, input.value)
+            .then((ok) => {
+                if (ok) {
+                    startApp();
+                } else {
+                    renderSetupForm(secret, uri, "That code didn't match.");
+                }
+            })
+            .catch((err) => {
+                renderSetupForm(
+                    secret,
+                    uri,
+                    err.message ?? 'Could not reach the server.'
+                );
+            });
+    });
+
+    wrapper.append(form);
+    root.append(wrapper);
+}
+
+/**
+ * @param {string} code
  * @returns {Promise<boolean>}
  */
-async function login(password) {
+async function login(code) {
     const response = await fetch('/api/login', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ code })
     });
     return response.ok;
+}
+
+/**
+ * @param {string} secret
+ * @param {string} code
+ * @returns {Promise<boolean>}
+ */
+async function confirmSetup(secret, code) {
+    const response = await fetch('/api/totp/confirm', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, code })
+    });
+    return response.ok;
+}
+
+/**
+ * `/api/totp/setup`'s status code doubles as "is this server already
+ * enrolled?" — 200 means no (and hands back a fresh secret + QR URI to
+ * enroll with), 403 means yes (nothing to do here but log in normally).
+ * @returns {Promise<{ needed: true, secret: string, uri: string } | { needed: false }>}
+ */
+async function checkTotpSetupNeeded() {
+    const response = await fetch('/api/totp/setup', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+    });
+    if (response.status === 403) {
+        return { needed: false };
+    }
+    const body = await response.json();
+    if (!response.ok || !body.ok) {
+        throw new Error(body.error ?? 'Could not reach the server.');
+    }
+    return { needed: true, secret: body.secret, uri: body.uri };
 }
 
 /**
@@ -129,7 +281,17 @@ function startApp() {
 hasValidSession().then((valid) => {
     if (valid) {
         startApp();
-    } else {
-        renderLoginForm();
+        return;
     }
+    checkTotpSetupNeeded()
+        .then((status) => {
+            if (status.needed) {
+                renderSetupForm(status.secret, status.uri);
+            } else {
+                renderLoginForm();
+            }
+        })
+        .catch((err) => {
+            renderLoginForm(err.message ?? 'Could not reach the server.');
+        });
 });

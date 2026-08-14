@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { mountHeadlessApp } from './app.js';
 import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
 import { buildUserAgent, readVersion } from './globals.js';
-import { setServerPassword } from './http-auth.js';
+import { setServerTotp } from './http-auth.js';
 import { createHttpServer } from './http-server.js';
 import { log } from './log.js';
 import { resolveDatabasePath } from './paths.js';
@@ -28,6 +28,7 @@ import {
     waitForPipelineConnected,
     wsState
 } from './session.js';
+import { generateTotpSecret, totpProvisioningUri, verifyTotpCode } from './totp.js';
 import { installWebApi } from './webapi-init.js';
 
 import { AppDebug } from '../../src/services/appConfig.js';
@@ -49,8 +50,9 @@ VRChat session:
   pipeline             Connect to the VRChat event pipeline and stream events
 
 Transport:
-  set-password         Set the password that protects the HTTP/WS server
-  serve                Start the HTTP/WS server (password auth, /api/rpc,
+  setup-totp           Set up the TOTP secret that protects the HTTP/WS
+                        server (scan/enter it in a 2FA app, e.g. Bitwarden)
+  serve                Start the HTTP/WS server (TOTP auth, /api/rpc,
                         /api/stream) and the updateLoop daemon
 
 Options:
@@ -69,7 +71,8 @@ Environment:
   VRCX_LOG_LEVEL       debug | info | warn | error   (default: info)
   VRCHAT_PASSWORD      Password for a non-interactive login
   VRCHAT_2FA_CODE      Two-factor code for a non-interactive login
-  VRCX_SERVER_PASSWORD Password for \`serve\`, instead of \`set-password\`
+  VRCX_SERVER_TOTP_SECRET
+                       Base32 TOTP secret for \`serve\`, instead of \`setup-totp\`
   VRCX_SERVER_HOST     HTTP/WS bind address                (default: 0.0.0.0)
   VRCX_SERVER_PORT     HTTP/WS bind port                   (default: 9000)
   VRCX_SERVER_TLS_CERT PEM certificate file, instead of --tls-cert
@@ -336,20 +339,30 @@ async function main() {
         return 0;
     }
 
-    if (command === 'set-password') {
+    if (command === 'setup-totp') {
         const handle = await openDatabase({ ...openOptions, create: false });
         try {
-            const password = await askHidden('New server password: ');
-            if (!password) {
-                throw new Error('A password is required');
+            const secret = generateTotpSecret();
+            const uri = totpProvisioningUri(secret, 'serve');
+            console.log('Scan or paste this into your 2FA app:\n');
+            console.log(`  Secret: ${secret}`);
+            console.log(`  URI:    ${uri}\n`);
+            console.log(
+                'Nothing is saved yet — enter the current code from your app below to confirm it was set up correctly.'
+            );
+            for (;;) {
+                const code = await ask('6-digit code (blank to cancel): ');
+                if (!code) {
+                    console.log('Cancelled — no secret was saved.');
+                    return 1;
+                }
+                if (verifyTotpCode(secret, code.trim())) {
+                    await setServerTotp(handle, secret);
+                    console.log('TOTP secret saved.');
+                    return 0;
+                }
+                console.log("That code didn't match — try again.");
             }
-            const confirmation = await askHidden('Confirm password: ');
-            if (confirmation !== password) {
-                throw new Error('Passwords did not match');
-            }
-            await setServerPassword(handle, password);
-            console.log('Server password set.');
-            return 0;
         } finally {
             handle.close();
         }
