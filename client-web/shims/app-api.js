@@ -64,6 +64,20 @@ const IMPLEMENTED = {
     async HasVRChatRegistryFolder() {
         return false;
     },
+    // Found live, same unconditional-on-every-profile-open shape as
+    // SendIpc below: native (Dotnet/AppApi/Common/LocalPlayerModerations.cs)
+    // reads a local VRChat game client file
+    // (LocalPlayerModerations\{id}-show-hide-user.vrcset) a browser has no
+    // access to, returning 0 ("no local moderation set") whenever that file
+    // or the entry in it is missing — which is every browser session, by
+    // definition. 0 is that same "nothing here" default, not a stand-in.
+    // (SetVRChatUserModeration, the write half, is left to throw — it's a
+    // user-triggered hide/show-avatar button click, not called
+    // unconditionally, so the existing throw-and-let-a-handler-catch-it
+    // default is correct for it.)
+    async GetVRChatUserModeration() {
+        return 0;
+    },
     // Native reads .NET's CultureInfo.CurrentCulture (falling back to
     // "en-US"); navigator.language is the direct browser equivalent, not
     // a stand-in — a genuinely better answer here than a hardcoded value.
@@ -87,7 +101,20 @@ const IMPLEMENTED = {
     async CheckGameRunning() {},
     async GetZoom() {
         return 1;
-    }
+    },
+    // Found live: called unconditionally, synchronously, at the very start
+    // of every showUserDialog() (src/coordinators/userCoordinator.js) —
+    // opening *any* user's profile. Unlike a user-triggered button a
+    // component can wrap in try/catch, this Proxy's default throw isn't
+    // caught anywhere on that call path, so it aborted the rest of the
+    // (synchronous) function before the actual queryRequest.fetch('user',
+    // ...) a few lines down ever ran — every profile dialog opened stuck on
+    // "loading" forever with placeholder data. Native SendIpc
+    // (Dotnet/AppApi/Common/AppApiCommon.cs) just broadcasts a message to
+    // other native VRCX instances over an IPC server — the same
+    // no-other-instances-to-notify reasoning as the already-no-op
+    // IPCAnnounceStart above, not a stand-in for a missing capability.
+    async SendIpc() {}
 };
 
 export const appApiTarget = new Proxy(IMPLEMENTED, {
