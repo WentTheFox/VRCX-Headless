@@ -23,6 +23,25 @@ export const webApiTarget = {
             return { Item1: -1, Item2: err.message ?? String(err) };
         }
     },
+    /**
+     * `src/services/webapi.js`'s `LINUX` branch — true for this Electron
+     * renderer (`PLATFORM=linux`) — calls this instead of `Execute`, per
+     * `Dotnet/WebApi.cs:373`'s own contract: a JSON string in, a JSON string
+     * `{status, message}` out. Missing entirely was the actual live bug
+     * ("WebApi.ExecuteJson is not a function") — `Execute` alone was a web
+     * client concern (`WEB` never sets `LINUX`), not a desktop one. Mirrors
+     * `server/src/shims/webapi.js`'s own `ExecuteJson`, which re-shapes the
+     * same `Execute` tuple this shim already returns.
+     *
+     * @param {string} requestJson
+     * @returns {Promise<string>}
+     */
+    async ExecuteJson(requestJson) {
+        const { Item1, Item2 } = await webApiTarget.Execute(
+            JSON.parse(requestJson)
+        );
+        return JSON.stringify({ status: Item1, message: Item2 });
+    },
     async GetCookies() {
         return '';
     },
