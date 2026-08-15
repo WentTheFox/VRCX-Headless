@@ -30,6 +30,20 @@ const FIELD_STYLE =
 const BUTTON_STYLE =
     'padding:0.5rem;border-radius:0.25rem;border:none;background:#4a4af0;color:#fff;cursor:pointer;';
 const ERROR_STYLE = 'margin:0;color:#f87171;font-size:0.875rem;';
+const LINK_STYLE =
+    'align-self:center;background:none;border:none;color:#8888ff;font-size:0.8125rem;cursor:pointer;padding:0;';
+
+/**
+ * @param {string} url
+ */
+function appendChangeServerLink(form, url) {
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.textContent = `Change server (${url})`;
+    link.style.cssText = LINK_STYLE;
+    link.addEventListener('click', () => renderUrlForm(url));
+    form.append(link);
+}
 
 /**
  * @returns {HTMLInputElement}
@@ -148,6 +162,7 @@ function renderLoginForm(url, error) {
     button.style.cssText = BUTTON_STYLE;
 
     form.append(title, input, button);
+    appendChangeServerLink(form, url);
 
     if (error) {
         const errorText = document.createElement('p');
@@ -230,6 +245,7 @@ function renderSetupForm(url, secret, uri, error) {
     button.style.cssText = BUTTON_STYLE;
 
     form.append(title, instructions, qrImage, secretText, input, button);
+    appendChangeServerLink(form, url);
 
     if (error) {
         const errorText = document.createElement('p');
@@ -269,4 +285,7 @@ function renderSetupForm(url, secret, uri, error) {
     root.append(wrapper);
 }
 
-renderUrlForm();
+window.vrcxDesktopAgent
+    .getStoredServerUrl()
+    .then((url) => renderUrlForm(url ?? undefined))
+    .catch(() => renderUrlForm());

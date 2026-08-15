@@ -59,6 +59,19 @@ let appImagePath = process.env.APPIMAGE;
 const args = process.argv.slice(1);
 const noInstall = args.includes('--no-install');
 const x11 = args.includes('--x11');
+// `x11` above only ever gated tryRelaunchWithArgs()'s own auto-relaunch
+// decision below — it never actually told Chromium to use X11, so the flag
+// did nothing on a Wayland session where auto-detection picks the native
+// Wayland backend anyway. Found live: on a real Wayland+Vulkan desktop, that
+// backend fails ('--ozone-platform=wayland' is not compatible with Vulkan)
+// and the window never becomes visible, even though the process, tray icon,
+// and agent connection all come up fine — silent enough that only actually
+// looking at the screen caught it. Must run before app.whenReady() (and
+// before any GPU process spawns), same requirement as any other
+// app.commandLine switch.
+if (x11) {
+    app.commandLine.appendSwitch('ozone-platform', 'x11');
+}
 const noDesktop = args.includes('--no-desktop');
 const startup = args.includes('--startup');
 const debug = args.includes('--hot-reload');
@@ -382,6 +395,13 @@ ipcMain.handle('vrcx-connect-server', async (_event, url, code) => {
     }
     return result;
 });
+
+// Lets client-desktop/setup.js pre-fill the URL step with what's already
+// stored (VRCX_ServerUrl, read into `serverUrl` at startup) instead of
+// asking for it again on every `serve` restart — sessions are
+// process-lifetime only (phase 3), so this screen reappears often, but the
+// server address itself rarely changes.
+ipcMain.handle('vrcx-get-stored-server-url', () => serverUrl);
 
 ipcMain.handle('vrcx-totp-setup', async (_event, url) => {
     try {
