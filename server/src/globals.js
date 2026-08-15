@@ -525,6 +525,31 @@ export function installNarrowWindowPolyfill() {
 }
 
 /**
+ * A browser tab surviving an unhandled rejection is not a deliberate design
+ * choice anyone made — it is just how the DOM event loop happens to work
+ * (the tab logs it and keeps running). Node does not share that default: an
+ * unhandled rejection with no listener registered crashes the whole process
+ * (`node:internal/process/promises`'s own `triggerUncaughtException`). `serve`
+ * and `pipeline` are meant to be long-running, and `src/**`'s reactive,
+ * watcher-driven store graph (§8's phase 2b write-up — logins, relogins and
+ * auto-login retries all run through `watch()` callbacks Vue itself invokes,
+ * not something a caller can wrap in try/catch) produces exactly this shape
+ * on a routine, expected failure: an expired VRChat session makes
+ * `runHandleAutoLoginFlow` (`src/coordinators/authAutoLoginCoordinator.js`)
+ * retry via a watcher-triggered call chain whose rejection has no listener,
+ * killing the server outright over what a real browser tab would have shown
+ * as a single "auto login failed" toast and nothing else. Mirrors the
+ * existing browser/Electron `installUnhandledRejectionReporting()`
+ * (`src/plugins/interopApi.js`, phase 6) — same "log and keep running"
+ * choice, ported to Node's process-level event instead of `window`'s.
+ */
+export function installUnhandledRejectionReporting() {
+    process.on('unhandledRejection', (reason) => {
+        log.error('Unhandled rejection (server continuing)', reason);
+    });
+}
+
+/**
  * Define `LINUX` / `WINDOWS` / `VERSION` / `NIGHTLY` as real globals so that
  * `src/**` — which references them as bare identifiers — can run under Node.
  *
@@ -534,6 +559,7 @@ export function installNarrowWindowPolyfill() {
  * ./shims/sqlite.js implements `ExecuteJson` too, so either value works.
  */
 export function installGlobals() {
+    installUnhandledRejectionReporting();
     installCloseEventPolyfill();
     installWebSocketUserAgentPolyfill();
     installPipelineRelayPolyfill();

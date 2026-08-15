@@ -5,7 +5,7 @@
  * `AppApi` (a DB/API-only deployment shouldn't change at all), and with one
  * connected, calls must forward through `desktopAgent.call`.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { desktopAgent } from '../src/agent.js';
 import {
@@ -13,7 +13,8 @@ import {
     installAssetBundleManagerPolyfill,
     installDiscordPolyfill,
     installHistoryPolyfill,
-    installLogWatcherPolyfill
+    installLogWatcherPolyfill,
+    installUnhandledRejectionReporting
 } from '../src/globals.js';
 
 describe('agent-aware globals', () => {
@@ -117,5 +118,41 @@ describe('installHistoryPolyfill', () => {
         installHistoryPolyfill();
 
         expect(globalThis.history.state).toBe('real');
+    });
+});
+
+describe('installUnhandledRejectionReporting', () => {
+    let baselineListeners;
+
+    beforeEach(() => {
+        baselineListeners = process.listeners('unhandledRejection');
+    });
+
+    afterEach(() => {
+        for (const listener of process.listeners('unhandledRejection')) {
+            if (!baselineListeners.includes(listener)) {
+                process.removeListener('unhandledRejection', listener);
+            }
+        }
+    });
+
+    it('registers a listener so an unhandled rejection does not crash the process', () => {
+        const before = process.listenerCount('unhandledRejection');
+
+        installUnhandledRejectionReporting();
+
+        expect(process.listenerCount('unhandledRejection')).toBe(before + 1);
+    });
+
+    it('logs rather than rethrowing when a rejection is emitted', () => {
+        installUnhandledRejectionReporting();
+
+        expect(() => {
+            process.emit(
+                'unhandledRejection',
+                new Error('simulated'),
+                Promise.reject().catch(() => {})
+            );
+        }).not.toThrow();
     });
 });
