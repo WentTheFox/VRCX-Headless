@@ -243,7 +243,11 @@ export function installVrcxStoragePolyfill() {
  * @param {Record<string, (...args: any[]) => Promise<any>>} [overrides]
  * @returns {object}
  */
-function createAgentAwarePolyfill(className, overrides = {}) {
+function createAgentAwarePolyfill(
+    className,
+    overrides = {},
+    agentClassName = className
+) {
     const cache = new Map();
     return new Proxy(
         {},
@@ -259,7 +263,11 @@ function createAgentAwarePolyfill(className, overrides = {}) {
                 if (!fn) {
                     fn = async (...args) => {
                         if (desktopAgent.isConnected()) {
-                            return desktopAgent.call(className, prop, args);
+                            return desktopAgent.call(
+                                agentClassName,
+                                prop,
+                                args
+                            );
                         }
                         // Logged at `debug`, not `info` like
                         // `server/src/shims/app-actions.js`'s UI-action
@@ -295,9 +303,21 @@ export function installAppApiPolyfill() {
     if (globalThis.AppApi !== undefined) {
         return;
     }
-    globalThis.AppApi = createAgentAwarePolyfill('AppApi', {
-        GetVersion: async () => globalThis.VERSION
-    });
+    // `AppApi` (Dotnet/AppApi/Common/AppApiCommonBase.cs) is an *abstract*
+    // base class — there is no real .NET object by that literal name to
+    // construct, only the concrete platform subclass. Found live: the
+    // desktop's real `interopApi.callMethod('AppApi', 'CheckGameRunning', [])`
+    // failed with a node-api-dotnet "No overload was found for the supplied
+    // number of arguments (0)" on every `updateLoop` tick, even though the
+    // real, concrete method takes zero arguments — because 'AppApi' itself
+    // isn't an instantiable class. `AppApiElectron` (src-electron/main.js's
+    // own `getDotNetObject('AppApiElectron')`) is the one this agent channel
+    // always talks to — phase 5 has no CEF/Windows agent target.
+    globalThis.AppApi = createAgentAwarePolyfill(
+        'AppApi',
+        { GetVersion: async () => globalThis.VERSION },
+        'AppApiElectron'
+    );
 }
 
 /**

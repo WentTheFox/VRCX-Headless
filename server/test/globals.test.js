@@ -73,6 +73,22 @@ describe('agent-aware globals', () => {
         expect(result).toBe(1024);
     });
 
+    it('AppApi forwards as the concrete AppApiElectron class, not the abstract AppApi base', async () => {
+        vi.spyOn(desktopAgent, 'isConnected').mockReturnValue(true);
+        const call = vi
+            .spyOn(desktopAgent, 'call')
+            .mockResolvedValue(undefined);
+        installAppApiPolyfill();
+
+        await globalThis.AppApi.CheckGameRunning();
+
+        expect(call).toHaveBeenCalledWith(
+            'AppApiElectron',
+            'CheckGameRunning',
+            []
+        );
+    });
+
     it('AppApi.GetVersion stays a real override, never forwarded', async () => {
         globalThis.VERSION = '2026.99.99-test';
         vi.spyOn(desktopAgent, 'isConnected').mockReturnValue(true);
