@@ -53,7 +53,9 @@ contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
     confirmTotpSetup: (url, secret, code) =>
         ipcRenderer.invoke('vrcx-totp-confirm', url, secret, code),
     rpc: (target, method, args) =>
-        ipcRenderer.invoke('vrcx-rpc', target, method, args)
+        ipcRenderer.invoke('vrcx-rpc', target, method, args),
+    getStoredServerUrl: () =>
+        ipcRenderer.invoke('vrcx-get-stored-server-url')
 });
 
 const validChannels = ['launch-command'];
