@@ -48,14 +48,12 @@ contextBridge.exposeInMainWorld('interopApi', {
 contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
     connectToServer: (url, code) =>
         ipcRenderer.invoke('vrcx-connect-server', url, code),
-    checkTotpSetupNeeded: (url) =>
-        ipcRenderer.invoke('vrcx-totp-setup', url),
+    checkTotpSetupNeeded: (url) => ipcRenderer.invoke('vrcx-totp-setup', url),
     confirmTotpSetup: (url, secret, code) =>
         ipcRenderer.invoke('vrcx-totp-confirm', url, secret, code),
     rpc: (target, method, args) =>
         ipcRenderer.invoke('vrcx-rpc', target, method, args),
-    getStoredServerUrl: () =>
-        ipcRenderer.invoke('vrcx-get-stored-server-url')
+    getStoredServerUrl: () => ipcRenderer.invoke('vrcx-get-stored-server-url')
 });
 
 const validChannels = ['launch-command'];

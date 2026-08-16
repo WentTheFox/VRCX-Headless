@@ -271,21 +271,18 @@ async function hasValidServerSession() {
         return false;
     }
     try {
-        const { status: httpStatus } = await fetchJson(
-            `${serverUrl}/api/rpc`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${serverToken}`
-                },
-                body: JSON.stringify({
-                    target: 'config',
-                    method: 'getString',
-                    args: ['lastUserLoggedIn', '']
-                })
-            }
-        );
+        const { status: httpStatus } = await fetchJson(`${serverUrl}/api/rpc`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${serverToken}`
+            },
+            body: JSON.stringify({
+                target: 'config',
+                method: 'getString',
+                args: ['lastUserLoggedIn', '']
+            })
+        });
         return httpStatus !== 401;
     } catch {
         return false;
@@ -323,7 +320,10 @@ async function connectToServer(url, code) {
             body: JSON.stringify({ code })
         });
     } catch (err) {
-        return { ok: false, error: `Could not reach the server: ${err.message}` };
+        return {
+            ok: false,
+            error: `Could not reach the server: ${err.message}`
+        };
     }
     if (response.status !== 200 || !response.body?.ok || !response.body.token) {
         return {
@@ -354,10 +354,15 @@ async function checkTotpSetupNeeded(url) {
     }
     if (response.status !== 200 || !response.body?.ok) {
         throw new Error(
-            response.body?.error ?? `Could not reach the server (${response.status})`
+            response.body?.error ??
+                `Could not reach the server (${response.status})`
         );
     }
-    return { needed: true, secret: response.body.secret, uri: response.body.uri };
+    return {
+        needed: true,
+        secret: response.body.secret,
+        uri: response.body.uri
+    };
 }
 
 /**
@@ -376,7 +381,10 @@ async function confirmTotpSetup(url, secret, code) {
             body: JSON.stringify({ secret, code })
         });
     } catch (err) {
-        return { ok: false, error: `Could not reach the server: ${err.message}` };
+        return {
+            ok: false,
+            error: `Could not reach the server: ${err.message}`
+        };
     }
     if (response.status !== 200 || !response.body?.ok || !response.body.token) {
         return {
