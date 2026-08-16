@@ -16,7 +16,13 @@
         "test": "vitest run"
     },
     "dependencies": {
+        "@tanstack/vue-query": "^5.101.4",
+        "dayjs": "^1.11.21",
+        "pinia": "^4.0.2",
         "tough-cookie": "^6.0.1",
+        "vue": "^3.5.40",
+        "vue-i18n": "^11.4.8",
+        "vue-router": "^5.2.0",
         "ws": "^8.21.2"
     },
     "engines": {
