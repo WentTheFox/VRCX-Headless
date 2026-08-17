@@ -1,0 +1,73 @@
+# Fork-only workflow: daily check for whether upstream has cut a VRCX
+# release this fork hasn't synced to yet, using the exact same comparison
+# `npm run server -- check-update` and the in-app status indicator
+# (src/components/UpdateCheckStatus.vue) already use — see
+# server/src/update-check.js and CLAUDE.md's 2026-08-17 entry for the
+# "release tag, not GitHub Release object" convention this relies on.
+name: Upstream Sync Check
+
+on:
+    schedule:
+        # Arbitrary time, deliberately not top-of-hour (GitHub Actions'
+        # schedule queue is busiest then, so scheduled runs can lag).
+        - cron: '17 8 * * *'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    issues: write
+
+jobs:
+    check:
+        name: Check for a pending upstream sync
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: lts/*
+                  cache: npm
+
+            - run: npm ci
+
+            # --force bypasses update-check.js's own 6h cache — this runs
+            # once a day, a fresh answer every time is exactly the point.
+            # check-update's own exit code (1 specifically means "a sync is
+            # needed and no fork tag exists for it yet", not an error) is
+            # the signal the next step acts on; `if` here just keeps a
+            # deliberate non-zero exit from failing the job.
+            - name: Run check-update
+              id: check
+              run: |
+                  set -uo pipefail
+                  if npm run --silent server -- check-update --json --force > result.json; then
+                      echo "needs_issue=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "needs_issue=true" >> "$GITHUB_OUTPUT"
+                  fi
+                  cat result.json
+
+            # gh issue create errors on a label that doesn't exist yet;
+            # --force makes this idempotent (create-or-update) so the first
+            # run on a fresh repo doesn't need a separate setup step.
+            - name: Open an issue (skip if one's already open)
+              if: steps.check.outputs.needs_issue == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  gh label create upstream-sync-needed \
+                      --color B60205 \
+                      --description "Upstream released a VRCX version this fork hasn't synced to yet" \
+                      --force
+
+                  existing=$(gh issue list --label upstream-sync-needed --state open --json number --jq '.[0].number // empty')
+                  if [ -n "$existing" ]; then
+                      echo "Issue #$existing is already open — not creating a duplicate."
+                      exit 0
+                  fi
+
+                  title=$(node -pe "JSON.parse(require('fs').readFileSync('result.json', 'utf8')).issueTitle")
+                  body=$(node -pe "JSON.parse(require('fs').readFileSync('result.json', 'utf8')).issueBody")
+                  gh issue create --title "$title" --body "$body" --label upstream-sync-needed

@@ -62,6 +62,8 @@ describe('checkForUpdate', () => {
             vrcxUpdateAvailable: false,
             forkReleaseAvailable: true,
             forkReleaseTag: null,
+            issueTitle: null,
+            issueBody: null,
             issueUrl: null
         });
     });
@@ -102,6 +104,8 @@ describe('checkForUpdate', () => {
         expect(result.vrcxUpdateAvailable).toBe(true);
         expect(result.forkReleaseAvailable).toBe(false);
         expect(result.forkReleaseTag).toBeNull();
+        expect(result.issueTitle).toContain('2026.08.01');
+        expect(result.issueBody).toContain('2026.08.01');
         expect(result.issueUrl).toContain(
             'https://github.com/WentTheFox/VRCX-Headless/issues/new?'
         );

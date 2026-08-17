@@ -80,17 +80,33 @@ function githubGet(path) {
 }
 
 /**
- * @param {string} latestVrcxVersion
- * @returns {string}
+ * The label the scheduled CI workflow (task: daily check) searches for
+ * before opening a new issue, so a sync that's still pending after several
+ * days doesn't accumulate a duplicate issue on every run — one label
+ * constant shared between "what to search for" and "what to tag it with".
  */
-function buildIssueUrl(latestVrcxVersion) {
+export const ISSUE_LABEL = 'upstream-sync-needed';
+
+/**
+ * Raw title/body (for `gh issue create --title --body`, or anything else
+ * that wants the text directly) plus the pre-encoded `github.com/.../issues/
+ * new?...` URL (for a UI that just wants a clickable link) — built from the
+ * same two strings so they can't drift apart.
+ * @param {string} latestVrcxVersion
+ * @returns {{ title: string, body: string, url: string }}
+ */
+function buildIssueContent(latestVrcxVersion) {
     const title = `Sync needed: upstream VRCX ${latestVrcxVersion} has no fork release yet`;
     const body =
         `Upstream released VRCX ${latestVrcxVersion}, but there is no ` +
         `${FORK_REPO} release with a matching major version yet.\n\n` +
         `See CLAUDE.md's §6 "Upstream sync procedure" and §10 "Server/Docker versioning".`;
     const params = new URLSearchParams({ title, body });
-    return `https://github.com/${FORK_REPO}/issues/new?${params.toString()}`;
+    return {
+        title,
+        body,
+        url: `https://github.com/${FORK_REPO}/issues/new?${params.toString()}`
+    };
 }
 
 /**
@@ -100,6 +116,8 @@ function buildIssueUrl(latestVrcxVersion) {
  *   vrcxUpdateAvailable: boolean,
  *   forkReleaseAvailable: boolean,
  *   forkReleaseTag: string | null,
+ *   issueTitle: string | null,
+ *   issueBody: string | null,
  *   issueUrl: string | null
  * }>}
  */
@@ -135,16 +153,20 @@ async function computeUpdateStatus() {
         forkReleaseTag = match?.name ?? null;
     }
 
+    const needsIssue = vrcxUpdateAvailable && !forkReleaseAvailable;
+    const issueContent = needsIssue
+        ? buildIssueContent(latestVrcxVersion)
+        : null;
+
     return {
         currentVrcxVersion,
         latestVrcxVersion,
         vrcxUpdateAvailable,
         forkReleaseAvailable,
         forkReleaseTag,
-        issueUrl:
-            vrcxUpdateAvailable && !forkReleaseAvailable
-                ? buildIssueUrl(latestVrcxVersion)
-                : null
+        issueTitle: issueContent?.title ?? null,
+        issueBody: issueContent?.body ?? null,
+        issueUrl: issueContent?.url ?? null
     };
 }
 
