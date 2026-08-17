@@ -1,7 +1,12 @@
 ###############################################################################
 # Set default behavior to automatically normalize line endings.
+#
+# Pinned to eol=lf (not left to core.autocrlf) so every checkout gets LF
+# regardless of the cloning machine's git config -- CRLF on a file with a
+# #!/bin/bash shebang breaks execution outright (see CLAUDE.md's patch
+# inventory entry for this file).
 ###############################################################################
-* text=auto
+* text=auto eol=lf
 
 ###############################################################################
 # Set default behavior for command prompt diff.
