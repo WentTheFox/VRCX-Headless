@@ -1,0 +1,135 @@
+# Fork-only workflow: builds the phase-5 Electron desktop client
+# (client-desktop/**, src-electron/**) end to end and smoke-tests the
+# resulting AppImage, so a regression here shows up on the PR instead of on
+# a contributor's own machine. Documents/replaces the manual sequence in
+# client-desktop/README.md; nothing upstream touches this file.
+#
+# Deliberately narrower than .github/workflows/github_actions.yml's own
+# manual release pipeline: x64 only (arm64 needs QEMU + an emulated Electron
+# boot, which isn't worth the CI minutes just to prove the build still
+# compiles), no code signing, and no publish step — it uploads the AppImage
+# as a workflow artifact and stops. That existing workflow remains the
+# real release path; this one exists purely to catch build breaks early.
+name: Desktop Client (Electron)
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - 'client-desktop/**'
+            - 'src-electron/**'
+            - 'Dotnet/**'
+            - 'src/**'
+            - 'package.json'
+            - 'package-lock.json'
+            - '.github/workflows/client-desktop.yaml'
+    pull_request:
+        branches:
+            - main
+        paths:
+            - 'client-desktop/**'
+            - 'src-electron/**'
+            - 'Dotnet/**'
+            - 'src/**'
+            - 'package.json'
+            - 'package-lock.json'
+            - '.github/workflows/client-desktop.yaml'
+    workflow_dispatch:
+
+jobs:
+    build:
+        name: Build and smoke-test (x64)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Setup .NET 10
+              uses: actions/setup-dotnet@v5
+              with:
+                  dotnet-version: '10.0.x'
+
+            - uses: actions/cache@v5
+              with:
+                  path: ~/.nuget/packages
+                  key: ${{ runner.os }}-nuget-${{ hashFiles('**/Dotnet/VRCX-Electron.csproj') }}
+                  restore-keys: |
+                      ${{ runner.os }}-nuget-
+
+            # Compiles AppApiElectron/Discord/LogWatcher/AssetBundleManager/
+            # AppApiVrElectron — the real native-capability bindings phase 5
+            # left untouched. Output goes to build/Electron, which npm run
+            # build-electron below expects to already be there.
+            - name: Build the .NET side (VRCX-Electron, x64)
+              run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
+
+            - name: Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: lts/*
+                  cache: npm
+
+            - run: npm ci
+
+            - name: Build the Vue app (PLATFORM=linux)
+              run: npm run prod-linux
+
+            # Downloads a self-contained .NET runtime (network access, a
+            # separate step from the dotnet build above) then runs
+            # electron-builder — produces build/VRCX_<version>_x64.AppImage.
+            - name: Package the Electron app
+              run: npm run build-electron
+
+            - name: Locate the built AppImage
+              id: appimage
+              run: |
+                  set -euo pipefail
+                  path="$(find build -maxdepth 1 -name '*.AppImage' -print -quit)"
+                  if [ -z "$path" ]; then
+                      echo "No AppImage found under build/" >&2
+                      exit 1
+                  fi
+                  echo "path=$path" >> "$GITHUB_OUTPUT"
+
+            # Upload before the smoke test below, not after: the packaged
+            # app relocates and renames its own AppImage on first launch
+            # (VRCX.Update's "install to ~/Applications" step, real upstream
+            # behaviour, confirmed by actually running it) — booting it
+            # first would silently upload a stale/missing path.
+            - name: Upload AppImage artifact
+              uses: actions/upload-artifact@v7
+              with:
+                  name: Electron-AppImage-x64
+                  path: ${{ steps.appimage.outputs.path }}
+
+            # electron-builder produces a valid AppImage; boot it far enough
+            # to prove the packaged app actually starts under Electron
+            # rather than crashing on launch (a missing native dependency,
+            # a bad asar path, etc.) — the same "prove it boots before
+            # calling it done" bar server-docker.yaml holds the container
+            # image to. `--appimage-extract-and-run` sidesteps needing FUSE
+            # (not guaranteed present on ubuntu-latest, and confirmed absent
+            # on at least one real Linux desktop this was tested against);
+            # `xvfb-run` supplies the real X11 display Electron's GTK init
+            # needs, which is what most packaging mistakes break.
+            - name: Smoke-test the AppImage boots
+              run: |
+                  set -euo pipefail
+                  sudo apt-get update -y
+                  sudo apt-get install -y xvfb
+                  chmod +x '${{ steps.appimage.outputs.path }}'
+                  xvfb-run --auto-servernum -- \
+                      timeout --signal=TERM 15s \
+                      '${{ steps.appimage.outputs.path }}' --appimage-extract-and-run --no-sandbox --disable-gpu \
+                      > appimage-boot.log 2>&1 &
+                  boot_pid=$!
+                  sleep 10
+                  if ! kill -0 "$boot_pid" 2>/dev/null; then
+                      echo "AppImage exited before the smoke-test window elapsed:" >&2
+                      cat appimage-boot.log >&2
+                      exit 1
+                  fi
+                  kill "$boot_pid" 2>/dev/null || true
+                  wait "$boot_pid" 2>/dev/null || true
+                  echo "AppImage was still running after 10s — treating that as a successful boot."
+                  cat appimage-boot.log
