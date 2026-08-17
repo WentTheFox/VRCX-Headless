@@ -134,9 +134,17 @@ jobs:
             - name: Build the .NET side (${{ matrix.id }})
               run: |
                   set -euo pipefail
-                  rid_flag=""
-                  if [ -n "${{ matrix.dotnet-rid }}" ]; then rid_flag="-r ${{ matrix.dotnet-rid }}"; fi
-                  dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a ${{ matrix.dotnet-arch }} $rid_flag
+                  # -r/--runtime and -a/--arch are mutually exclusive (dotnet
+                  # build errors out if both are passed) -- -r already fully
+                  # specifies the target RID (OS + arch), so it replaces -a
+                  # rather than joining it. -p:Platform/-p:PlatformTarget are
+                  # separate MSBuild properties (matching the csproj's own
+                  # <Platforms>x64;ARM64</Platforms>) and stay in either case.
+                  if [ -n "${{ matrix.dotnet-rid }}" ]; then
+                      dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -r ${{ matrix.dotnet-rid }}
+                  else
+                      dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a ${{ matrix.dotnet-arch }}
+                  fi
 
             - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
