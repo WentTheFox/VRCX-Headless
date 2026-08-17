@@ -100,9 +100,7 @@ export function useSearchWorld() {
      */
     function handleSearchWorldCategorySelect(index) {
         searchWorldCategoryIndex.value = index;
-        const row = cachedConfig.value?.dynamicWorldRows?.find(
-            (r) => r.index === index
-        );
+        const row = cachedConfig.value?.dynamicWorldRows?.find((r) => r.index === index);
         searchWorld(row || {});
     }
 

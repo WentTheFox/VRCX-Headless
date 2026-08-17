@@ -1,8 +1,4 @@
-import {
-    entityQueryPolicies,
-    fetchWithEntityPolicy,
-    queryKeys
-} from '../queries';
+import { entityQueryPolicies, fetchWithEntityPolicy, queryKeys } from '../queries';
 
 import avatarRequest from './avatar';
 import favoriteRequest from './favorite';
@@ -82,8 +78,7 @@ const registry = Object.freeze({
     worldsByUser: {
         key: (params) => queryKeys.worldsByUser(params),
         policy: entityQueryPolicies.worldCollection,
-        queryFn: (params) =>
-            worldRequest.getWorlds(params, params.option || undefined)
+        queryFn: (params) => worldRequest.getWorlds(params, params.option || undefined)
     },
     group: {
         key: (params) => queryKeys.group(params.groupId, params.includeRoles),

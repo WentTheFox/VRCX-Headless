@@ -213,12 +213,9 @@ const groupReq = {
      * @returns { Promise<{json: any, params}> }
      */
     addGroupMemberRole(params) {
-        return request(
-            `groups/${params.groupId}/members/${params.userId}/roles/${params.roleId}`,
-            {
-                method: 'PUT'
-            }
-        ).then((json) => {
+        return request(`groups/${params.groupId}/members/${params.userId}/roles/${params.roleId}`, {
+            method: 'PUT'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -236,12 +233,9 @@ const groupReq = {
      * @returns { Promise<{json: any, params}> }
      */
     removeGroupMemberRole(params) {
-        return request(
-            `groups/${params.groupId}/members/${params.userId}/roles/${params.roleId}`,
-            {
-                method: 'DELETE'
-            }
-        ).then((json) => {
+        return request(`groups/${params.groupId}/members/${params.userId}/roles/${params.roleId}`, {
+            method: 'DELETE'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -374,12 +368,9 @@ const groupReq = {
      * @returns { Promise<{json: any, params}> }
      */
     getBlockedGroups(params) {
-        return request(
-            `users/${getCurrentUserId()}/groups/${params.membershipStatus}`,
-            {
-                method: 'GET'
-            }
-        ).then((json) => {
+        return request(`users/${getCurrentUserId()}/groups/${params.membershipStatus}`, {
+            method: 'GET'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -648,12 +639,9 @@ const groupReq = {
      * @returns { Promise<{json: any, params}> }
      */
     getGroupInstances(params) {
-        return request(
-            `users/${getCurrentUserId()}/instances/groups/${params.groupId}`,
-            {
-                method: 'GET'
-            }
-        ).then((json) => {
+        return request(`users/${getCurrentUserId()}/instances/groups/${params.groupId}`, {
+            method: 'GET'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -774,16 +762,13 @@ const groupReq = {
      * @returns { Promise<{json: any, params}> }
      */
     getGroupGallery(params) {
-        return request(
-            `groups/${params.groupId}/galleries/${params.galleryId}`,
-            {
-                method: 'GET',
-                params: {
-                    n: params.n,
-                    offset: params.offset
-                }
+        return request(`groups/${params.groupId}/galleries/${params.galleryId}`, {
+            method: 'GET',
+            params: {
+                n: params.n,
+                offset: params.offset
             }
-        ).then((json) => {
+        }).then((json) => {
             const args = {
                 json,
                 params

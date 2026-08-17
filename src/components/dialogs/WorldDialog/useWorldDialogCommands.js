@@ -1,21 +1,13 @@
 import { nextTick, ref } from 'vue';
 
-import {
-    favoriteRequest,
-    miscRequest,
-    userRequest,
-    worldRequest
-} from '../../../api';
+import { favoriteRequest, miscRequest, userRequest, worldRequest } from '../../../api';
 import {
     handleImageUploadInput,
     resizeImageToFitLimits,
     uploadImageLegacy
 } from '../../../coordinators/imageUploadCoordinator';
 import { openExternalLink, replaceVrcPackageUrl } from '../../../shared/utils';
-import {
-    readFileAsBase64,
-    withUploadTimeout
-} from '../../../shared/utils/imageUpload';
+import { readFileAsBase64, withUploadTimeout } from '../../../shared/utils/imageUpload';
 import { removeWorldFromCache } from '../../../coordinators/worldCoordinator';
 
 /**
@@ -207,9 +199,7 @@ export function useWorldDialogCommands(
                             name: value
                         })
                         .then((args) => {
-                            toast.success(
-                                t('prompt.rename_world.message.success')
-                            );
+                            toast.success(t('prompt.rename_world.message.success'));
                             return args;
                         });
                 }
@@ -239,11 +229,7 @@ export function useWorldDialogCommands(
                             description: value
                         })
                         .then((args) => {
-                            toast.success(
-                                t(
-                                    'prompt.change_world_description.message.success'
-                                )
-                            );
+                            toast.success(t('prompt.change_world_description.message.success'));
                             return args;
                         });
                 }
@@ -275,11 +261,7 @@ export function useWorldDialogCommands(
                             capacity: Number(value)
                         })
                         .then((args) => {
-                            toast.success(
-                                t(
-                                    'prompt.change_world_capacity.message.success'
-                                )
-                            );
+                            toast.success(t('prompt.change_world_capacity.message.success'));
                             return args;
                         });
                 }
@@ -295,16 +277,12 @@ export function useWorldDialogCommands(
         modalStore
             .prompt({
                 title: t('prompt.change_world_recommended_capacity.header'),
-                description: t(
-                    'prompt.change_world_recommended_capacity.description'
-                ),
+                description: t('prompt.change_world_recommended_capacity.description'),
                 confirmText: t('prompt.change_world_capacity.ok'),
                 cancelText: t('prompt.change_world_capacity.cancel'),
                 inputValue: world.ref.recommendedCapacity,
                 pattern: /\d+$/,
-                errorMessage: t(
-                    'prompt.change_world_recommended_capacity.input_error'
-                )
+                errorMessage: t('prompt.change_world_recommended_capacity.input_error')
             })
             .then(({ ok, value }) => {
                 if (!ok) return;
@@ -315,11 +293,7 @@ export function useWorldDialogCommands(
                             recommendedCapacity: Number(value)
                         })
                         .then((args) => {
-                            toast.success(
-                                t(
-                                    'prompt.change_world_recommended_capacity.message.success'
-                                )
-                            );
+                            toast.success(t('prompt.change_world_recommended_capacity.message.success'));
                             return args;
                         });
                 }
@@ -357,9 +331,7 @@ export function useWorldDialogCommands(
                                 processedValue = id2;
                             }
                         } catch {
-                            toast.error(
-                                t('prompt.change_world_preview.message.error')
-                            );
+                            toast.error(t('prompt.change_world_preview.message.error'));
                             return;
                         }
                     }
@@ -370,11 +342,7 @@ export function useWorldDialogCommands(
                                 previewYoutubeId: processedValue
                             })
                             .then((args) => {
-                                toast.success(
-                                    t(
-                                        'prompt.change_world_preview.message.success'
-                                    )
-                                );
+                                toast.success(t('prompt.change_world_preview.message.success'));
                                 return args;
                             });
                     }
@@ -465,12 +433,10 @@ export function useWorldDialogCommands(
                     })
                 }),
                 handler: (id) => {
-                    userRequest
-                        .saveCurrentUser({ homeLocation: id })
-                        .then((args) => {
-                            toast.success(t('message.world.home_updated'));
-                            return args;
-                        });
+                    userRequest.saveCurrentUser({ homeLocation: id }).then((args) => {
+                        toast.success(t('message.world.home_updated'));
+                        return args;
+                    });
                 }
             },
             'Reset Home': {
@@ -481,12 +447,10 @@ export function useWorldDialogCommands(
                     })
                 }),
                 handler: () => {
-                    userRequest
-                        .saveCurrentUser({ homeLocation: '' })
-                        .then((args) => {
-                            toast.success(t('message.world.home_reset'));
-                            return args;
-                        });
+                    userRequest.saveCurrentUser({ homeLocation: '' }).then((args) => {
+                        toast.success(t('message.world.home_reset'));
+                        return args;
+                    });
                 }
             },
             Publish: {
@@ -511,38 +475,27 @@ export function useWorldDialogCommands(
                     })
                 }),
                 handler: (id) => {
-                    worldRequest
-                        .unpublishWorld({ worldId: id })
-                        .then((args) => {
-                            toast.success(t('message.world.unpublished'));
-                            return args;
-                        });
+                    worldRequest.unpublishWorld({ worldId: id }).then((args) => {
+                        toast.success(t('message.world.unpublished'));
+                        return args;
+                    });
                 }
             },
             'Delete Persistent Data': {
                 confirm: () => ({
                     title: t('confirm.title'),
                     description: t('confirm.command_question', {
-                        command: t(
-                            'dialog.world.actions.delete_persistent_data'
-                        )
+                        command: t('dialog.world.actions.delete_persistent_data')
                     })
                 }),
                 handler: (id) => {
-                    miscRequest
-                        .deleteWorldPersistData({ worldId: id })
-                        .then((args) => {
-                            if (
-                                args.params.worldId === worldDialog.value.id &&
-                                worldDialog.value.visible
-                            ) {
-                                worldDialog.value.hasPersistData = false;
-                            }
-                            toast.success(
-                                t('message.world.persistent_data_deleted')
-                            );
-                            return args;
-                        });
+                    miscRequest.deleteWorldPersistData({ worldId: id }).then((args) => {
+                        if (args.params.worldId === worldDialog.value.id && worldDialog.value.visible) {
+                            worldDialog.value.hasPersistData = false;
+                        }
+                        toast.success(t('message.world.persistent_data_deleted'));
+                        return args;
+                    });
                 }
             },
             Delete: {

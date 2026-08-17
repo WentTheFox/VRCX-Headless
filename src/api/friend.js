@@ -41,17 +41,9 @@ const friendReq = {
                 // hacky way to add state to bulk fetch at startup
                 if (!watchState.isFriendsLoaded) {
                     for (const item of json) {
-                        if (
-                            userStore.currentUser.activeFriends.includes(
-                                item.id
-                            )
-                        ) {
+                        if (userStore.currentUser.activeFriends.includes(item.id)) {
                             item.state = 'active';
-                        } else if (
-                            userStore.currentUser.onlineFriends.includes(
-                                item.id
-                            )
-                        ) {
+                        } else if (userStore.currentUser.onlineFriends.includes(item.id)) {
                             item.state = 'online';
                         } else {
                             item.state = 'offline';

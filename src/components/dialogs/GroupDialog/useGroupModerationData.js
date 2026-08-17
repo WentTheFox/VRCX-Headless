@@ -27,15 +27,8 @@ import * as workerTimers from 'worker-timers';
  * @param {object} deps.groupRequest - API module
  */
 export function useGroupModerationData(deps) {
-    const {
-        groupMemberModeration,
-        currentUser,
-        applyGroupMember,
-        handleGroupMember,
-        tables,
-        selection,
-        groupRequest
-    } = deps;
+    const { groupMemberModeration, currentUser, applyGroupMember, handleGroupMember, tables, selection, groupRequest } =
+        deps;
 
     const isGroupMembersLoading = ref(false);
     const isGroupMembersDone = ref(false);
@@ -125,10 +118,7 @@ export function useGroupModerationData(deps) {
                 for (let i = 0; i < args.json.length; i++) {
                     const member = args.json[i];
                     if (member.userId === currentUser.value.id) {
-                        if (
-                            members.value.length > 0 &&
-                            members.value[0].userId === currentUser.value.id
-                        ) {
+                        if (members.value.length > 0 && members.value[0].userId === currentUser.value.id) {
                             members.value.splice(0, 1);
                         }
                         break;
@@ -159,10 +149,7 @@ export function useGroupModerationData(deps) {
             return;
         }
         await getGroupMembers();
-        while (
-            groupMemberModeration.value.visible &&
-            !isGroupMembersDone.value
-        ) {
+        while (groupMemberModeration.value.visible && !isGroupMembersDone.value) {
             isGroupMembersLoading.value = true;
             await new Promise((resolve) => {
                 workerTimers.setTimeout(resolve, 1000);
@@ -237,9 +224,7 @@ export function useGroupModerationData(deps) {
                 if (groupId === args.params.groupId) {
                     tables.members.data = args.json.results.map((member) => ({
                         ...member,
-                        $selected: Boolean(
-                            selection.selectedUsers[member.userId]
-                        )
+                        $selected: Boolean(selection.selectedUsers[member.userId])
                     }));
                 }
             })
@@ -264,9 +249,7 @@ export function useGroupModerationData(deps) {
             for (let i = 0; i < count; i++) {
                 const args = await groupRequest.getGroupBans(params);
                 if (args && args.json) {
-                    if (
-                        groupMemberModeration.value.id !== args.params.groupId
-                    ) {
+                    if (groupMemberModeration.value.id !== args.params.groupId) {
                         continue;
                     }
                     args.json.forEach((json) => {
@@ -308,9 +291,7 @@ export function useGroupModerationData(deps) {
             for (let i = 0; i < count; i++) {
                 const args = await groupRequest.getGroupInvites(params);
                 if (args) {
-                    if (
-                        groupMemberModeration.value.id !== args.params.groupId
-                    ) {
+                    if (groupMemberModeration.value.id !== args.params.groupId) {
                         return;
                     }
                     for (const json of args.json) {
@@ -442,15 +423,11 @@ export function useGroupModerationData(deps) {
             for (let i = 0; i < count; i++) {
                 const args = await groupRequest.getGroupLogs(params);
                 if (args) {
-                    if (
-                        groupMemberModeration.value.id !== args.params.groupId
-                    ) {
+                    if (groupMemberModeration.value.id !== args.params.groupId) {
                         continue;
                     }
                     for (const json of args.json.results) {
-                        const existsInData = newData.some(
-                            (dataItem) => dataItem.id === json.id
-                        );
+                        const existsInData = newData.some((dataItem) => dataItem.id === json.id);
                         if (!existsInData) {
                             newData.push(json);
                         }
@@ -505,8 +482,7 @@ export function useGroupModerationData(deps) {
      */
     async function selectGroupMemberUserId(userIdInput) {
         if (!userIdInput) return;
-        const regexUserId =
-            /usr_[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}/g;
+        const regexUserId = /usr_[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}/g;
         let match;
         const userIdList = new Set();
         while ((match = regexUserId.exec(userIdInput)) !== null) {

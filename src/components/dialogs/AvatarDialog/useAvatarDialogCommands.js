@@ -1,25 +1,14 @@
 import { ref } from 'vue';
 
-import {
-    avatarModerationRequest,
-    avatarRequest,
-    favoriteRequest
-} from '../../../api';
+import { avatarModerationRequest, avatarRequest, favoriteRequest } from '../../../api';
 import { removeAvatarFromCache } from '../../../coordinators/avatarCoordinator';
-import {
-    copyToClipboard,
-    openExternalLink,
-    replaceVrcPackageUrl
-} from '../../../shared/utils';
+import { copyToClipboard, openExternalLink, replaceVrcPackageUrl } from '../../../shared/utils';
 import {
     handleImageUploadInput,
     resizeImageToFitLimits,
     uploadImageLegacy
 } from '../../../coordinators/imageUploadCoordinator';
-import {
-    readFileAsBase64,
-    withUploadTimeout
-} from '../../../shared/utils/imageUpload';
+import { readFileAsBase64, withUploadTimeout } from '../../../shared/utils/imageUpload';
 
 /**
  * Composable for AvatarDialog command dispatch.
@@ -105,11 +94,8 @@ export function useAvatarDialogCommands(
                     const base64Body = await readFileAsBase64(blob);
                     const base64File = await resizeImageToFitLimits(base64Body);
                     if (LINUX) {
-                        const args =
-                            await avatarRequest.uploadAvatarImage(base64File);
-                        const fileUrl =
-                            args.json.versions[args.json.versions.length - 1]
-                                .file.url;
+                        const args = await avatarRequest.uploadAvatarImage(base64File);
+                        const fileUrl = args.json.versions[args.json.versions.length - 1].file.url;
                         await avatarRequest.saveAvatar({
                             id: avatarDialog.value.id,
                             imageUrl: fileUrl
@@ -162,9 +148,7 @@ export function useAvatarDialogCommands(
                         })
                         .then((args) => {
                             applyAvatar(args.json);
-                            toast.success(
-                                t('prompt.rename_avatar.message.success')
-                            );
+                            toast.success(t('prompt.rename_avatar.message.success'));
                             return args;
                         });
                 }
@@ -195,11 +179,7 @@ export function useAvatarDialogCommands(
                         })
                         .then((args) => {
                             applyAvatar(args.json);
-                            toast.success(
-                                t(
-                                    'prompt.change_avatar_description.message.success'
-                                )
-                            );
+                            toast.success(t('prompt.change_avatar_description.message.success'));
                             return args;
                         });
                 }
@@ -275,12 +255,10 @@ export function useAvatarDialogCommands(
                     })
                 }),
                 handler: (id) => {
-                    avatarRequest
-                        .selectFallbackAvatar({ avatarId: id })
-                        .then((args) => {
-                            toast.success(t('message.avatar.fallback_changed'));
-                            return args;
-                        });
+                    avatarRequest.selectFallbackAvatar({ avatarId: id }).then((args) => {
+                        toast.success(t('message.avatar.fallback_changed'));
+                        return args;
+                    });
                 }
             },
             'Block Avatar': {
@@ -319,14 +297,9 @@ export function useAvatarDialogCommands(
                             targetAvatarId: id
                         })
                         .then((args) => {
-                            cachedAvatarModerations.delete(
-                                args.params.targetAvatarId
-                            );
+                            cachedAvatarModerations.delete(args.params.targetAvatarId);
                             const D = avatarDialog.value;
-                            if (
-                                args.params.avatarModerationType === 'block' &&
-                                D.id === args.params.targetAvatarId
-                            ) {
+                            if (args.params.avatarModerationType === 'block' && D.id === args.params.targetAvatarId) {
                                 D.isBlocked = false;
                             }
                         });
@@ -340,13 +313,11 @@ export function useAvatarDialogCommands(
                     })
                 }),
                 handler: (id) => {
-                    avatarRequest
-                        .saveAvatar({ id, releaseStatus: 'public' })
-                        .then((args) => {
-                            applyAvatar(args.json);
-                            toast.success(t('message.avatar.updated_public'));
-                            return args;
-                        });
+                    avatarRequest.saveAvatar({ id, releaseStatus: 'public' }).then((args) => {
+                        applyAvatar(args.json);
+                        toast.success(t('message.avatar.updated_public'));
+                        return args;
+                    });
                 }
             },
             'Make Private': {
@@ -357,13 +328,11 @@ export function useAvatarDialogCommands(
                     })
                 }),
                 handler: (id) => {
-                    avatarRequest
-                        .saveAvatar({ id, releaseStatus: 'private' })
-                        .then((args) => {
-                            applyAvatar(args.json);
-                            toast.success(t('message.avatar.updated_private'));
-                            return args;
-                        });
+                    avatarRequest.saveAvatar({ id, releaseStatus: 'private' }).then((args) => {
+                        applyAvatar(args.json);
+                        toast.success(t('message.avatar.updated_private'));
+                        return args;
+                    });
                 }
             },
             Delete: {
@@ -375,26 +344,24 @@ export function useAvatarDialogCommands(
                     destructive: true
                 }),
                 handler: (id) => {
-                    avatarRequest
-                        .deleteAvatar({ avatarId: id })
-                        .then((args) => {
-                            const { json } = args;
-                            removeAvatarFromCache(json._id);
-                            if (userDialog.value.id === json.authorId) {
-                                const map = new Map();
-                                for (const ref of cachedAvatars.values()) {
-                                    if (ref.authorId === json.authorId) {
-                                        map.set(ref.id, ref);
-                                    }
+                    avatarRequest.deleteAvatar({ avatarId: id }).then((args) => {
+                        const { json } = args;
+                        removeAvatarFromCache(json._id);
+                        if (userDialog.value.id === json.authorId) {
+                            const map = new Map();
+                            for (const ref of cachedAvatars.values()) {
+                                if (ref.authorId === json.authorId) {
+                                    map.set(ref.id, ref);
                                 }
-                                const array = Array.from(map.values());
-                                sortUserDialogAvatars(array);
                             }
+                            const array = Array.from(map.values());
+                            sortUserDialogAvatars(array);
+                        }
 
-                            toast.success(t('message.avatar.deleted'));
-                            uiStore.jumpBackDialogCrumb();
-                            return args;
-                        });
+                        toast.success(t('message.avatar.deleted'));
+                        uiStore.jumpBackDialogCrumb();
+                        return args;
+                    });
                 }
             },
             'Delete Imposter': {
@@ -406,13 +373,11 @@ export function useAvatarDialogCommands(
                     destructive: true
                 }),
                 handler: (id) => {
-                    avatarRequest
-                        .deleteImposter({ avatarId: id })
-                        .then((args) => {
-                            toast.success(t('message.avatar.impostor_deleted'));
-                            showAvatarDialog(id);
-                            return args;
-                        });
+                    avatarRequest.deleteImposter({ avatarId: id }).then((args) => {
+                        toast.success(t('message.avatar.impostor_deleted'));
+                        showAvatarDialog(id);
+                        return args;
+                    });
                 }
             },
             'Create Imposter': {
@@ -423,12 +388,10 @@ export function useAvatarDialogCommands(
                     })
                 }),
                 handler: (id) => {
-                    avatarRequest
-                        .createImposter({ avatarId: id })
-                        .then((args) => {
-                            toast.success(t('message.avatar.impostor_queued'));
-                            return args;
-                        });
+                    avatarRequest.createImposter({ avatarId: id }).then((args) => {
+                        toast.success(t('message.avatar.impostor_queued'));
+                        return args;
+                    });
                 }
             },
             'Regenerate Imposter': {
@@ -447,14 +410,10 @@ export function useAvatarDialogCommands(
                             return args;
                         })
                         .finally(() => {
-                            avatarRequest
-                                .createImposter({ avatarId: id })
-                                .then((args) => {
-                                    toast.success(
-                                        t('message.avatar.impostor_regenerated')
-                                    );
-                                    return args;
-                                });
+                            avatarRequest.createImposter({ avatarId: id }).then((args) => {
+                                toast.success(t('message.avatar.impostor_regenerated'));
+                                return args;
+                            });
                         });
                 }
             }

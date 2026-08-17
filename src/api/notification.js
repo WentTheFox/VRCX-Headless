@@ -184,12 +184,9 @@ const notificationReq = {
      * @returns { Promise<{json: any, params}> }
      */
     acceptFriendRequestNotification(params) {
-        return request(
-            `auth/user/notifications/${params.notificationId}/accept`,
-            {
-                method: 'PUT'
-            }
-        ).then((json) => {
+        return request(`auth/user/notifications/${params.notificationId}/accept`, {
+            method: 'PUT'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -203,12 +200,9 @@ const notificationReq = {
      * @returns { Promise<{json: any, params}> }
      */
     hideNotification(params) {
-        return request(
-            `auth/user/notifications/${params.notificationId}/hide`,
-            {
-                method: 'PUT'
-            }
-        ).then((json) => {
+        return request(`auth/user/notifications/${params.notificationId}/hide`, {
+            method: 'PUT'
+        }).then((json) => {
             const args = {
                 json,
                 params

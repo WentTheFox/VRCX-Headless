@@ -57,11 +57,7 @@ export const useLaunchStore = defineStore('Launch', () => {
      */
     async function getLaunchUrl(location, shortName) {
         const L = parseLocation(location);
-        if (
-            shortName &&
-            L.instanceType !== 'public' &&
-            L.groupAccessType !== 'public'
-        ) {
+        if (shortName && L.instanceType !== 'public' && L.groupAccessType !== 'public') {
             return `vrchat://launch?ref=vrcx.app&id=${location}&shortName=${shortName}`;
         }
 
@@ -105,9 +101,7 @@ export const useLaunchStore = defineStore('Launch', () => {
         }
         console.log('Attach Game', launchUrl, result);
         if (!result) {
-            toast.warning(
-                'Failed open instance in VRChat, falling back to self invite'
-            );
+            toast.warning('Failed open instance in VRChat, falling back to self invite');
             // self invite fallback
             try {
                 const L = parseLocation(location);
@@ -136,11 +130,8 @@ export const useLaunchStore = defineStore('Launch', () => {
     async function launchGame(location, shortName, desktopMode) {
         const launchUrl = await getLaunchUrl(location, shortName);
         const args = [launchUrl];
-        const launchArguments =
-            await configRepository.getString('launchArguments');
-        const vrcLaunchPathOverride = await configRepository.getString(
-            'vrcLaunchPathOverride'
-        );
+        const launchArguments = await configRepository.getString('launchArguments');
+        const vrcLaunchPathOverride = await configRepository.getString('vrcLaunchPathOverride');
         if (launchArguments) {
             args.push(launchArguments);
         }
@@ -149,23 +140,16 @@ export const useLaunchStore = defineStore('Launch', () => {
         }
         try {
             if (vrcLaunchPathOverride && !LINUX) {
-                const result = await AppApi.StartGameFromPath(
-                    vrcLaunchPathOverride,
-                    args.join(' ')
-                );
+                const result = await AppApi.StartGameFromPath(vrcLaunchPathOverride, args.join(' '));
                 if (!result) {
-                    toast.error(
-                        'Failed to launch VRChat, invalid custom path set'
-                    );
+                    toast.error('Failed to launch VRChat, invalid custom path set');
                 } else {
                     toast.success('VRChat launched');
                 }
             } else {
                 const result = await AppApi.StartGame(args.join(' '));
                 if (!result) {
-                    toast.error(
-                        'Failed to find VRChat, set a custom path in launch options'
-                    );
+                    toast.error('Failed to find VRChat, set a custom path in launch options');
                 } else {
                     toast.success('VRChat launched');
                 }

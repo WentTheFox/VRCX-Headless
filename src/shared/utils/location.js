@@ -1,11 +1,6 @@
 import { isRealInstance } from './instance.js';
 
-export {
-    parseLocation,
-    displayLocation,
-    resolveRegion,
-    translateAccessType
-} from './locationParser.js';
+export { parseLocation, displayLocation, resolveRegion, translateAccessType } from './locationParser.js';
 
 /**
  *

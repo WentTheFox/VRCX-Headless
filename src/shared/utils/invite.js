@@ -18,11 +18,7 @@ function checkCanInvite(location, deps) {
     if (instance?.closedAt) {
         return false;
     }
-    if (
-        L.accessType === 'public' ||
-        L.accessType === 'group' ||
-        L.userId === deps.currentUserId
-    ) {
+    if (L.accessType === 'public' || L.accessType === 'group' || L.userId === deps.currentUserId) {
         return true;
     }
     if (L.accessType === 'invite' || L.accessType === 'friends') {

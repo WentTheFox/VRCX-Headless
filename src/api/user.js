@@ -21,9 +21,7 @@ const userReq = {
             method: 'GET'
         }).then((json) => {
             if (!json) {
-                throw new Error(
-                    `getUser missing user data for: ${params.userId}`
-                );
+                throw new Error(`getUser missing user data for: ${params.userId}`);
             }
             json.$lastFetch = Date.now(); // todo: make this not suck
             const args = {
@@ -124,10 +122,7 @@ const userReq = {
                 queryKey: queryKeys.user(args.ref.id),
                 nextData: args
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh user query after mutation:',
-                    err
-                );
+                console.error('Failed to refresh user query after mutation:', err);
             });
             return args;
         });

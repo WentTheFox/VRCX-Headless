@@ -63,11 +63,7 @@ function toLocalDate(date, dateFormat) {
  */
 function formatDateFilter(dateStr, format) {
     const appearance = useAppearanceSettingsStore();
-    const {
-        dtIsoFormat: isoFormat,
-        dtHour12: hour12,
-        currentCulture
-    } = appearance;
+    const { dtIsoFormat: isoFormat, dtHour12: hour12, currentCulture } = appearance;
 
     if (!dateStr) {
         return '-';

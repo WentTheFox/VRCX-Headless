@@ -27,11 +27,7 @@ function getComparableEntity(data) {
     if (data.ref && typeof data.ref === 'object') {
         return data.ref;
     }
-    if (
-        data.json &&
-        typeof data.json === 'object' &&
-        !Array.isArray(data.json)
-    ) {
+    if (data.json && typeof data.json === 'object' && !Array.isArray(data.json)) {
         return data.json;
     }
     return data;
@@ -143,12 +139,7 @@ export function patchQueryDataWithRecency({ queryKey, nextData }) {
  * @param {{queryKey: unknown[], policy: {staleTime: number, gcTime: number, retry: number, refetchOnWindowFocus: boolean}, queryFn: () => Promise<any>, label?: string}} options
  * @returns {Promise<{data: any, cache: boolean}>}
  */
-export async function fetchWithEntityPolicy({
-    queryKey,
-    policy,
-    queryFn,
-    label
-}) {
+export async function fetchWithEntityPolicy({ queryKey, policy, queryFn, label }) {
     const queryState = queryClient.getQueryState(queryKey);
     const isFresh =
         Boolean(queryState?.dataUpdatedAt) &&
@@ -162,12 +153,7 @@ export async function fetchWithEntityPolicy({
     });
 
     if (isFresh) {
-        logWebRequest(
-            '[QUERY CACHE HIT]',
-            label || queryKey[0],
-            queryKey,
-            data
-        );
+        logWebRequest('[QUERY CACHE HIT]', label || queryKey[0], queryKey, data);
     } else {
         logWebRequest('[QUERY FETCH]', label || queryKey[0], queryKey, data);
     }

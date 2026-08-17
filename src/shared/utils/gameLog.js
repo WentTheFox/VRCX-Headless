@@ -9,10 +9,7 @@ function gameLogSearchFilter(row, searchQuery) {
     if (!value) {
         return true;
     }
-    if (
-        (value.startsWith('WRLD_') || value.startsWith('GRP_')) &&
-        String(row.location).toUpperCase().includes(value)
-    ) {
+    if ((value.startsWith('WRLD_') || value.startsWith('GRP_')) && String(row.location).toUpperCase().includes(value)) {
         return true;
     }
     switch (row.type) {
@@ -85,10 +82,7 @@ function getGameLogCreatedAtTs(row) {
     // context in tests (dayjs is a CJS/ESM dual package).
     const createdAtRaw = row?.created_at ?? row?.createdAt ?? row?.dt;
     if (typeof createdAtRaw === 'number') {
-        const ts =
-            createdAtRaw > 1_000_000_000_000
-                ? createdAtRaw
-                : createdAtRaw * 1000;
+        const ts = createdAtRaw > 1_000_000_000_000 ? createdAtRaw : createdAtRaw * 1000;
         return Number.isFinite(ts) ? ts : 0;
     }
 
@@ -158,14 +152,7 @@ export function createLocationEntry(dt, location, worldId, worldName) {
  * @param {number} [time]
  * @returns {object}
  */
-export function createJoinLeaveEntry(
-    type,
-    dt,
-    displayName,
-    location,
-    userId,
-    time = 0
-) {
+export function createJoinLeaveEntry(type, dt, displayName, location, userId, time = 0) {
     return {
         created_at: dt,
         type,
@@ -222,10 +209,7 @@ export function createResourceLoadEntry(rawType, dt, resourceUrl, location) {
 export function parseInventoryFromUrl(url) {
     try {
         const parsed = new URL(url);
-        if (
-            parsed.pathname.substring(0, 12) === '/api/1/user/' &&
-            parsed.pathname.includes('/inventory/inv_')
-        ) {
+        if (parsed.pathname.substring(0, 12) === '/api/1/user/' && parsed.pathname.includes('/inventory/inv_')) {
             const pathArray = parsed.pathname.split('/');
             const userId = pathArray[4];
             const inventoryId = pathArray[6];

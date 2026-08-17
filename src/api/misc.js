@@ -70,12 +70,9 @@ const miscReq = {
      * @returns { Promise<{json: any, params}> }
      */
     getFileAnalysis(params) {
-        return request(
-            `analysis/${params.fileId}/${params.version}/${params.variant}`,
-            {
-                method: 'GET'
-            }
-        ).then((json) => {
+        return request(`analysis/${params.fileId}/${params.version}/${params.variant}`, {
+            method: 'GET'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -124,12 +121,9 @@ const miscReq = {
      * @returns {Promise<{json: any, params}>}
      */
     deleteWorldPersistData(params) {
-        return request(
-            `users/${getCurrentUserId()}/${params.worldId}/persist`,
-            {
-                method: 'DELETE'
-            }
-        ).then((json) => {
+        return request(`users/${getCurrentUserId()}/${params.worldId}/persist`, {
+            method: 'DELETE'
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -145,12 +139,9 @@ const miscReq = {
      * @returns {Promise<{json: any, params}>}
      */
     hasWorldPersistData(params) {
-        return request(
-            `users/${getCurrentUserId()}/${params.worldId}/persist/exists`,
-            {
-                method: 'GET'
-            }
-        ).then((json) => {
+        return request(`users/${getCurrentUserId()}/${params.worldId}/persist/exists`, {
+            method: 'GET'
+        }).then((json) => {
             const args = {
                 json,
                 params

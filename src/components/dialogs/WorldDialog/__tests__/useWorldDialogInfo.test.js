@@ -98,10 +98,7 @@ describe('useWorldDialogInfo', () => {
     describe('isTimeInLabVisible', () => {
         test('returns true when both dates exist and are not "none"', () => {
             const worldDialog = createWorldDialog();
-            const { isTimeInLabVisible } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { isTimeInLabVisible } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(isTimeInLabVisible.value).toBe(true);
         });
@@ -109,10 +106,7 @@ describe('useWorldDialogInfo', () => {
         test('returns false when publicationDate is "none"', () => {
             const worldDialog = createWorldDialog();
             worldDialog.value.ref.publicationDate = 'none';
-            const { isTimeInLabVisible } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { isTimeInLabVisible } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(isTimeInLabVisible.value).toBe(false);
         });
@@ -120,10 +114,7 @@ describe('useWorldDialogInfo', () => {
         test('returns false when labsPublicationDate is falsy', () => {
             const worldDialog = createWorldDialog();
             worldDialog.value.ref.labsPublicationDate = '';
-            const { isTimeInLabVisible } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { isTimeInLabVisible } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(isTimeInLabVisible.value).toBeFalsy();
         });
@@ -142,10 +133,7 @@ describe('useWorldDialogInfo', () => {
     describe('favoriteRate', () => {
         test('calculates favorite rate based on favorites and visits', () => {
             const worldDialog = createWorldDialog();
-            const { favoriteRate } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { favoriteRate } = useWorldDialogInfo(worldDialog, createDeps());
 
             // ((100 - 500) / 500 * 100 + 100) * 100 / 100
             // = (-80 + 100) = 20
@@ -182,10 +170,7 @@ describe('useWorldDialogInfo', () => {
     describe('worldDialogPlatform', () => {
         test('formats platform strings from unity packages', () => {
             const worldDialog = createWorldDialog();
-            const { worldDialogPlatform } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { worldDialogPlatform } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(worldDialogPlatform.value).toContain('PC/2022.3.6f1');
             expect(worldDialogPlatform.value).toContain('Android/2022.3.6f1');
@@ -194,10 +179,7 @@ describe('useWorldDialogInfo', () => {
         test('skips packages filtered by compareUnityVersion', () => {
             compareUnityVersion.mockReturnValue(false);
             const worldDialog = createWorldDialog();
-            const { worldDialogPlatform } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { worldDialogPlatform } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(worldDialogPlatform.value).toBe('');
         });
@@ -211,10 +193,7 @@ describe('useWorldDialogInfo', () => {
                     unitySortNumber: 20220306
                 }
             ];
-            const { worldDialogPlatform } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { worldDialogPlatform } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(worldDialogPlatform.value).toBe('ios/2022.3.6f1');
         });
@@ -223,10 +202,7 @@ describe('useWorldDialogInfo', () => {
     describe('worldDialogPlatformCreatedAt', () => {
         test('returns newest created_at per platform', () => {
             const worldDialog = createWorldDialog();
-            const { worldDialogPlatformCreatedAt } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { worldDialogPlatformCreatedAt } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(worldDialogPlatformCreatedAt.value).toEqual({
                 standalonewindows: '2024-05-15T00:00:00Z',
@@ -237,10 +213,7 @@ describe('useWorldDialogInfo', () => {
         test('returns null when no unityPackages', () => {
             const worldDialog = createWorldDialog();
             worldDialog.value.ref.unityPackages = undefined;
-            const { worldDialogPlatformCreatedAt } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { worldDialogPlatformCreatedAt } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(worldDialogPlatformCreatedAt.value).toBeNull();
         });
@@ -254,10 +227,7 @@ describe('useWorldDialogInfo', () => {
                     created_at: '2024-05-15T00:00:00Z'
                 }
             ];
-            const { worldDialogPlatformCreatedAt } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { worldDialogPlatformCreatedAt } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(worldDialogPlatformCreatedAt.value).toEqual({});
         });
@@ -266,10 +236,7 @@ describe('useWorldDialogInfo', () => {
     describe('onWorldMemoChange', () => {
         test('saves memo when it has value', () => {
             const worldDialog = createWorldDialog({ memo: 'test memo' });
-            const { onWorldMemoChange } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { onWorldMemoChange } = useWorldDialogInfo(worldDialog, createDeps());
 
             onWorldMemoChange();
 
@@ -283,10 +250,7 @@ describe('useWorldDialogInfo', () => {
 
         test('deletes memo when it is empty', () => {
             const worldDialog = createWorldDialog({ memo: '' });
-            const { onWorldMemoChange } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { onWorldMemoChange } = useWorldDialogInfo(worldDialog, createDeps());
 
             onWorldMemoChange();
 
@@ -315,9 +279,7 @@ describe('useWorldDialogInfo', () => {
 
             copyWorldId();
             await vi.waitFor(() => {
-                expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-                    'wrld_123'
-                );
+                expect(navigator.clipboard.writeText).toHaveBeenCalledWith('wrld_123');
             });
         });
 
@@ -328,9 +290,7 @@ describe('useWorldDialogInfo', () => {
 
             copyWorldUrl();
             await vi.waitFor(() => {
-                expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-                    'https://vrchat.com/home/world/wrld_123'
-                );
+                expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://vrchat.com/home/world/wrld_123');
             });
         });
 
@@ -341,9 +301,7 @@ describe('useWorldDialogInfo', () => {
 
             copyWorldName();
             await vi.waitFor(() => {
-                expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-                    'Test World'
-                );
+                expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Test World');
             });
         });
 
@@ -359,9 +317,7 @@ describe('useWorldDialogInfo', () => {
         });
 
         test('shows error toast on clipboard failure', async () => {
-            navigator.clipboard.writeText = vi
-                .fn()
-                .mockRejectedValue(new Error('denied'));
+            navigator.clipboard.writeText = vi.fn().mockRejectedValue(new Error('denied'));
             const worldDialog = createWorldDialog();
             const deps = createDeps();
             const { copyWorldId } = useWorldDialogInfo(worldDialog, deps);
@@ -376,10 +332,7 @@ describe('useWorldDialogInfo', () => {
     describe('utility re-exports', () => {
         test('re-exports commaNumber and formatDateFilter', () => {
             const worldDialog = createWorldDialog();
-            const { commaNumber, formatDateFilter } = useWorldDialogInfo(
-                worldDialog,
-                createDeps()
-            );
+            const { commaNumber, formatDateFilter } = useWorldDialogInfo(worldDialog, createDeps());
 
             expect(commaNumber).toBeDefined();
             expect(formatDateFilter).toBeDefined();

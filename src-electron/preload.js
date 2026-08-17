@@ -44,13 +44,10 @@ contextBridge.exposeInMainWorld('interopApi', {
 // server — see src-electron/main.js's own doc comment on why (CORS from a
 // renderer to a remote origin).
 contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
-    connectToServer: (url, code) =>
-        ipcRenderer.invoke('vrcx-connect-server', url, code),
+    connectToServer: (url, code) => ipcRenderer.invoke('vrcx-connect-server', url, code),
     checkTotpSetupNeeded: (url) => ipcRenderer.invoke('vrcx-totp-setup', url),
-    confirmTotpSetup: (url, secret, code) =>
-        ipcRenderer.invoke('vrcx-totp-confirm', url, secret, code),
-    rpc: (target, method, args) =>
-        ipcRenderer.invoke('vrcx-rpc', target, method, args),
+    confirmTotpSetup: (url, secret, code) => ipcRenderer.invoke('vrcx-totp-confirm', url, secret, code),
+    rpc: (target, method, args) => ipcRenderer.invoke('vrcx-rpc', target, method, args),
     // Multi-server: src/components/HeadlessServerStatus.vue's post-auth
     // switcher panel, and client-desktop/setup.js's pre-auth picker. Adding
     // a *new* server reuses connectToServer/confirmTotpSetup above — see
@@ -59,14 +56,10 @@ contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
     listServers: () => ipcRenderer.invoke('vrcx-list-servers'),
     switchServer: (url) => ipcRenderer.invoke('vrcx-switch-server', url),
     removeServer: (url) => ipcRenderer.invoke('vrcx-remove-server', url),
-    setDefaultServer: (url) =>
-        ipcRenderer.invoke('vrcx-set-default-server', url),
+    setDefaultServer: (url) => ipcRenderer.invoke('vrcx-set-default-server', url),
     getServerStatus: () => ipcRenderer.invoke('vrcx-get-server-status'),
     onServerStatusChanged: (callback) =>
-        registerManagedListener(
-            'vrcx-server-status-changed',
-            (_event, status) => callback(status)
-        ),
+        registerManagedListener('vrcx-server-status-changed', (_event, status) => callback(status)),
     // Self-signed-server TLS trust: see src-electron/main.js's
     // `vrcx-import-ca-cert` doc comment for why this needs a restart
     // (window.electron.restartApp()) to actually take effect.
@@ -78,10 +71,7 @@ contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
     // asynchronously via onStreamEvent, not as this call's return value.
     streamConnect: () => ipcRenderer.send('vrcx-stream-connect'),
     streamClose: () => ipcRenderer.send('vrcx-stream-close'),
-    onStreamEvent: (callback) =>
-        registerManagedListener('vrcx-stream-event', (_event, evt) =>
-            callback(evt)
-        )
+    onStreamEvent: (callback) => registerManagedListener('vrcx-stream-event', (_event, evt) => callback(evt))
 });
 
 const validChannels = ['launch-command'];

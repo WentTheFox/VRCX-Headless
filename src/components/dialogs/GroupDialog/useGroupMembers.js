@@ -21,10 +21,7 @@ import * as workerTimers from 'worker-timers';
  * @param {Function} deps.t - i18n translation function
  * @returns {object} members composable API
  */
-export function useGroupMembers(
-    groupDialog,
-    { currentUser, applyGroupMember, handleGroupMember, t }
-) {
+export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, handleGroupMember, t }) {
     const isGroupMembersDone = ref(false);
     const isGroupMembersLoading = ref(false);
 
@@ -41,9 +38,7 @@ export function useGroupMembers(
             return groupDialog.value?.memberSortOrder?.value ?? '';
         },
         set(value) {
-            const option = groupDialogSortingOptions.find(
-                (item) => item.value === value
-            );
+            const option = groupDialogSortingOptions.find((item) => item.value === value);
             if (option) {
                 setGroupMemberSortOrder(option);
             }
@@ -73,9 +68,7 @@ export function useGroupMembers(
 
             if (key.startsWith('role:')) {
                 const roleId = key.slice('role:'.length);
-                const role = groupDialog.value?.ref?.roles?.find(
-                    (r) => r.id === roleId
-                );
+                const role = groupDialog.value?.ref?.roles?.find((r) => r.id === roleId);
                 if (role) {
                     setGroupMemberFilter(role);
                 }
@@ -85,12 +78,7 @@ export function useGroupMembers(
 
     const groupDialogMemberFilterGroups = computed(() => {
         const filterItems = groupDialogFilterOptions.map((item) => ({
-            value:
-                item.id === null
-                    ? 'everyone'
-                    : item.id === ''
-                      ? 'usersWithNoRole'
-                      : `role:${item.id}`,
+            value: item.id === null ? 'everyone' : item.id === '' ? 'usersWithNoRole' : `role:${item.id}`,
             label: t(item.name),
             search: t(item.name)
         }));
@@ -237,10 +225,7 @@ export function useGroupMembers(
                 for (let i = 0; i < args.json.length; i++) {
                     const member = args.json[i];
                     if (member.userId === currentUser.value.id) {
-                        if (
-                            D.members.length > 0 &&
-                            D.members[0].userId === currentUser.value.id
-                        ) {
+                        if (D.members.length > 0 && D.members[0].userId === currentUser.value.id) {
                             // remove duplicate and keep sort order
                             D.members.splice(0, 1);
                         }

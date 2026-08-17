@@ -7,12 +7,7 @@ const UPLOAD_TIMEOUT_MS = 30_000;
 export function withUploadTimeout(promise) {
     return Promise.race([
         promise,
-        new Promise((_, reject) =>
-            setTimeout(
-                () => reject(new Error('Upload timed out')),
-                UPLOAD_TIMEOUT_MS
-            )
-        )
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timed out')), UPLOAD_TIMEOUT_MS))
     ]);
 }
 

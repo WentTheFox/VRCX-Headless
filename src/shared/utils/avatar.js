@@ -52,34 +52,21 @@ function getPlatformInfo(unityPackages) {
     let ios = {};
     if (typeof unityPackages === 'object') {
         for (const unityPackage of unityPackages) {
-            if (
-                unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
-                unityPackage.variant !== 'security'
-            ) {
+            if (unityPackage.variant && unityPackage.variant !== 'standard' && unityPackage.variant !== 'security') {
                 continue;
             }
             if (unityPackage.platform === 'standalonewindows') {
-                if (
-                    unityPackage.performanceRating === 'None' &&
-                    pc.performanceRating
-                ) {
+                if (unityPackage.performanceRating === 'None' && pc.performanceRating) {
                     continue;
                 }
                 pc = unityPackage;
             } else if (unityPackage.platform === 'android') {
-                if (
-                    unityPackage.performanceRating === 'None' &&
-                    android.performanceRating
-                ) {
+                if (unityPackage.performanceRating === 'None' && android.performanceRating) {
                     continue;
                 }
                 android = unityPackage;
             } else if (unityPackage.platform === 'ios') {
-                if (
-                    unityPackage.performanceRating === 'None' &&
-                    ios.performanceRating
-                ) {
+                if (unityPackage.performanceRating === 'None' && ios.performanceRating) {
                     continue;
                 }
                 ios = unityPackage;
@@ -114,9 +101,7 @@ function compareUnityVersion(unitySortNumber, sdkUnityVersion) {
     currentUnityVersion += array[1].padStart(2, '0');
     const indexFirstLetter = array[2].search(/[a-zA-Z]/);
     if (indexFirstLetter > -1) {
-        currentUnityVersion += array[2]
-            .substr(0, indexFirstLetter)
-            .padStart(2, '0');
+        currentUnityVersion += array[2].substr(0, indexFirstLetter).padStart(2, '0');
         currentUnityVersion += '0';
         const letter = array[2].substr(indexFirstLetter, 1);
         if (letter === 'p') {
@@ -139,9 +124,4 @@ function compareUnityVersion(unitySortNumber, sdkUnityVersion) {
     return false;
 }
 
-export {
-    storeAvatarImage,
-    parseAvatarUrl,
-    getPlatformInfo,
-    compareUnityVersion
-};
+export { storeAvatarImage, parseAvatarUrl, getPlatformInfo, compareUnityVersion };

@@ -71,11 +71,7 @@ export const useModerationStore = defineStore('Moderation', () => {
         }
 
         const D = userStore.userDialog;
-        if (
-            D.visible === false ||
-            ref.targetUserId !== D.id ||
-            ref.sourceUserId !== userStore.currentUser.id
-        ) {
+        if (D.visible === false || ref.targetUserId !== D.id || ref.sourceUserId !== userStore.currentUser.id) {
             return;
         }
         if (ref.type === 'block') {
@@ -95,11 +91,7 @@ export const useModerationStore = defineStore('Moderation', () => {
         let { type, moderated } = args.params;
         const userId = userStore.currentUser.id;
         for (let ref of cachedPlayerModerations.values()) {
-            if (
-                ref.type === type &&
-                ref.targetUserId === moderated &&
-                ref.sourceUserId === userId
-            ) {
+            if (ref.type === type && ref.targetUserId === moderated && ref.sourceUserId === userId) {
                 cachedPlayerModerations.delete(ref.id);
                 handlePlayerModerationAtDelete({
                     ref,

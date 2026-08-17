@@ -249,10 +249,7 @@ export default defineConfig(({ mode }) => {
                           // No `vr` entry: VR overlay is a desktop-only
                           // capability (§1's ownership table) with no web
                           // client build at all.
-                          index: resolve(
-                              import.meta.dirname,
-                              '../client-web/index.html'
-                          )
+                          index: resolve(import.meta.dirname, '../client-web/index.html')
                       }
                     : {
                           index: resolve(import.meta.dirname, './index.html'),

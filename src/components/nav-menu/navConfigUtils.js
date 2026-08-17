@@ -6,10 +6,7 @@ import { collectLayoutKeys } from './navLayoutHelpers';
 export const NAV_CONFIG_KEY = 'VRCX_customNavMenuLayoutList';
 
 export function generateNavFolderId() {
-    if (
-        typeof crypto !== 'undefined' &&
-        typeof crypto.randomUUID === 'function'
-    ) {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return `nav-folder-${crypto.randomUUID()}`;
     }
 
@@ -35,12 +32,10 @@ export function buildNavDefinitionsForLayout(
     const keysInLayout = collectLayoutKeys(layout);
     const hiddenSet = new Set(Array.isArray(hiddenKeys) ? hiddenKeys : []);
     const visibleBaseDefinitions = baseDefinitions.filter(
-        (definition) =>
-            !isToolNavKey(definition.key) || keysInLayout.has(definition.key)
+        (definition) => !isToolNavKey(definition.key) || keysInLayout.has(definition.key)
     );
     const visibleDashboardDefinitions = dashboardDefinitions.filter(
-        (definition) =>
-            keysInLayout.has(definition.key) || hiddenSet.has(definition.key)
+        (definition) => keysInLayout.has(definition.key) || hiddenSet.has(definition.key)
     );
 
     return [...visibleBaseDefinitions, ...visibleDashboardDefinitions];
@@ -65,9 +60,7 @@ export async function loadStoredNavConfig(
             layout = parsed;
         } else if (Array.isArray(parsed?.layout)) {
             layout = parsed.layout;
-            hiddenKeys = Array.isArray(parsed.hiddenKeys)
-                ? parsed.hiddenKeys.filter(filterHiddenKey)
-                : [];
+            hiddenKeys = Array.isArray(parsed.hiddenKeys) ? parsed.hiddenKeys.filter(filterHiddenKey) : [];
         }
     } catch {
         // keep defaults

@@ -10,10 +10,7 @@ export function computeDisabledContentSettings(contentSettings, settingsList) {
         return disabled;
     }
     for (const setting of settingsList) {
-        if (
-            typeof contentSettings[setting] === 'undefined' ||
-            contentSettings[setting] === true
-        ) {
+        if (typeof contentSettings[setting] === 'undefined' || contentSettings[setting] === true) {
             continue;
         }
         disabled.push(setting);

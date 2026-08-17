@@ -30,8 +30,7 @@ export function runNewInstanceSelfInviteFlow(worldId) {
             return;
         }
         if (inviteStore.canOpenInstanceInGame) {
-            const secureOrShortName =
-                args.json.shortName || args.json.secureName;
+            const secureOrShortName = args.json.shortName || args.json.secureName;
             launchStore.tryOpenInstanceInVrc(location, secureOrShortName);
             return;
         }

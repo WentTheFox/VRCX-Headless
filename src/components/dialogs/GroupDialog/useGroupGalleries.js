@@ -59,9 +59,7 @@ export function useGroupGalleries(groupDialog) {
         groupDialogGalleryCurrentName.value = '0';
         isGroupGalleryLoading.value = true;
         const groupId = groupDialog.value.id;
-        const tasks = (groupDialog.value.ref.galleries || []).map((gallery) =>
-            getGroupGallery(groupId, gallery.id)
-        );
+        const tasks = (groupDialog.value.ref.galleries || []).map((gallery) => getGroupGallery(groupId, gallery.id));
         await Promise.allSettled(tasks);
         isGroupGalleryLoading.value = false;
     }
@@ -85,12 +83,9 @@ export function useGroupGalleries(groupDialog) {
                     for (const json of args.json) {
                         if (groupDialog.value.id === json.groupId) {
                             if (!groupDialog.value.galleries[json.galleryId]) {
-                                groupDialog.value.galleries[json.galleryId] =
-                                    [];
+                                groupDialog.value.galleries[json.galleryId] = [];
                             }
-                            groupDialog.value.galleries[json.galleryId].push(
-                                json
-                            );
+                            groupDialog.value.galleries[json.galleryId].push(json);
                         }
                     }
                 }

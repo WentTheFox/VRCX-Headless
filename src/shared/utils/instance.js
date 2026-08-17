@@ -34,17 +34,13 @@ function getLaunchURL(instance) {
         if (L.shortName) {
             return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(
                 L.worldId
-            )}&instanceId=${encodeURIComponent(
-                L.instanceId
-            )}&shortName=${encodeURIComponent(L.shortName)}`;
+            )}&instanceId=${encodeURIComponent(L.instanceId)}&shortName=${encodeURIComponent(L.shortName)}`;
         }
         return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(
             L.worldId
         )}&instanceId=${encodeURIComponent(L.instanceId)}`;
     }
-    return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(
-        L.worldId
-    )}`;
+    return `https://vrchat.com/home/launch?worldId=${encodeURIComponent(L.worldId)}`;
 }
 
 const regionTagMap = {

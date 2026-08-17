@@ -55,10 +55,7 @@ export function useSearchAvatar() {
             searchAvatarPageNum.value++;
             offset = searchAvatarPageNum.value * 10;
         }
-        searchAvatarPage.value = searchAvatarResults.value.slice(
-            offset,
-            offset + 10
-        );
+        searchAvatarPage.value = searchAvatarResults.value.slice(offset, offset + 10);
     }
 
     /**

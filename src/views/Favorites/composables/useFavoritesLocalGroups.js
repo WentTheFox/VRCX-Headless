@@ -23,8 +23,7 @@ export function useFavoritesLocalGroups(options = {}) {
         isCreatingLocalGroup.value = true;
         newLocalGroupName.value = '';
         nextTick(() => {
-            const el =
-                newLocalGroupInput.value?.$el ?? newLocalGroupInput.value;
+            const el = newLocalGroupInput.value?.$el ?? newLocalGroupInput.value;
             el?.focus?.();
         });
     }

@@ -133,9 +133,7 @@ export function findStretchColumnId(columns) {
  * @param targetRef
  */
 function setRef(updaterOrValue, targetRef) {
-    targetRef.value = isFunction(updaterOrValue)
-        ? updaterOrValue(targetRef.value)
-        : updaterOrValue;
+    targetRef.value = isFunction(updaterOrValue) ? updaterOrValue(targetRef.value) : updaterOrValue;
 }
 
 /**
@@ -180,11 +178,7 @@ export function withSpacerColumn(columns, enabled, spacerId, stretchAfterId) {
     if (stretchAfterId) {
         const idx = columns.findIndex((c) => getColumnId(c) === stretchAfterId);
         if (idx !== -1) {
-            return [
-                ...columns.slice(0, idx + 1),
-                spacerColumn,
-                ...columns.slice(idx + 1)
-            ];
+            return [...columns.slice(0, idx + 1), spacerColumn, ...columns.slice(idx + 1)];
         }
     }
 
@@ -300,11 +294,7 @@ export function useVrcxVueTable(options) {
         columnSizing.value = persisted.columnSizing;
     }
 
-    if (
-        persisted &&
-        persistColumnOrder &&
-        Array.isArray(persisted.columnOrder)
-    ) {
+    if (persisted && persistColumnOrder && Array.isArray(persisted.columnOrder)) {
         columnOrder.value = persisted.columnOrder;
     }
 
@@ -312,12 +302,7 @@ export function useVrcxVueTable(options) {
         columnVisibility.value = persisted.columnVisibility;
     }
 
-    if (
-        persisted &&
-        persistPageSize &&
-        typeof persisted.pageSize === 'number' &&
-        persisted.pageSize > 0
-    ) {
+    if (persisted && persistPageSize && typeof persisted.pageSize === 'number' && persisted.pageSize > 0) {
         pagination.value = {
             ...pagination.value,
             pageSize: persisted.pageSize
@@ -373,35 +358,16 @@ export function useVrcxVueTable(options) {
         { getRowCanExpand }
     );
 
-    register(
-        enablePinning,
-        'columnPinning',
-        columnPinning,
-        'onColumnPinningChange'
-    );
+    register(enablePinning, 'columnPinning', columnPinning, 'onColumnPinningChange');
 
-    register(
-        enableColumnResizing,
-        'columnSizing',
-        columnSizing,
-        'onColumnSizingChange',
-        null,
-        { enableColumnResizing: true, columnResizeMode }
-    );
+    register(enableColumnResizing, 'columnSizing', columnSizing, 'onColumnSizingChange', null, {
+        enableColumnResizing: true,
+        columnResizeMode
+    });
 
-    register(
-        enableColumnReorder,
-        'columnOrder',
-        columnOrder,
-        'onColumnOrderChange'
-    );
+    register(enableColumnReorder, 'columnOrder', columnOrder, 'onColumnOrderChange');
 
-    register(
-        enableColumnVisibility,
-        'columnVisibility',
-        columnVisibility,
-        'onColumnVisibilityChange'
-    );
+    register(enableColumnVisibility, 'columnVisibility', columnVisibility, 'onColumnVisibilityChange');
 
     if (enableFiltering) {
         Object.assign(rowModels, {
@@ -419,12 +385,7 @@ export function useVrcxVueTable(options) {
 
             const stretchAfterId = findStretchColumnId(cols);
 
-            return withSpacerColumn(
-                cols,
-                fillRemainingSpace,
-                spacerColumnId,
-                stretchAfterId
-            );
+            return withSpacerColumn(cols, fillRemainingSpace, spacerColumnId, stretchAfterId);
         },
         getRowId,
 
@@ -448,22 +409,14 @@ export function useVrcxVueTable(options) {
         (next) => {
             table.setOptions((prev) => ({
                 ...prev,
-                columns: withSpacerColumn(
-                    next,
-                    fillRemainingSpace,
-                    spacerColumnId,
-                    findStretchColumnId(next)
-                )
+                columns: withSpacerColumn(next, fillRemainingSpace, spacerColumnId, findStretchColumnId(next))
             }));
             table.setState((prev) => ({ ...prev }));
         },
         { immediate: true }
     );
 
-    const persistWrite = debounce(
-        (payload) => writePersisted(payload),
-        persistDebounceMs
-    );
+    const persistWrite = debounce((payload) => writePersisted(payload), persistDebounceMs);
 
     if (storageKey && persistColumnSizing) {
         watch(

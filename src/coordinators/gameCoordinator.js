@@ -1,9 +1,6 @@
 import { toast } from 'vue-sonner';
 
-import {
-    deleteVRChatCache as _deleteVRChatCache,
-    isRealInstance
-} from '../shared/utils';
+import { deleteVRChatCache as _deleteVRChatCache, isRealInstance } from '../shared/utils';
 import { database } from '../services/database';
 import { useAdvancedSettingsStore } from '../stores/settings/advanced';
 import { useAvatarStore } from '../stores/avatar';
@@ -49,14 +46,8 @@ export async function runGameRunningChangedFlow(isGameRunning) {
             // set store state synchronously so UI reads it immediately
             gameStore.setLastSession(sessionDuration, offlineAt);
             await Promise.all([
-                configRepository.setString(
-                    'VRCX_lastGameSessionMs',
-                    String(sessionDuration)
-                ),
-                configRepository.setString(
-                    'VRCX_lastGameOfflineAt',
-                    String(offlineAt)
-                )
+                configRepository.setString('VRCX_lastGameSessionMs', String(sessionDuration)),
+                configRepository.setString('VRCX_lastGameOfflineAt', String(offlineAt))
             ]);
         }
         userStore.markCurrentUserGameStopped();
@@ -79,10 +70,7 @@ export async function runGameRunningChangedFlow(isGameRunning) {
  * @param {boolean} isGameRunningArg Game running flag from IPC.
  * @param {boolean} isSteamVRRunningArg SteamVR running flag from IPC.
  */
-export async function runUpdateIsGameRunningFlow(
-    isGameRunningArg,
-    isSteamVRRunningArg
-) {
+export async function runUpdateIsGameRunningFlow(isGameRunningArg, isSteamVRRunningArg) {
     const gameStore = useGameStore();
     const advancedSettingsStore = useAdvancedSettingsStore();
     const vrStore = useVrStore();
@@ -179,8 +167,7 @@ export function runCheckIfGameCrashedFlow() {
         // check if relaunched less than 2mins ago (prevent crash loop)
         if (
             gameStore.state.lastCrashedTime &&
-            new Date().getTime() - gameStore.state.lastCrashedTime.getTime() <
-                120_000
+            new Date().getTime() - gameStore.state.lastCrashedTime.getTime() < 120_000
         ) {
             console.log('VRChat was recently crashed, not relaunching');
             return;
@@ -192,10 +179,7 @@ export function runCheckIfGameCrashedFlow() {
             // wait for game to close before relaunching
             restartDelay = 2000;
         }
-        workerTimers.setTimeout(
-            () => runRestartCrashedGameFlow(location),
-            restartDelay
-        );
+        workerTimers.setTimeout(() => runRestartCrashedGameFlow(location), restartDelay);
     });
 }
 
@@ -239,8 +223,7 @@ export async function runCheckVRChatDebugLoggingFlow() {
         return;
     }
     try {
-        const loggingEnabled =
-            await gameStore.getVRChatRegistryKey('LOGGING_ENABLED');
+        const loggingEnabled = await gameStore.getVRChatRegistryKey('LOGGING_ENABLED');
         if (loggingEnabled === null || typeof loggingEnabled === 'undefined') {
             // key not found
             return;
@@ -249,11 +232,7 @@ export async function runCheckVRChatDebugLoggingFlow() {
             // already enabled
             return;
         }
-        const result = await AppApi.SetVRChatRegistryKey(
-            'LOGGING_ENABLED',
-            '1',
-            4
-        );
+        const result = await AppApi.SetVRChatRegistryKey('LOGGING_ENABLED', '1', 4);
         if (!result) {
             // failed to set key
             modalStore.alert({

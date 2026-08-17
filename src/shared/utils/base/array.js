@@ -25,13 +25,7 @@ function arraysMatch(a, b) {
     if (!Array.isArray(a) || !Array.isArray(b)) {
         return false;
     }
-    return (
-        a.length === b.length &&
-        a.every(
-            (element, index) =>
-                JSON.stringify(element) === JSON.stringify(b[index])
-        )
-    );
+    return a.length === b.length && a.every((element, index) => JSON.stringify(element) === JSON.stringify(b[index]));
 }
 
 /**

@@ -20,11 +20,7 @@ const GROUP_EXACT_TYPES = new Set(['groupChange', 'event.announcement']);
 function getNotificationCategory(type) {
     if (!type) return 'other';
     if (FRIEND_TYPES.has(type)) return 'friend';
-    if (
-        GROUP_EXACT_TYPES.has(type) ||
-        GROUP_TYPES_PREFIX.some((p) => type.startsWith(p))
-    )
-        return 'group';
+    if (GROUP_EXACT_TYPES.has(type) || GROUP_TYPES_PREFIX.some((p) => type.startsWith(p))) return 'group';
     return 'other';
 }
 
@@ -40,10 +36,4 @@ function getNotificationTs(n) {
     return Number.isFinite(ts) ? ts : 0;
 }
 
-export {
-    FRIEND_TYPES,
-    GROUP_TYPES_PREFIX,
-    GROUP_EXACT_TYPES,
-    getNotificationCategory,
-    getNotificationTs
-};
+export { FRIEND_TYPES, GROUP_TYPES_PREFIX, GROUP_EXACT_TYPES, getNotificationCategory, getNotificationTs };

@@ -218,10 +218,7 @@ describe('DialogJsonTab.vue', () => {
             const buttons = wrapper.findAll('button');
             // Second button is download
             await buttons[1].trigger('click');
-            expect(mockDownloadAndSaveJson).toHaveBeenCalledWith(
-                'usr_test123',
-                dialogRef
-            );
+            expect(mockDownloadAndSaveJson).toHaveBeenCalledWith('usr_test123', dialogRef);
         });
     });
 });

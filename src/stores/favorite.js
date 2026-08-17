@@ -3,11 +3,7 @@ import { defineStore } from 'pinia';
 import { toast } from 'vue-sonner';
 import { useI18n } from 'vue-i18n';
 
-import {
-    compareByName,
-    createDefaultFavoriteGroupRef,
-    replaceReactiveObject
-} from '../shared/utils';
+import { compareByName, createDefaultFavoriteGroupRef, replaceReactiveObject } from '../shared/utils';
 import { favoriteRequest } from '../api';
 import { database } from '../services/database';
 import { processBulk } from '../services/request';
@@ -133,13 +129,9 @@ export const useFavoriteStore = defineStore('Favorite', () => {
         { immediate: true }
     );
 
-    const localAvatarFavoriteGroups = computed(() =>
-        Object.keys(localAvatarFavorites).sort()
-    );
+    const localAvatarFavoriteGroups = computed(() => Object.keys(localAvatarFavorites).sort());
 
-    const localWorldFavoriteGroups = computed(() =>
-        Object.keys(localWorldFavorites).sort()
-    );
+    const localWorldFavoriteGroups = computed(() => Object.keys(localWorldFavorites).sort());
 
     const localWorldFavoritesList = computed(() =>
         Object.values(localWorldFavorites)
@@ -188,9 +180,7 @@ export const useFavoriteStore = defineStore('Favorite', () => {
         return favoriteGroup.length;
     });
 
-    const localFriendFavoriteGroups = computed(() =>
-        Object.keys(localFriendFavorites).sort()
-    );
+    const localFriendFavoriteGroups = computed(() => Object.keys(localFriendFavorites).sort());
 
     const localFriendFavGroupLength = computed(() => (group) => {
         const favoriteGroup = localFriendFavorites[group];
@@ -212,9 +202,7 @@ export const useFavoriteStore = defineStore('Favorite', () => {
             return;
         }
         const availableIds = new Set(list.map((item) => item.id));
-        const filtered = selectionRef.value.filter((id) =>
-            availableIds.has(id)
-        );
+        const filtered = selectionRef.value.filter((id) => availableIds.has(id));
         if (filtered.length !== selectionRef.value.length) {
             selectionRef.value = filtered;
         }
@@ -357,19 +345,14 @@ export const useFavoriteStore = defineStore('Favorite', () => {
             });
         }
         // 400 = ['vrcPlusWorlds1', 'vrcPlusWorlds2', 'vrcPlusWorlds3', 'vrcPlusWorlds4'] x 100
-        for (
-            i = 0;
-            i < favoriteLimits.value.maxFavoriteGroups.vrcPlusWorld;
-            ++i
-        ) {
+        for (i = 0; i < favoriteLimits.value.maxFavoriteGroups.vrcPlusWorld; ++i) {
             favoriteWorldGroups.value.push({
                 assign: false,
                 key: `vrcPlusWorld:vrcPlusWorlds${i + 1}`,
                 type: 'vrcPlusWorld',
                 name: `vrcPlusWorlds${i + 1}`,
                 displayName: `VRC+ Group ${i + 1}`,
-                capacity:
-                    favoriteLimits.value.maxFavoritesPerGroup.vrcPlusWorld,
+                capacity: favoriteLimits.value.maxFavoritesPerGroup.vrcPlusWorld,
                 count: 0,
                 visibility: 'private'
             });

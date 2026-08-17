@@ -25,9 +25,7 @@ const APP_CJK_FONT_PACK_LINK_ATTR = 'data-app-cjk-font-pack';
 
 const themeColors = THEME_COLORS.map((theme) => ({
     ...theme,
-    href: theme.file
-        ? new URL(`../../../styles/themes/${theme.file}`, import.meta.url).href
-        : null
+    href: theme.file ? new URL(`../../../styles/themes/${theme.file}`, import.meta.url).href : null
 }));
 
 const currentThemeColor = ref(DEFAULT_THEME_COLOR_KEY);
@@ -70,10 +68,7 @@ async function applyThemeColor(themeKey, { persist = true } = {}) {
     currentThemeColor.value = resolved.key;
     if (persist) {
         try {
-            await configRepository.setString(
-                THEME_COLOR_STORAGE_KEY,
-                resolved.key
-            );
+            await configRepository.setString(THEME_COLOR_STORAGE_KEY, resolved.key);
         } catch (error) {
             console.warn('Failed to persist theme color', error);
         }
@@ -108,9 +103,7 @@ function systemIsDarkMode() {
 }
 
 function applyThemeFonts(themeKey, fontLinks = []) {
-    document
-        .querySelectorAll('link[data-theme-font]')
-        .forEach((linkEl) => linkEl.remove());
+    document.querySelectorAll('link[data-theme-font]').forEach((linkEl) => linkEl.remove());
 
     if (!fontLinks?.length) {
         return;
@@ -139,10 +132,7 @@ function applyThemeModeStyle(themeMode) {
         return;
     }
 
-    const themeHref = new URL(
-        `../../../styles/themes/${themeFile}`,
-        import.meta.url
-    ).href;
+    const themeHref = new URL(`../../../styles/themes/${themeFile}`, import.meta.url).href;
 
     if (!styleEl) {
         styleEl = document.createElement('link');
@@ -211,11 +201,7 @@ function resolveAppCjkFontPack(packKey) {
 
 function ensureAppCjkFontPackLinks(packKey) {
     const config = APP_CJK_FONT_PACK_CONFIG[packKey];
-    ensureDynamicFontStyle(
-        APP_CJK_FONT_PACK_LINK_ATTR,
-        packKey,
-        config?.cssImport
-    );
+    ensureDynamicFontStyle(APP_CJK_FONT_PACK_LINK_ATTR, packKey, config?.cssImport);
 }
 
 function applyAppFontFamily(fontKey, customCssName) {
@@ -234,11 +220,7 @@ function applyAppFontFamily(fontKey, customCssName) {
     const resolved = resolveAppFontFamily(fontKey);
     const root = document.documentElement;
     root.style.setProperty('--font-western-primary', resolved.cssName);
-    ensureDynamicFontStyle(
-        APP_FONT_LINK_ATTR,
-        resolved.key,
-        resolved.cssImport
-    );
+    ensureDynamicFontStyle(APP_FONT_LINK_ATTR, resolved.key, resolved.cssImport);
 
     return resolved;
 }
@@ -339,9 +321,7 @@ async function refreshCustomCss() {
         $appCustomStyle.setAttribute('id', 'app-custom-style');
         $appCustomStyle.rel = 'stylesheet';
         $appCustomStyle.type = 'text/css';
-        $appCustomStyle.href = URL.createObjectURL(
-            new Blob([customCss], { type: 'text/css' })
-        );
+        $appCustomStyle.href = URL.createObjectURL(new Blob([customCss], { type: 'text/css' }));
         head.appendChild($appCustomStyle);
     }
 }
@@ -485,10 +465,7 @@ function changeHtmlLangAttribute(language) {
 }
 
 async function getThemeMode(configRepository) {
-    const initThemeMode = await configRepository.getString(
-        'VRCX_ThemeMode',
-        'system'
-    );
+    const initThemeMode = await configRepository.getString('VRCX_ThemeMode', 'system');
 
     let isDarkMode;
     if (initThemeMode === 'light') {

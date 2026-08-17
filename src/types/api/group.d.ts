@@ -1,23 +1,14 @@
 // API functions
-export type GetGroup = (params: {
-    groupId: string;
-    includeRoles?: boolean;
-}) => Promise<{
+export type GetGroup = (params: { groupId: string; includeRoles?: boolean }) => Promise<{
     json: GetGroupResponse;
     params: { groupId: string; includeRoles?: boolean };
 }>;
 
-export type GetCalendars = (params: {
-    date: string;
-}) => Promise<CalendarResponse>;
+export type GetCalendars = (params: { date: string }) => Promise<CalendarResponse>;
 
-export type GetFollowingCalendars = (params: {
-    date: string;
-}) => Promise<CalendarResponse>;
+export type GetFollowingCalendars = (params: { date: string }) => Promise<CalendarResponse>;
 
-export type GetFeaturedCalendars = (params: {
-    date: string;
-}) => Promise<CalendarResponse>;
+export type GetFeaturedCalendars = (params: { date: string }) => Promise<CalendarResponse>;
 
 // API response types
 interface GetGroupResponse {

@@ -90,12 +90,7 @@ function runLayout(data) {
         graph.addNode(node.id, node.attributes);
     }
     for (const edge of edges) {
-        graph.addEdgeWithKey(
-            edge.key,
-            edge.source,
-            edge.target,
-            edge.attributes
-        );
+        graph.addEdgeWithKey(edge.key, edge.source, edge.target, edge.attributes);
     }
 
     const reinitialize = settings.reinitialize ?? false;
@@ -103,26 +98,14 @@ function runLayout(data) {
         initPositions(graph);
     }
 
-    const iterations = clampNumber(
-        settings.layoutIterations,
-        LAYOUT_ITERATIONS_MIN,
-        LAYOUT_ITERATIONS_MAX
-    );
-    const spacing = clampNumber(
-        settings.layoutSpacing,
-        LAYOUT_SPACING_MIN,
-        LAYOUT_SPACING_MAX
-    );
-    const t =
-        (spacing - LAYOUT_SPACING_MIN) /
-        (LAYOUT_SPACING_MAX - LAYOUT_SPACING_MIN);
+    const iterations = clampNumber(settings.layoutIterations, LAYOUT_ITERATIONS_MIN, LAYOUT_ITERATIONS_MAX);
+    const spacing = clampNumber(settings.layoutSpacing, LAYOUT_SPACING_MIN, LAYOUT_SPACING_MAX);
+    const t = (spacing - LAYOUT_SPACING_MIN) / (LAYOUT_SPACING_MAX - LAYOUT_SPACING_MIN);
     const clampedT = clampNumber(t, 0, 1);
     const deltaSpacing = settings.deltaSpacing ?? 0;
 
     // ForceAtlas2
-    const inferred = forceAtlas2.inferSettings
-        ? forceAtlas2.inferSettings(graph)
-        : {};
+    const inferred = forceAtlas2.inferSettings ? forceAtlas2.inferSettings(graph) : {};
     const fa2Settings = {
         ...inferred,
         barnesHutOptimize: true,
@@ -140,11 +123,7 @@ function runLayout(data) {
     forceAtlas2.assign(graph, { iterations, settings: fa2Settings });
 
     // Noverlap
-    const noverlapIterations = clampNumber(
-        Math.round(Math.sqrt(graph.order) * 6),
-        200,
-        600
-    );
+    const noverlapIterations = clampNumber(Math.round(Math.sqrt(graph.order) * 6), 200, 600);
     noverlap.assign(graph, {
         maxIterations: noverlapIterations,
         settings: {

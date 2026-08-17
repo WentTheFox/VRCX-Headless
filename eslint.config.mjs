@@ -86,8 +86,7 @@ export default defineConfig([
                 {
                     selector:
                         "AssignmentExpression[left.type='MemberExpression'][left.object.type='Identifier'][left.object.name=/Store$/]",
-                    message:
-                        'Do not mutate store state directly via *Store.* assignment. Use owner-store actions.'
+                    message: 'Do not mutate store state directly via *Store.* assignment. Use owner-store actions.'
                 },
                 {
                     selector:

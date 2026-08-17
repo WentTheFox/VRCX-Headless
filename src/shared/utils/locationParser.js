@@ -67,9 +67,7 @@ function parseLocation(tag) {
         const shortNameQualifier = '&shortName=';
         const shortNameIndex = _tag.indexOf(shortNameQualifier);
         if (shortNameIndex >= 0) {
-            ctx.shortName = _tag.substr(
-                shortNameIndex + shortNameQualifier.length
-            );
+            ctx.shortName = _tag.substr(shortNameIndex + shortNameQualifier.length);
             _tag = _tag.substr(0, shortNameIndex);
         }
         if (sep >= 0) {

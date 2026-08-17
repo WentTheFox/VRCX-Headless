@@ -8,11 +8,7 @@ function getAvailablePlatforms(unityPackages) {
     let isIos = false;
     if (typeof unityPackages === 'object') {
         for (const unityPackage of unityPackages) {
-            if (
-                unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
-                unityPackage.variant !== 'security'
-            ) {
+            if (unityPackage.variant && unityPackage.variant !== 'standard' && unityPackage.variant !== 'security') {
                 continue;
             }
             if (unityPackage.platform === 'standalonewindows') {

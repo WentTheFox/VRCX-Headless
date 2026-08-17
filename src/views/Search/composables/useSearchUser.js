@@ -25,9 +25,7 @@ export function useSearchUser() {
             offset: 0,
             search: searchText.value,
             customFields: searchUserByBio.value ? 'bio' : 'displayName',
-            sort: searchUserSortByLastLoggedIn.value
-                ? 'last_login'
-                : 'relevance'
+            sort: searchUserSortByLastLoggedIn.value ? 'last_login' : 'relevance'
         };
         await handleMoreSearchUser();
     }
