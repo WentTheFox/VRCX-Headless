@@ -51,10 +51,15 @@ FROM --platform=$BUILDPLATFORM node:24-alpine AS webclient
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-# --ignore-scripts: this stage only ever runs `vite build`, never electron
-# itself, so there is no reason to pay for electron's own postinstall (a
-# full platform binary download) just to discard the whole stage afterwards.
-RUN npm ci --ignore-scripts --no-audit --no-fund
+# ELECTRON_SKIP_BINARY_DOWNLOAD, not --ignore-scripts: electron's own
+# node_modules/electron/install.js checks this env var and exits
+# immediately, skipping just its ~100MB platform binary download — more
+# targeted than --ignore-scripts, which would also skip every *other*
+# package's postinstall in this closure, including ones this stage's own
+# build might actually depend on (e.g. a native binary some devDependency
+# resolves via its own postinstall rather than an optionalDependency).
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+RUN npm ci --no-audit --no-fund
 # src/vite.config.js's PLATFORM=web branch still unconditionally imports
 # client-desktop/aliases.js and server/vite-alias-plugin.js (→
 # server/aliases.js) at module scope, even though neither's content is used
