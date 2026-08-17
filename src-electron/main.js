@@ -115,6 +115,7 @@ if (app.isPackaged && process.defaultApp && process.platform !== 'win32') {
 
 const version = getVersion();
 const homePath = getHomePath();
+tryRelaunchWithArgs(args);
 tryCopyFromWinePrefix();
 const userDataPath = getElectronUserDataPath();
 console.log('Electron userData path:', userDataPath);
