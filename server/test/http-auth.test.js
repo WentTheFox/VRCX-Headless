@@ -24,17 +24,79 @@ import {
 import { generateTotpCode, generateTotpSecret } from '../src/totp.js';
 
 describe('session tokens', () => {
-    it('validates a token it created and rejects an unknown one', () => {
-        const token = createSession();
-        expect(validateSession(token)).toBe(true);
-        expect(validateSession('not-a-real-token')).toBe(false);
-        expect(validateSession(undefined)).toBe(false);
+    /** @type {string} */
+    let dir;
+    /** @type {Awaited<ReturnType<typeof openDatabase>>} */
+    let handle;
+
+    beforeAll(async () => {
+        dir = mkdtempSync(
+            path.join(tmpdir(), 'vrcx-headless-http-auth-sessions-')
+        );
+        handle = await openDatabase({
+            databasePath: path.join(dir, 'VRCX.sqlite3'),
+            create: true
+        });
+        await handle.configRepository.init();
     });
 
-    it('invalidates a token after destroySession', () => {
-        const token = createSession();
-        destroySession(token);
-        expect(validateSession(token)).toBe(false);
+    afterAll(() => {
+        handle?.close();
+        rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('validates a token it created and rejects an unknown one', async () => {
+        const token = await createSession(handle);
+        expect(await validateSession(handle, token)).toBe(true);
+        expect(await validateSession(handle, 'not-a-real-token')).toBe(false);
+        expect(await validateSession(handle, undefined)).toBe(false);
+    });
+
+    it('invalidates a token after destroySession', async () => {
+        const token = await createSession(handle);
+        await destroySession(handle, token);
+        expect(await validateSession(handle, token)).toBe(false);
+    });
+
+    it('rejects a token signed with a different secret', async () => {
+        const otherDir = mkdtempSync(
+            path.join(tmpdir(), 'vrcx-headless-http-auth-sessions-other-')
+        );
+        const otherHandle = await openDatabase({
+            databasePath: path.join(otherDir, 'VRCX.sqlite3'),
+            create: true
+        });
+        await otherHandle.configRepository.init();
+        try {
+            const token = await createSession(otherHandle);
+            expect(await validateSession(handle, token)).toBe(false);
+        } finally {
+            otherHandle.close();
+            rmSync(otherDir, { recursive: true, force: true });
+        }
+    });
+
+    it('survives a fresh handle reopening the same database (restart)', async () => {
+        const restartDir = mkdtempSync(
+            path.join(tmpdir(), 'vrcx-headless-http-auth-sessions-restart-')
+        );
+        const databasePath = path.join(restartDir, 'VRCX.sqlite3');
+        try {
+            const firstHandle = await openDatabase({
+                databasePath,
+                create: true
+            });
+            await firstHandle.configRepository.init();
+            const token = await createSession(firstHandle);
+            firstHandle.close();
+
+            const secondHandle = await openDatabase({ databasePath });
+            await secondHandle.configRepository.init();
+            expect(await validateSession(secondHandle, token)).toBe(true);
+            secondHandle.close();
+        } finally {
+            rmSync(restartDir, { recursive: true, force: true });
+        }
     });
 });
 
@@ -73,7 +135,9 @@ describe('readSessionToken', () => {
 
     it('falls back to the cookie when there is no Authorization header', () => {
         expect(
-            readSessionToken(fakeRequest({ cookie: 'vrcx_session=from-cookie' }))
+            readSessionToken(
+                fakeRequest({ cookie: 'vrcx_session=from-cookie' })
+            )
         ).toBe('from-cookie');
     });
 

@@ -221,3 +221,61 @@ describe('/api/totp/setup + /api/totp/confirm — first-run enrollment', () => {
         expect(setupAfter.status).toBe(403);
     });
 });
+
+describe('/api/session/refresh', () => {
+    /** @type {Awaited<ReturnType<typeof startServer>>} */
+    let ctx;
+
+    beforeAll(async () => {
+        ctx = await startServer('session-refresh');
+    });
+
+    afterAll(async () => {
+        await new Promise((resolve) => ctx.server.close(resolve));
+        ctx.handle.close();
+        rmSync(ctx.dir, { recursive: true, force: true });
+    });
+
+    it('rejects without a valid session', async () => {
+        const { status, body } = await post(
+            ctx.origin,
+            '/api/session/refresh',
+            {}
+        );
+        expect(status).toBe(401);
+        expect(body.ok).toBe(false);
+    });
+
+    it('rotates a valid token into a new one, revoking the old one', async () => {
+        const login = await post(ctx.origin, '/api/login', {
+            code: generateTotpCode(ctx.secret)
+        });
+        const oldToken = login.body.token;
+
+        const refresh = await post(
+            ctx.origin,
+            '/api/session/refresh',
+            {},
+            { Authorization: `Bearer ${oldToken}` }
+        );
+        expect(refresh.status).toBe(200);
+        expect(refresh.body.ok).toBe(true);
+        expect(typeof refresh.body.token).toBe('string');
+        expect(refresh.body.token).not.toBe(oldToken);
+
+        const rpcArgs = {
+            target: 'config',
+            method: 'getString',
+            args: ['lastUserLoggedIn', '']
+        };
+        const rpcWithOldToken = await post(ctx.origin, '/api/rpc', rpcArgs, {
+            Authorization: `Bearer ${oldToken}`
+        });
+        expect(rpcWithOldToken.status).toBe(401);
+
+        const rpcWithNewToken = await post(ctx.origin, '/api/rpc', rpcArgs, {
+            Authorization: `Bearer ${refresh.body.token}`
+        });
+        expect(rpcWithNewToken.status).toBe(200);
+    });
+});

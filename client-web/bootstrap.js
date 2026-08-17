@@ -304,21 +304,24 @@ async function checkTotpSetupNeeded() {
 }
 
 /**
- * A harmless RPC call: 401 means no session yet, anything else means the
- * existing session cookie (from a previous visit) is still valid, so the
- * login form can be skipped entirely.
+ * Rotates the existing session cookie (from a previous visit) into a fresh
+ * one with a full new expiry (`server/src/http-server.js`'s
+ * `/api/session/refresh`, `server/src/http-auth.js`'s `SESSION_TTL_MS`) —
+ * reusing the request as both "is there still a valid session?" and "reset
+ * its clock" rather than a separate read-only probe, so simply reopening
+ * the tab within the window keeps sliding it forward instead of counting
+ * down from the original login. 401 means no session yet (or it finally
+ * expired), anything else means the login form can be skipped entirely.
+ * The new cookie is set by the response's `Set-Cookie` header; nothing
+ * here needs to touch the token itself.
  * @returns {Promise<boolean>}
  */
-async function hasValidSession() {
-    const response = await fetch('/api/rpc', {
+async function refreshSession() {
+    const response = await fetch('/api/session/refresh', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            target: 'config',
-            method: 'getString',
-            args: ['lastUserLoggedIn', '']
-        })
+        body: '{}'
     });
     return response.status !== 401;
 }
@@ -327,7 +330,7 @@ function startApp() {
     import('../src/app.js');
 }
 
-hasValidSession().then((valid) => {
+refreshSession().then((valid) => {
     if (valid) {
         startApp();
         return;

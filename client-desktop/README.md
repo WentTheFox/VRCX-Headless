@@ -49,9 +49,12 @@ that step already produced. The result is an AppImage under `build/`
 There is no bundled server and no same-origin default — phase 5's "always
 external" decision, made deliberately so the desktop client never manages a
 server's lifecycle. The AppImage's first launch (or any launch without a
-still-valid stored session — sessions are process-lifetime only on the
-server side, so this includes every restart of `serve`) opens
-`client-desktop/setup.html` instead of the real app:
+still-valid stored session) opens `client-desktop/setup.html` instead of the
+real app. A stored session survives a `serve` restart on its own now, and
+every successful launch rotates it into a fresh one with a full new expiry
+(`/api/session/refresh`) — so this screen only reappears once the token is
+genuinely gone: never paired, explicitly logged out, or not reopened for
+longer than its 180-day window.
 
 1. Enter the URL of a running `serve` instance.
 2. If that server has never been paired with a TOTP secret yet, this page

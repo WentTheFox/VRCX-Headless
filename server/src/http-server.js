@@ -196,11 +196,12 @@ function expiredSessionCookieHeader(secure) {
  * Shared by `/api/login` and `/api/totp/confirm` — a freshly-confirmed TOTP
  * code is just as good as an existing session's code for starting a new
  * session, so enrollment doesn't need a separate "now log in again" step.
+ * @param {import('./db.js').DatabaseHandle} handle
  * @param {http.ServerResponse} res
  * @param {boolean} secure
  */
-function sendNewSession(res, secure) {
-    const token = createSession();
+async function sendNewSession(handle, res, secure) {
+    const token = await createSession(handle);
     // The raw token rides alongside the cookie so a non-browser client
     // (phase 5's desktop agent — not same-origin, can't rely on an
     // HttpOnly cookie) can pull it out of the JSON body and send it back as
@@ -293,6 +294,22 @@ export async function createHttpServer(handle, options = {}) {
     });
 
     server.on('upgrade', (req, socket, head) => {
+        handleUpgrade(req, socket, head).catch((err) => {
+            log.error('WS upgrade handler error', { message: err.message });
+            try {
+                socket.destroy();
+            } catch {
+                // already closed/closing
+            }
+        });
+    });
+
+    /**
+     * @param {http.IncomingMessage} req
+     * @param {import('node:net').Socket} socket
+     * @param {Buffer} head
+     */
+    async function handleUpgrade(req, socket, head) {
         const url = new URL(req.url, 'http://localhost');
         // src/services/websocket.js (unmodified) always builds its URL as
         // `${AppDebug.websocketDomain}/?auth=${token}` — an extra '/' the
@@ -309,7 +326,7 @@ export async function createHttpServer(handle, options = {}) {
         // The desktop agent (phase 5) isn't same-origin, so it authenticates
         // with `Authorization: Bearer <token>` instead of the cookie the
         // browser client relies on — readSessionToken accepts either.
-        if (!validateSession(readSessionToken(req))) {
+        if (!(await validateSession(handle, readSessionToken(req)))) {
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
             return;
@@ -325,7 +342,7 @@ export async function createHttpServer(handle, options = {}) {
                 ws.send(lastGroupInstancesFrame);
             }
         });
-    });
+    }
 
     return { server, streamClientCount: () => streamClients.size, useHttps };
 }
@@ -349,7 +366,7 @@ async function handleRequest(handle, req, res, secure) {
             sendJson(res, 401, { ok: false, error: 'Invalid code' });
             return;
         }
-        sendNewSession(res, secure);
+        await sendNewSession(handle, res, secure);
         return;
     }
 
@@ -396,12 +413,30 @@ async function handleRequest(handle, req, res, secure) {
             return;
         }
         await setServerTotp(handle, body.secret);
-        sendNewSession(res, secure);
+        await sendNewSession(handle, res, secure);
+        return;
+    }
+
+    // Rotates a still-valid session into a fresh one with a full new
+    // `SESSION_TTL_MS` expiry (`server/src/http-auth.js`) — both clients
+    // call this on every launch instead of a read-only validity probe, so
+    // "reopen within the window" slides the window forward indefinitely
+    // rather than counting down from the original login. The old token is
+    // revoked immediately (`destroySession`) so a launch doesn't leave a
+    // trail of still-valid tokens behind it.
+    if (req.method === 'POST' && url.pathname === '/api/session/refresh') {
+        const existingToken = readSessionToken(req);
+        if (!(await validateSession(handle, existingToken))) {
+            sendJson(res, 401, { ok: false, error: 'Not authenticated' });
+            return;
+        }
+        await destroySession(handle, existingToken);
+        await sendNewSession(handle, res, secure);
         return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/logout') {
-        destroySession(readSessionToken(req));
+        await destroySession(handle, readSessionToken(req));
         sendJson(
             res,
             200,
@@ -412,7 +447,7 @@ async function handleRequest(handle, req, res, secure) {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/rpc') {
-        if (!validateSession(readSessionToken(req))) {
+        if (!(await validateSession(handle, readSessionToken(req)))) {
             sendJson(res, 401, { ok: false, error: 'Not authenticated' });
             return;
         }
