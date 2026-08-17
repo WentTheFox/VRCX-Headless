@@ -249,6 +249,22 @@ function createAgentAwarePolyfill(
     agentClassName = className
 ) {
     const cache = new Map();
+    // Last args successfully forwarded per method — replayed to a freshly
+    // attached agent (see agent.js's `'attach'` doc comment) so a real
+    // reconnect doesn't get silently skipped by an upstream store's own
+    // "only if changed" guard, which has no idea the native object behind
+    // the agent is now a completely different instance.
+    const lastArgs = new Map();
+    desktopAgent.on('attach', () => {
+        for (const [prop, args] of lastArgs) {
+            desktopAgent.call(agentClassName, prop, args).catch((err) => {
+                log.debug(
+                    `${className}.${prop} replay to newly attached agent failed`,
+                    { err: err?.message }
+                );
+            });
+        }
+    });
     return new Proxy(
         {},
         {
@@ -263,6 +279,7 @@ function createAgentAwarePolyfill(
                 if (!fn) {
                     fn = async (...args) => {
                         if (desktopAgent.isConnected()) {
+                            lastArgs.set(prop, args);
                             return desktopAgent.call(
                                 agentClassName,
                                 prop,
