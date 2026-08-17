@@ -133,13 +133,20 @@ jobs:
                   docker run --rm -v vrcx-smoke-data:/data vrcx-headless-server:smoke migrate --create
                   docker run -d --rm --name vrcx-smoke-serve -p 19000:9000 -v vrcx-smoke-data:/data vrcx-headless-server:smoke serve
 
+                  # serve's boot is genuinely slow (mounting a real, if
+                  # invisible, Vue app to get Pinia's inject()-based
+                  # composables working outside a component — §8's "Pinia
+                  # in Node" note) — observed 8-20s+ even on a warm local
+                  # machine, and a real CI run needed more than the first
+                  # 30s attempted here. 2 minutes, not tuned finer than
+                  # that; this is a boot-time check, not a latency budget.
                   ready=false
-                  for _ in $(seq 1 30); do
+                  for _ in $(seq 1 60); do
                       if curl -sf http://127.0.0.1:19000/ >/dev/null 2>&1; then
                           ready=true
                           break
                       fi
-                      sleep 1
+                      sleep 2
                   done
                   if [ "$ready" != true ]; then
                       echo "serve never came up" >&2
