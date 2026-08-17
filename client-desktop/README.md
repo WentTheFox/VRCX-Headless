@@ -61,20 +61,32 @@ native capabilities are and aren't OS-branched yet.
 
 Steps 1–2 above are unchanged on Windows (`dotnet build` needs no
 Windows-specific flags; `npm run prod-linux` still means "build for the
-Electron client," not "for Linux"). What's verified is running the result
-directly, not a packaged installer:
+Electron client," not "for Linux"). Both the raw run and the packaged
+installer are verified:
 
 ```powershell
 npm run prod-linux
-& .\node_modules\.bin\electron.exe .
+& .\node_modules\.bin\electron.exe .          # raw, unpacked run
+npm run build-electron                        # packaged NSIS installer
+& .\build\win-unpacked\VRCX.exe               # smoke-test the packaged app directly, same as CI does for the AppImage
 ```
 
-**Packaging a Windows installer (`npm run build-electron`) is untested** —
-`package.json`'s electron-builder config has a `linux` block and a `mac`
-block but no `win` block yet, so this would fall back to electron-builder's
-own defaults rather than something this fork has configured or verified.
-Treat that as an open gap, not a documented path, until someone builds and
-smoke-tests one.
+`package.json`'s electron-builder config has no explicit `win` block (only
+`linux`/`mac`) — turns out electron-builder's own built-in Windows defaults
+(NSIS installer) are enough as-is, confirmed live (2026-08-17):
+`build-electron` produced `build\VRCX Setup <version>.exe` and
+`build\win-unpacked\VRCX.exe` unmodified, and the unpacked app launched
+cleanly and picked up an already-paired session straight into the real app,
+same as every other verified pass this session. `download-dotnet-runtime.js`
+deliberately skips bundling a self-contained .NET runtime on Windows (it
+only handles the `.tar.gz` distribution, not the Windows `.zip` one) — the
+target machine needs .NET 10 installed already, same requirement `main.js`'s
+own startup check already enforces.
+
+Not yet done: an actual install-and-launch pass through the NSIS installer
+itself (only the unpacked output has been smoke-tested), and no CI coverage
+— `.github/workflows/client-desktop.yaml` still only builds/tests the Linux
+AppImage.
 
 ## First run
 
