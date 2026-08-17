@@ -68,6 +68,21 @@ contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
         registerManagedListener(
             'vrcx-server-status-changed',
             (_event, status) => callback(status)
+        ),
+    // Self-signed-server TLS trust: see src-electron/main.js's
+    // `vrcx-import-ca-cert` doc comment for why this needs a restart
+    // (window.electron.restartApp()) to actually take effect.
+    importCaCert: () => ipcRenderer.invoke('vrcx-import-ca-cert'),
+    removeCaCert: () => ipcRenderer.invoke('vrcx-remove-ca-cert'),
+    getCaCertStatus: () => ipcRenderer.invoke('vrcx-get-ca-cert-status'),
+    // Pipeline relay (client-desktop/shims/pipeline-relay.js): `send`, not
+    // `invoke`, since these are fire-and-forget — the actual data comes back
+    // asynchronously via onStreamEvent, not as this call's return value.
+    streamConnect: () => ipcRenderer.send('vrcx-stream-connect'),
+    streamClose: () => ipcRenderer.send('vrcx-stream-close'),
+    onStreamEvent: (callback) =>
+        registerManagedListener('vrcx-stream-event', (_event, evt) =>
+            callback(evt)
         )
 });
 

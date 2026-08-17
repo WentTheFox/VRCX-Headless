@@ -26,6 +26,13 @@ namespace VRCX
         {
             const string vrchatAppid = "438100";
             _homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                InitWindowsPaths(vrchatAppid);
+                return;
+            }
+
             _steamUserdataPath = Path.Join(_homeDirectory, ".steam/steam/userdata");
             _steamPath = Path.Join(_homeDirectory, ".local/share/Steam");
 
@@ -60,6 +67,45 @@ namespace VRCX
             _vrcInstallPath = Path.Join(vrcLibraryPath, "steamapps/common/VRChat");
             _vrcAppDataPath = Path.Join(_vrcPrefixPath, "drive_c/users/steamuser/AppData/LocalLow/VRChat/VRChat");
             _vrcCrashesPath = Path.Join(_vrcPrefixPath, "drive_c/users/steamuser/AppData/Local/Temp/VRChat/VRChat/Crashes");
+        }
+
+        /// <summary>
+        /// Found live (2026-08-17, Windows): this whole static constructor was written
+        /// Linux/Wine-only — on Windows every `IsValidSteamPath` check above fails (none of
+        /// those `.steam`/`.local/share/Steam` paths exist), so it silently fell through to
+        /// a bogus `_vrcAppDataPath` built from a nonexistent Wine prefix. `LogWatcher.Init()`
+        /// (`Dotnet/LogWatcher.cs`) reads `_vrcAppDataPath` via `GetVRChatAppDataLocation()` to
+        /// find VRChat's log directory, so this silently broke GameLog tailing entirely (no
+        /// exception anywhere — the watcher thread just found nothing to watch), even though
+        /// `IsGameRunning`/`StartGame` (fixed earlier the same day) worked fine, since those
+        /// don't depend on any of these paths. There's no Wine prefix concept on native
+        /// Windows, so `_vrcPrefixPath` and `_vrcInstallPath` (used by `StartGameFromPath`'s
+        /// Windows branch, which resolves its own path via the registry instead) are left
+        /// null here.
+        /// </summary>
+        private static void InitWindowsPaths(string vrchatAppid)
+        {
+            _vrcAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat\VRChat";
+            _vrcCrashesPath = Path.Join(Path.GetTempPath(), "VRChat", "VRChat", "Crashes");
+
+            var steamPath = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null);
+            if (string.IsNullOrEmpty(steamPath))
+            {
+                logger.Error("No Steam install found in the registry.");
+                return;
+            }
+            _steamPath = steamPath.Replace('/', '\\');
+            _steamUserdataPath = Path.Join(_steamPath, "userdata");
+
+            var libraryFoldersVdfPath = Path.Join(_steamPath, "config/libraryfolders.vdf");
+            var vrcLibraryPath = GetLibraryWithAppId(libraryFoldersVdfPath, vrchatAppid);
+            if (string.IsNullOrEmpty(vrcLibraryPath))
+            {
+                logger.Warn("Falling back to default VRChat path as libraryfolders.vdf was not found OR libraryfolders.vdf does not contain VRChat's appid (438100)");
+                vrcLibraryPath = _steamPath;
+            }
+            logger.Info($"Using steam library path {vrcLibraryPath}");
+            _vrcInstallPath = Path.Join(vrcLibraryPath, "steamapps/common/VRChat");
         }
 
         private static bool IsValidSteamPath(string path)

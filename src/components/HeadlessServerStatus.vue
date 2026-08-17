@@ -74,6 +74,49 @@
                     </p>
                 </div>
 
+                <div
+                    v-if="addStep === 'closed'"
+                    class="flex flex-col gap-1 border-t border-border pt-2">
+                    <span class="text-[11px] text-foreground">{{ t('status_bar.headless_ca_cert') }}</span>
+                    <p class="text-[10px] text-muted-foreground m-0">
+                        {{
+                            caCertRestartNeeded
+                                ? t('status_bar.headless_ca_cert_restart_required')
+                                : caCertImported
+                                  ? t('status_bar.headless_ca_cert_imported')
+                                  : t('status_bar.headless_ca_cert_none')
+                        }}
+                    </p>
+                    <p v-if="caCertError" class="text-[11px] text-destructive m-0">{{ caCertError }}</p>
+                    <div class="flex gap-2">
+                        <Button
+                            v-if="caCertRestartNeeded"
+                            size="sm"
+                            class="h-6 px-2 text-[11px]"
+                            @click="window.electron.restartApp()">
+                            {{ t('status_bar.headless_ca_cert_restart_now') }}
+                        </Button>
+                        <Button
+                            v-else-if="caCertImported"
+                            variant="destructive"
+                            size="sm"
+                            class="h-6 px-2 text-[11px]"
+                            :disabled="caCertBusy"
+                            @click="removeCaCert">
+                            {{ t('status_bar.headless_ca_cert_remove') }}
+                        </Button>
+                        <Button
+                            v-else
+                            variant="ghost"
+                            size="sm"
+                            class="h-6 px-2 text-[11px]"
+                            :disabled="caCertBusy"
+                            @click="importCaCert">
+                            {{ t('status_bar.headless_ca_cert_import') }}
+                        </Button>
+                    </div>
+                </div>
+
                 <div v-if="pendingSwitchUrl" class="flex flex-col gap-1.5 border-t border-border pt-2">
                     <p class="text-[11px] text-foreground m-0">
                         {{ t('status_bar.headless_switch_confirm', { url: pendingSwitchUrl }) }}
@@ -246,6 +289,11 @@
     const addQrDataUrl = ref('');
     const addError = ref('');
 
+    const caCertImported = ref(false);
+    const caCertRestartNeeded = ref(false);
+    const caCertBusy = ref(false);
+    const caCertError = ref('');
+
     const tooltipContent = computed(() => {
         const state = status.value.reachable
             ? t('status_bar.headless_reachable')
@@ -284,7 +332,54 @@
         switchError.value = '';
         cancelAdd();
         refreshServers();
+        refreshCaCertStatus();
     });
+
+    /**
+     *
+     */
+    async function refreshCaCertStatus() {
+        try {
+            const { imported } = await agent.getCaCertStatus();
+            caCertImported.value = imported;
+        } catch {
+            // Best-effort — the control just keeps showing its last known state.
+        }
+    }
+
+    /**
+     *
+     */
+    async function importCaCert() {
+        caCertBusy.value = true;
+        caCertError.value = '';
+        try {
+            const result = await agent.importCaCert();
+            if (!result.ok) {
+                caCertError.value = result.error ?? '';
+                return;
+            }
+            caCertImported.value = true;
+            caCertRestartNeeded.value = true;
+        } catch (err) {
+            caCertError.value = err.message ?? '';
+        } finally {
+            caCertBusy.value = false;
+        }
+    }
+
+    /**
+     *
+     */
+    async function removeCaCert() {
+        caCertBusy.value = true;
+        try {
+            await agent.removeCaCert();
+            caCertRestartNeeded.value = true;
+        } finally {
+            caCertBusy.value = false;
+        }
+    }
 
     /**
      * @param {string} url
@@ -432,6 +527,7 @@
 
     onMounted(() => {
         refreshStatus();
+        refreshCaCertStatus();
         unsubscribeStatus = agent.onServerStatusChanged((next) => {
             status.value = { ...status.value, ...next };
         });
