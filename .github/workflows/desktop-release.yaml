@@ -1,6 +1,7 @@
 # Fork-only workflow: builds and self-signs the Electron desktop client for
-# every OS/arch combo VRCX-Headless supports (Windows/macOS/Linux, x64+arm64)
-# and attaches the results to a DRAFT GitHub Release for the pushed tag.
+# Windows and Linux (x64+arm64) and macOS (Apple Silicon only -- see the
+# build-macos job's own comment for why Intel/macos-13 was dropped), and
+# attaches the results to a DRAFT GitHub Release for the pushed tag.
 #
 # Triggers on the same `v*` tag push server-docker.yaml already uses, so one
 # `git tag && git push` (CLAUDE.md's "Cutting a release") cuts both releases
@@ -177,40 +178,24 @@ jobs:
                   path: ${{ steps.artifact.outputs.path }}
 
     # A separate job from `build` above, not another matrix leg in it --
-    # found live (2026-08-17) that this account's macOS runner concurrency
-    # is capped at 1: running macos-x64 and macos-arm64 side by side left
-    # one of them stuck queued until GitHub auto-cancelled the whole run.
-    # `max-parallel: 1` here forces them to run one after another instead of
-    # racing for the same single macOS slot. Steps are identical to `build`
-    # above, just for the two macOS legs specifically -- native Intel
-    # (macos-13) and native Apple Silicon (macos-latest) runners, avoiding
-    # Rosetta either way. Nothing about the macOS Electron build has ever
-    # been exercised in this fork before, manually or in CI -- treat both
-    # legs as genuinely unverified beyond "the build mechanics work".
+    # macOS runners on this account have been unreliable to schedule at all
+    # (found live 2026-08-17 across four dry runs: macos-x64/macos-13 never
+    # once got dispatched, and even macos-arm64/macos-latest started
+    # stalling on later attempts). Apple Silicon only now, deliberately --
+    # Intel (macos-13) is dropped entirely rather than kept as a
+    # perpetually-stuck matrix leg. Steps mirror `build` above, just for
+    # this one macOS leg. Its build-and-package mechanics (dotnet build,
+    # `pnpm run prod-linux`, electron-builder, CSC_LINK signing) were
+    # already proven to work end to end in an earlier dry run -- what's
+    # unreliable is purely GitHub's runner scheduling for this account, not
+    # the workflow logic.
     build-macos:
-        name: Build (${{ matrix.id }})
-        runs-on: ${{ matrix.runs-on }}
-        strategy:
-            fail-fast: false
-            max-parallel: 1
-            matrix:
-                include:
-                    - id: macos-x64
-                      runs-on: macos-13
-                      csproj: Dotnet/VRCX-Electron.csproj
-                      dotnet-arch: x64
-                      dotnet-platform: x64
-                      dotnet-rid: osx-x64
-                      electron-script: build-electron
-                      os-family: macos
-                    - id: macos-arm64
-                      runs-on: macos-latest
-                      csproj: Dotnet/VRCX-Electron-arm64.csproj
-                      dotnet-arch: arm64
-                      dotnet-platform: arm64
-                      dotnet-rid: osx-arm64
-                      electron-script: build-electron-arm64
-                      os-family: macos
+        name: Build (macos-arm64)
+        runs-on: macos-latest
+        env:
+            CSPROJ: Dotnet/VRCX-Electron-arm64.csproj
+            DOTNET_PLATFORM: arm64
+            DOTNET_RID: osx-arm64
         defaults:
             run:
                 shell: bash
@@ -225,14 +210,12 @@ jobs:
             - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
               with:
                   path: ~/.nuget/packages
-                  key: ${{ runner.os }}-${{ matrix.id }}-nuget-${{ hashFiles(matrix.csproj) }}
+                  key: ${{ runner.os }}-macos-arm64-nuget-${{ hashFiles(env.CSPROJ) }}
                   restore-keys: |
-                      ${{ runner.os }}-${{ matrix.id }}-nuget-
+                      ${{ runner.os }}-macos-arm64-nuget-
 
-            - name: Build the .NET side (${{ matrix.id }})
-              run: |
-                  set -euo pipefail
-                  dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -r ${{ matrix.dotnet-rid }}
+            - name: Build the .NET side (macos-arm64)
+              run: dotnet build "$CSPROJ" -p:Configuration=Release -p:WarningLevel=0 -p:Platform=$DOTNET_PLATFORM -p:PlatformTarget=$DOTNET_PLATFORM -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -r $DOTNET_RID
 
             - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
@@ -247,13 +230,13 @@ jobs:
             - name: Build the Vue app (PLATFORM=linux, i.e. the Electron client)
               run: pnpm run prod-linux
 
-            - name: Package the Electron app (${{ matrix.id }})
+            - name: Package the Electron app (macos-arm64)
               run: |
                   set -euo pipefail
                   if [ -n "${{ secrets.CSC_LINK }}" ]; then
                       export CSC_LINK="${{ secrets.CSC_LINK }}"
                   fi
-                  pnpm run ${{ matrix.electron-script }}
+                  pnpm run build-electron-arm64
 
             - name: Locate the built dmg
               id: artifact
@@ -261,7 +244,7 @@ jobs:
                   set -euo pipefail
                   path="$(find build -maxdepth 1 -name '*.dmg' -print -quit)"
                   if [ -z "$path" ]; then
-                      echo "No packaged artifact found under build/ for ${{ matrix.id }}" >&2
+                      echo "No packaged artifact found under build/ for macos-arm64" >&2
                       exit 1
                   fi
                   echo "path=$path" >> "$GITHUB_OUTPUT"
@@ -269,7 +252,7 @@ jobs:
             - name: Upload artifact
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
-                  name: desktop-${{ matrix.id }}
+                  name: desktop-macos-arm64
                   path: ${{ steps.artifact.outputs.path }}
 
     publish-release:
@@ -306,5 +289,5 @@ jobs:
                   gh release create "$tag" \
                       --draft \
                       --title "VRCX-Headless Desktop $tag" \
-                      --notes "Desktop client (Electron) build for $tag. Self-signed installers/images for Windows (x64/arm64), macOS (x64/arm64), and Linux (x64/arm64) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are self-signed only (not notarized) -- Gatekeeper will still show an 'unidentified developer' warning on first launch." \
+                      --notes "Desktop client (Electron) build for $tag. Self-signed installers/images for Windows (x64/arm64), Linux (x64/arm64), and macOS (Apple Silicon only) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are self-signed only (not notarized) -- Gatekeeper will still show an 'unidentified developer' warning on first launch." \
                       dist/*
