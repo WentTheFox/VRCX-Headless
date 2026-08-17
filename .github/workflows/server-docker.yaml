@@ -57,6 +57,19 @@ jobs:
             - uses: docker/setup-qemu-action@v3
             - uses: docker/setup-buildx-action@v3
 
+            # See CLAUDE.md's "Server/Docker versioning": server/VERSION is
+            # this fork's own release counter (bumped independently of an
+            # upstream sync, since a Docker release happens far more often
+            # than that); Version is upstream's own date-based tag, already
+            # tracked at the repo root for the Electron build. A tag push
+            # (`git tag vX.Y.Z`) is what's expected to have bumped the
+            # former — this step doesn't enforce that, it just reads
+            # whatever's currently committed.
+            - id: version
+              run: |
+                  echo "fork=$(cat server/VERSION)" >> "$GITHUB_OUTPUT"
+                  echo "vrcx=$(cat Version)" >> "$GITHUB_OUTPUT"
+
             - id: meta
               uses: docker/metadata-action@v5
               with:
@@ -68,6 +81,7 @@ jobs:
                       type=semver,pattern={{major}}.{{minor}}
                       type=sha,format=short
                       type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+                      type=raw,value=vrcx-${{ steps.version.outputs.vrcx }}
 
             # Build the native-arch image first and load it into the local
             # daemon, so the container is proven to actually boot before
@@ -81,6 +95,9 @@ jobs:
                   platforms: linux/amd64
                   load: true
                   tags: vrcx-headless-server:smoke
+                  build-args: |
+                      FORK_VERSION=${{ steps.version.outputs.fork }}
+                      VRCX_VERSION=${{ steps.version.outputs.vrcx }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
@@ -89,6 +106,58 @@ jobs:
                   set -euo pipefail
                   docker run --rm vrcx-headless-server:smoke migrate --create
                   docker run --rm vrcx-headless-server:smoke --help
+                  label=$(docker inspect -f '{{ index .Config.Labels "org.opencontainers.image.version" }}' vrcx-headless-server:smoke)
+                  expected="${{ steps.version.outputs.fork }}+vrcx.${{ steps.version.outputs.vrcx }}"
+                  if [ "$label" != "$expected" ]; then
+                      echo "version label mismatch: got '$label', expected '$expected'" >&2
+                      exit 1
+                  fi
+
+            # A real `serve` boot, checking the bundled web client actually
+            # serves at `/` — regression coverage for the exact bug this was
+            # missing before: the image built and the API worked, but every
+            # non-/api/* request 404'd because build/html-web was never
+            # bundled at all. `migrate --create` and `serve` need to share a
+            # /data volume across two separate `docker run` invocations
+            # (the smoke checks above are `--rm`, single-shot, and don't
+            # persist anything on purpose).
+            - name: Smoke-test the web client
+              run: |
+                  set -euo pipefail
+                  docker volume create vrcx-smoke-data
+                  docker run --rm -v vrcx-smoke-data:/data vrcx-headless-server:smoke migrate --create
+                  docker run -d --rm --name vrcx-smoke-serve -p 19000:9000 -v vrcx-smoke-data:/data vrcx-headless-server:smoke serve
+
+                  ready=false
+                  for _ in $(seq 1 30); do
+                      if curl -sf http://127.0.0.1:19000/ >/dev/null 2>&1; then
+                          ready=true
+                          break
+                      fi
+                      sleep 1
+                  done
+                  if [ "$ready" != true ]; then
+                      echo "serve never came up" >&2
+                      docker logs vrcx-smoke-serve
+                      exit 1
+                  fi
+
+                  body=$(curl -sf http://127.0.0.1:19000/)
+                  if ! echo "$body" | grep -q 'id="root"'; then
+                      echo "GET / did not return the web client's index.html" >&2
+                      echo "$body"
+                      exit 1
+                  fi
+                  # /api/* must still route ahead of the static-file fallback.
+                  api_status=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:19000/api/totp/setup -H 'Content-Type: application/json' -d '{}')
+                  if [ "$api_status" != "200" ]; then
+                      echo "/api/totp/setup returned $api_status, expected 200" >&2
+                      docker logs vrcx-smoke-serve
+                      exit 1
+                  fi
+
+                  docker stop vrcx-smoke-serve >/dev/null
+                  docker volume rm vrcx-smoke-data >/dev/null
 
             - name: Log in to GHCR
               if: github.event_name != 'pull_request'
@@ -110,5 +179,8 @@ jobs:
                   push: true
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
+                  build-args: |
+                      FORK_VERSION=${{ steps.version.outputs.fork }}
+                      VRCX_VERSION=${{ steps.version.outputs.vrcx }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max

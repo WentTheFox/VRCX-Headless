@@ -28,14 +28,15 @@ const os = require('os');
 const path = require('path');
 
 const rootDir = path.join(__dirname, '..');
-const frontendLicensePath = path.join(
-    rootDir,
-    'build',
-    'html',
-    '.vite',
-    'license.md'
-);
-const outputDir = path.join(rootDir, 'build', 'html', 'licenses');
+// Mirrors src/vite.config.js's own `isWeb ? '../build/html-web' :
+// '../build/html'` outDir split — vite's `build.license: true` option
+// already writes .vite/license.md into whichever outDir a given build
+// used, so this has to follow it there, not assume the Windows/Electron
+// path unconditionally.
+const isWeb = process.env.PLATFORM === 'web';
+const htmlDir = path.join(rootDir, 'build', isWeb ? 'html-web' : 'html');
+const frontendLicensePath = path.join(htmlDir, '.vite', 'license.md');
+const outputDir = path.join(htmlDir, 'licenses');
 const outputManifestPath = path.join(outputDir, 'third-party-licenses.json');
 const outputNoticePath = path.join(outputDir, 'THIRD_PARTY_NOTICES.txt');
 const dotnetDir = path.join(rootDir, 'Dotnet');
@@ -523,17 +524,29 @@ function main() {
 
     const frontendLicenseMarkdown = readFileIfExists(frontendLicensePath) || '';
     const frontendEntries = parseFrontendLicenses(frontendLicenseMarkdown);
-    const csprojFiles = fs
-        .readdirSync(dotnetDir)
-        .filter((fileName) => fileName.endsWith('.csproj'))
-        .map((fileName) => path.join(dotnetDir, fileName))
-        .concat(path.join(dotnetDir, 'DBMerger', 'DBMerger.csproj'))
-        .filter(
-            (filePath, index, filePaths) =>
-                filePaths.indexOf(filePath) === index && fs.existsSync(filePath)
-        );
-
-    const dotnetEntries = enrichDotnetEntries(mergeDotnetEntries(csprojFiles));
+    // The web client ships none of the .NET code these entries describe —
+    // skip scanning Dotnet/** entirely rather than just guarding against
+    // it being absent (e.g. a web-only build context, like
+    // server/Dockerfile's), since including it even when present would be
+    // inaccurate for what actually ships to a browser.
+    const dotnetEntries = isWeb
+        ? []
+        : enrichDotnetEntries(
+              mergeDotnetEntries(
+                  fs
+                      .readdirSync(dotnetDir)
+                      .filter((fileName) => fileName.endsWith('.csproj'))
+                      .map((fileName) => path.join(dotnetDir, fileName))
+                      .concat(
+                          path.join(dotnetDir, 'DBMerger', 'DBMerger.csproj')
+                      )
+                      .filter(
+                          (filePath, index, filePaths) =>
+                              filePaths.indexOf(filePath) === index &&
+                              fs.existsSync(filePath)
+                      )
+              )
+          );
     const manifest = {
         generatedAt: new Date().toISOString(),
         noticePath: 'licenses/THIRD_PARTY_NOTICES.txt',

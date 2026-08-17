@@ -62,12 +62,15 @@ services:
 
 ### Tags
 
-| Tag             | What it is                         |
-| --------------- | ---------------------------------- |
-| `main`          | latest build of the default branch |
-| `sha-<short>`   | a specific commit                  |
-| `v1.2.3`, `1.2` | released versions                  |
-| `latest`        | most recent release tag            |
+| Tag                    | What it is                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `main`                 | latest build of the default branch                                     |
+| `sha-<short>`          | a specific commit                                                      |
+| `1.2.3`, `1.2`         | a specific fork release (this fork's own counter — see CLAUDE.md's "Server/Docker versioning") |
+| `vrcx-<upstream date>` | latest fork build synced to that VRCX release, e.g. `vrcx-2026.07.18`  |
+| `latest`               | most recent release tag                                                |
+
+`docker inspect`'s `org.opencontainers.image.version` label, and `... info`'s `server version` line, both show the two numbers combined: `<fork version>+vrcx.<upstream version>`.
 
 ---
 
