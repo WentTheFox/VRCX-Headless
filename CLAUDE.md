@@ -249,15 +249,21 @@ Every modification to an upstream-owned file, logged per invariant 6. Prefer ali
 
 Upstream's default branch is **`master`**; ours is **`main`**. The `upstream` remote is `https://github.com/vrcx-team/VRCX.git`.
 
-**Sync to upstream's latest tagged release, never to `master` HEAD.** Upstream tags releases `vYYYY.MM.DD` roughly every few weeks; `master` moves under an active, UI-heavy project between them, so merging HEAD turns every sync into a moving target instead of a discrete, reviewable step.
+Sync to either a tagged release or `master` HEAD, deliberately — a tag gives a discrete, reviewable step; `master` gets whatever's landed since the last sync, which is a moving target under an active, UI-heavy project, but is sometimes exactly what's wanted (e.g. testing how well this doc's own procedure holds up against real upstream drift).
 
 ```bash
-git fetch upstream --tags
+git fetch upstream --tags master
+
+# syncing to a tagged release
 git checkout -b sync/<tag> main
 git merge v2026.07.18   # the tag being synced to, not upstream/master
+
+# syncing to master HEAD instead
+git checkout -b sync/master-<date> main
+git merge upstream/master
 ```
 
-Pick the tag deliberately — `git tag -l 'v*' | sort -V | tail -5` (or the [releases page](https://github.com/vrcx-team/VRCX/releases)) — rather than always grabbing the newest.
+Pick a tag deliberately — `git tag -l 'v*' | sort -V | tail -5` (or the [releases page](https://github.com/vrcx-team/VRCX/releases)) — rather than always grabbing the newest, when that's the path taken.
 
 ### 6.1 Expected conflicts, ranked
 
