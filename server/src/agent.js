@@ -13,15 +13,32 @@
  * `desktopAgent.call(...)` when a client is connected, falling back to their
  * existing no-op behaviour otherwise — this module's only job is the
  * request/response correlation over that one connection.
+ *
+ * Extends `EventEmitter` solely to emit `'attach'`: real `src/**` call sites
+ * (e.g. `discordPresence.js`'s `setIsDiscordActive`) often guard a forwarded
+ * call behind "only if this differs from what we last told the native side"
+ * — a private, unreachable flag whose value has nothing to do with which
+ * *agent* is actually attached. When a new agent replaces a dead one, that
+ * flag is still whatever it was, so the call gets silently skipped and the
+ * new agent's own native object never learns the real state. Found live
+ * (2026-08-17): Discord.SetActive(true) never reached a second, reconnected
+ * agent, even though SetAssets kept arriving every tick — the native side's
+ * RichPresence client never got created because its `_active` flag was
+ * never flipped. `createAgentAwarePolyfill` (`server/src/globals.js`)
+ * listens for `'attach'` and replays each method's last-forwarded args to
+ * the new agent, bypassing the stale upstream guard entirely rather than
+ * trying to reach into a store closure we don't own.
  */
+import { EventEmitter } from 'node:events';
 import crypto from 'node:crypto';
 
 import { log } from './log.js';
 
 const CALL_TIMEOUT_MS = 10_000;
 
-class DesktopAgent {
+class DesktopAgent extends EventEmitter {
     constructor() {
+        super();
         /** @type {import('ws').WebSocket | null} */
         this.socket = null;
         /** @type {Map<string, { resolve: (value: any) => void, reject: (err: Error) => void, timer: NodeJS.Timeout }>} */
@@ -51,6 +68,7 @@ class DesktopAgent {
             }
             this.#rejectAllPending(new Error('Desktop agent disconnected'));
         });
+        this.emit('attach');
     }
 
     /**
