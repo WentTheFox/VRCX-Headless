@@ -69,6 +69,81 @@ function createCodeInput() {
 }
 
 /**
+ * Appends the "trust a self-signed CA certificate" control used by both
+ * `renderUrlForm` and `renderPicker` — a self-signed server cert that's
+ * merely OS-trusted (e.g. imported into the Windows certificate store)
+ * still fails here with a bare "fetch failed", because the connection
+ * attempts run in Electron's main process (plain Node), whose `fetch`/`ws`
+ * TLS stack only trusts its own bundled CA bundle, not the OS trust store.
+ * Importing here writes the cert to disk via `vrcx-import-ca-cert`
+ * (`src-electron/main.js`) and requires a restart to take effect — Node
+ * only reads `NODE_EXTRA_CA_CERTS` once, at process bootstrap.
+ * @param {HTMLElement} container
+ */
+function appendCaCertControl(container) {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText =
+        'display:flex;flex-direction:column;gap:0.25rem;align-items:center;border-top:1px solid #444;padding-top:0.5rem;';
+
+    const status = document.createElement('p');
+    status.style.cssText = 'margin:0;font-size:0.75rem;color:#888;';
+
+    const actionLink = document.createElement('button');
+    actionLink.type = 'button';
+    actionLink.style.cssText = LINK_STYLE;
+
+    const errorText = document.createElement('p');
+    errorText.style.cssText = ERROR_STYLE;
+    errorText.hidden = true;
+
+    function showError(message) {
+        errorText.textContent = message;
+        errorText.hidden = !message;
+    }
+
+    function refresh() {
+        window.vrcxDesktopAgent.getCaCertStatus().then(({ imported }) => {
+            status.textContent = imported
+                ? 'Custom CA certificate trusted.'
+                : 'Connecting to a self-signed HTTPS server?';
+            actionLink.textContent = imported
+                ? 'Remove certificate'
+                : 'Import CA certificate…';
+            actionLink.onclick = imported ? removeCert : importCert;
+        });
+    }
+
+    function importCert() {
+        showError('');
+        window.vrcxDesktopAgent.importCaCert().then((result) => {
+            if (!result.ok) {
+                if (result.error) {
+                    showError(result.error);
+                }
+                return;
+            }
+            status.textContent =
+                'Certificate imported — restart to apply.';
+            actionLink.textContent = 'Restart now';
+            actionLink.onclick = () => window.electron.restartApp();
+        });
+    }
+
+    function removeCert() {
+        showError('');
+        window.vrcxDesktopAgent.removeCaCert().then(() => {
+            status.textContent = 'Certificate removed — restart to apply.';
+            actionLink.textContent = 'Restart now';
+            actionLink.onclick = () => window.electron.restartApp();
+        });
+    }
+
+    wrapper.append(status, actionLink, errorText);
+    container.append(wrapper);
+    refresh();
+}
+
+/**
  * @param {string} [url]
  * @param {string} [error]
  */
@@ -106,6 +181,8 @@ function renderUrlForm(url, error) {
         errorText.style.cssText = ERROR_STYLE;
         form.append(errorText);
     }
+
+    appendCaCertControl(form);
 
     form.addEventListener('submit', (submitEvent) => {
         submitEvent.preventDefault();
@@ -380,6 +457,8 @@ function renderPicker(servers, error) {
     addLink.style.cssText = LINK_STYLE;
     addLink.addEventListener('click', () => renderUrlForm());
     container.append(addLink);
+
+    appendCaCertControl(container);
 
     wrapper.append(container);
     root.append(wrapper);

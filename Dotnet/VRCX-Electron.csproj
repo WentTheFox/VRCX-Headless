@@ -80,6 +80,7 @@
     <PackageReference Include="Microsoft.JavaScript.NodeApi" Version="0.9.21" />
     <PackageReference Include="Microsoft.JavaScript.NodeApi.Generator" Version="0.9.21" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NLog" Version="6.1.4" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />

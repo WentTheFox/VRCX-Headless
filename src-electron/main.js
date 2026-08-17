@@ -18,6 +18,30 @@ const { WebSocket: WsClient } = require('ws');
 
 //app.disableHardwareAcceleration();
 
+/**
+ * A user-imported CA certificate for a self-signed headless server (see the
+ * `vrcx-import-ca-cert`/`vrcx-remove-ca-cert` IPC handlers below) — trusting
+ * it requires `NODE_EXTRA_CA_CERTS`, which Node only reads once, at process
+ * bootstrap, before any of this file's own code runs. Mutating
+ * `process.env` later has no effect on an already-running process, so if the
+ * file exists but this process wasn't started with the matching env var
+ * (either a fresh normal launch after an import, or the very first launch
+ * after one), self-relaunch once with it set before anything else in this
+ * process touches the network. The relaunched child inherits `process.env`,
+ * so this becomes a no-op on the next launch once the var is already
+ * present and matches.
+ * @type {string}
+ */
+const customCaCertPath = path.join(getVRCXPath(), 'custom-ca.pem');
+if (
+    fs.existsSync(customCaCertPath) &&
+    process.env.NODE_EXTRA_CA_CERTS !== customCaCertPath
+) {
+    process.env.NODE_EXTRA_CA_CERTS = customCaCertPath;
+    app.relaunch();
+    app.exit(0);
+}
+
 const bundledDotNetPath = path.join(process.resourcesPath, 'dotnet-runtime');
 if (fs.existsSync(bundledDotNetPath)) {
     // Include bundled .NET runtime
@@ -177,6 +201,16 @@ let servers = [];
 let agentSocket = null;
 /** @type {NodeJS.Timeout | null} */
 let agentReconnectTimer = null;
+/**
+ * The relayed pipeline connection (`client-desktop/shims/pipeline-relay.js`)
+ * — unlike `agentSocket`, this isn't kept alive by main.js itself; the
+ * renderer's own `websocket.js` retry loop (unmodified) drives reconnects by
+ * constructing a fresh relay `WebSocket` object, which calls
+ * `vrcx-stream-connect` again. Only one at a time, same as the real pipeline
+ * connection it replaces.
+ * @type {import('ws').WebSocket | null}
+ */
+let streamSocket = null;
 /** Updated opportunistically by every `vrcx-rpc` call and a periodic
  * health-check timer; pushed to the renderer on change (not every tick) so
  * the "Headless" status-bar indicator (`src/components/HeadlessServerStatus.vue`)
@@ -342,6 +376,66 @@ function connectAgentSocket() {
     });
     agentSocket = ws;
 }
+
+/**
+ * `client-desktop/shims/pipeline-relay.js`'s counterpart: opens the real
+ * `/api/stream` connection here (where the server token actually lives) and
+ * forwards every frame to the renderer's relayed `WebSocket` object
+ * verbatim, so `src/services/websocket.js`'s unmodified `handlePipeline`
+ * still does all the real work. Found live (2026-08-17): without this, the
+ * desktop renderer connected straight to VRChat's real pipeline instead —
+ * a second connection racing the server's own already-open one for the same
+ * account's `/auth` token, intermittently invalidating each other and
+ * producing a real "authToken doesn't correspond with an active session"
+ * pipeline error.
+ */
+ipcMain.on('vrcx-stream-connect', () => {
+    if (streamSocket) {
+        streamSocket.removeAllListeners();
+        try {
+            streamSocket.close();
+        } catch {
+            // already closed/closing
+        }
+        streamSocket = null;
+    }
+    if (!serverUrl || !serverToken) {
+        return;
+    }
+    const wsUrl = `${serverUrl.replace(/^http/, 'ws')}/api/stream`;
+    const ws = new WsClient(wsUrl, {
+        headers: { Authorization: `Bearer ${serverToken}` }
+    });
+    const send = (payload) => {
+        if (streamSocket === ws && mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('vrcx-stream-event', payload);
+        }
+    };
+    ws.on('open', () => send({ type: 'open' }));
+    ws.on('message', (data) => send({ type: 'message', data: data.toString() }));
+    ws.on('close', (code, reason) => {
+        send({ type: 'close', code, reason: reason?.toString() });
+        if (streamSocket === ws) {
+            streamSocket = null;
+        }
+    });
+    ws.on('error', (err) => {
+        console.error('Stream channel error:', err.message);
+    });
+    streamSocket = ws;
+});
+
+ipcMain.on('vrcx-stream-close', () => {
+    if (streamSocket) {
+        streamSocket.removeAllListeners();
+        try {
+            streamSocket.close();
+        } catch {
+            // already closed/closing
+        }
+        streamSocket = null;
+    }
+});
 
 /**
  * Rotates the stored token into a fresh one with a full new expiry
@@ -847,6 +941,55 @@ ipcMain.handle('dialog:openDirectory', async () => {
         return result.filePaths[0];
     }
     return null;
+});
+
+/**
+ * Lets a user with a self-signed (but OS-trusted) headless server import its
+ * CA certificate from the connection screen, instead of having to know about
+ * `NODE_EXTRA_CA_CERTS` and set it in their shell/system environment
+ * themselves — Node's `fetch`/`ws` TLS stack only trusts its own bundled CA
+ * bundle, not the Windows/macOS/Linux trust store, so a cert that a browser
+ * happily accepts still fails here with a bare "fetch failed". Takes effect
+ * on the next app start (see the self-relaunch gate above `getVRCXPath()`'s
+ * definition uses), which the caller is expected to trigger via the existing
+ * `app:restart` handler.
+ */
+ipcMain.handle('vrcx-import-ca-cert', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [
+            { name: 'Certificates', extensions: ['pem', 'crt', 'cer'] }
+        ]
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+        return { ok: false };
+    }
+    let content;
+    try {
+        content = fs.readFileSync(result.filePaths[0], 'utf8');
+    } catch (err) {
+        return { ok: false, error: err.message };
+    }
+    if (!content.includes('BEGIN CERTIFICATE')) {
+        return {
+            ok: false,
+            error: 'That file does not look like a PEM certificate.'
+        };
+    }
+    fs.mkdirSync(path.dirname(customCaCertPath), { recursive: true });
+    fs.writeFileSync(customCaCertPath, content, 'utf8');
+    return { ok: true };
+});
+
+ipcMain.handle('vrcx-remove-ca-cert', () => {
+    if (fs.existsSync(customCaCertPath)) {
+        fs.unlinkSync(customCaCertPath);
+    }
+    return { ok: true };
+});
+
+ipcMain.handle('vrcx-get-ca-cert-status', () => {
+    return { imported: fs.existsSync(customCaCertPath) };
 });
 
 ipcMain.handle('notification:showNotification', (event, title, body, icon) => {
