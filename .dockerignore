@@ -1,11 +1,11 @@
 # Build context for server/Dockerfile is the repo root. The final image only
 # needs server/**, src/** and Version, but the web-client build stage (see
 # the Dockerfile) also needs client-web/**, client-desktop/**, build-scripts/
-# (npm run build:licenses), images/ (a few onboarding components import the
-# VRCX logo from here), and the root package.json/package-lock.json —
-# everything below this comment is either desktop-only (src-electron,
-# Installer, Dotnet) or build tooling neither stage needs, that would
-# otherwise be uploaded to the daemon on every build.
+# (pnpm run build:licenses), images/ (a few onboarding components import the
+# VRCX logo from here), and the root package.json/pnpm-lock.yaml/
+# pnpm-workspace.yaml — everything below this comment is either desktop-only
+# (src-electron, Installer, Dotnet) or build tooling neither stage needs,
+# that would otherwise be uploaded to the daemon on every build.
 .git
 .github
 node_modules

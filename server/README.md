@@ -82,13 +82,13 @@ Release tags are `<vrcx-date-no-dots>.<fork-build>.0` — real semver, with the 
 Requires Node ≥ 22.5 for the server itself (`node:sqlite` with `setReturnArrays`); the repo as a whole asks for Node ≥ 24.15.
 
 ```bash
-npm ci
-npm run server -- info
-npm run server -- migrate
-npm run server -- login
+pnpm install --frozen-lockfile
+pnpm run server -- info
+pnpm run server -- migrate
+pnpm run server -- login
 ```
 
-`npm run server -- <command>` is the same entrypoint the container uses. Run the server's tests with `npm run test:server`.
+`pnpm run server -- <command>` is the same entrypoint the container uses. Run the server's tests with `pnpm run test:server`.
 
 ---
 
@@ -113,7 +113,7 @@ Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=UR
 
 `serve` requires a VRChat login to relay pipeline events over `/api/stream`, but not for `/api/rpc` — `database`/`configRepository` access works without one. It logs a warning and continues if there's no saved session, rather than refusing to start.
 
-If `npm run prod-web` has been built (`build/html-web`), `serve` also serves it as the static web client at `/` — same-origin, so the browser never needs CORS. Without a build there, `serve` still works as an API-only server (`/api/*` and `/api/stream`).
+If `pnpm run prod-web` has been built (`build/html-web`), `serve` also serves it as the static web client at `/` — same-origin, so the browser never needs CORS. Without a build there, `serve` still works as an API-only server (`/api/*` and `/api/stream`).
 
 Looking for the Electron desktop client instead? See [`client-desktop/README.md`](../client-desktop/README.md) for how to build and connect it to a `serve` instance.
 
@@ -136,7 +136,7 @@ This only works **once**. The instant a code is confirmed, the secret is saved, 
 Useful before a web client is built, or for a fully non-interactive/scripted setup:
 
 ```bash
-npm run server -- setup-totp
+pnpm run server -- setup-totp
 # or, in the container (needs -it — it's an interactive prompt):
 docker run --rm -it -v ~/vrcx-data:/data ghcr.io/wentthefox/vrcx-headless-server:main setup-totp
 ```

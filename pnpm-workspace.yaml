@@ -1,0 +1,24 @@
+# pnpm config lives here (not .npmrc) since pnpm 10+ consolidated it — this
+# repo is not an actual multi-package workspace, `packages:` is deliberately
+# omitted.
+
+# minimumReleaseAge: supply-chain hardening. A compromised maintainer
+# account publishing a malicious version is typically caught and unpublished
+# within hours to a few days; refusing to install anything published more
+# recently than this window trades "get the literal latest patch" for "don't
+# be the first one to find out a package got hijacked". 20160 minutes = 14
+# days. Applies to installs, not to what's already pinned in pnpm-lock.yaml.
+minimumReleaseAge: 20160
+
+# Migrated from package.json's old `allowScripts` field (same 5 packages,
+# all previously `true`) — pnpm blocks a dependency's install/postinstall
+# scripts by default unless explicitly approved here. All five are
+# legitimate: electron/electron-winstaller need theirs to fetch platform
+# binaries, @sentry/cli to fetch its own binary, core-js/vue-demi run
+# harmless postinstall notices.
+allowBuilds:
+    '@sentry/cli': true
+    core-js: true
+    electron: true
+    electron-winstaller: true
+    vue-demi: true

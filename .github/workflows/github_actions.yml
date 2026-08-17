@@ -221,27 +221,18 @@ jobs:
               run: |
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   cat Version
+            - uses: pnpm/action-setup@v4
             - name: Node.js
               uses: actions/setup-node@v6
               with:
                   node-version: lts/*
-            - name: Get npm cache directory
-              id: npm-cache-dir
-              shell: bash
-              run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-            - uses: actions/cache@v5
-              id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-              with:
-                  path: ${{ steps.npm-cache-dir.outputs.dir }}
-                  key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-node-
+                  cache: pnpm
             - name: Restore dependencies
-              run: npm ci
+              run: pnpm install --frozen-lockfile
             - name: Build html
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SentryAuthToken }}
-              run: npm run prod
+              run: pnpm run prod
             - name: Upload html artifacts
               uses: actions/upload-artifact@v7
               with:
@@ -254,7 +245,7 @@ jobs:
                   name: Electron-Release-Linux-x64
                   path: build/Electron
             - name: Build x64 AppImage
-              run: npm run build-electron
+              run: pnpm run build-electron
             - name: Upload Electron x64 AppImage artifacts
               uses: actions/upload-artifact@v7
               with:
@@ -267,7 +258,7 @@ jobs:
                   name: Electron-Release-Linux-arm64
                   path: build/Electron
             - name: Build arm64 AppImage
-              run: npm run build-electron-arm64
+              run: pnpm run build-electron-arm64
             - name: Upload Electron arm64 AppImage artifacts
               uses: actions/upload-artifact@v7
               with:
@@ -283,25 +274,16 @@ jobs:
               run: |
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   cat Version
+            - uses: pnpm/action-setup@v4
             - name: Use Node.js
               uses: actions/setup-node@v6
               with:
                   node-version: lts/*
-            - name: Get npm cache directory
-              id: npm-cache-dir
-              shell: bash
-              run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-            - uses: actions/cache@v5
-              id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-              with:
-                  path: ${{ steps.npm-cache-dir.outputs.dir }}
-                  key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-node-
+                  cache: pnpm
             - name: Restore dependencies
-              run: npm ci
+              run: pnpm install --frozen-lockfile
             - name: Build html x64
-              run: npm run prod --arch=x64
+              run: pnpm run prod --arch=x64
 
             - name: Download x64 Electron dotnet artifacts
               uses: actions/download-artifact@v8
@@ -309,7 +291,7 @@ jobs:
                   name: Electron-Release-macOS-x64
                   path: build/Electron
             - name: Build x64 macOS .dmg
-              run: npm run build-electron
+              run: pnpm run build-electron
             - name: Upload x64 Electron macOS artifacts
               uses: actions/upload-artifact@v7
               with:
@@ -321,7 +303,7 @@ jobs:
                   rm -R build/Electron
 
             - name: Build html arm64
-              run: npm run prod --arch=arm64
+              run: pnpm run prod --arch=arm64
 
             - name: Download arm64 Electron dotnet artifacts
               uses: actions/download-artifact@v8
@@ -329,7 +311,7 @@ jobs:
                   name: Electron-Release-macOS-arm64
                   path: build/Electron
             - name: Build arm64 macOS .dmg
-              run: npm run build-electron-arm64
+              run: pnpm run build-electron-arm64
             - name: Upload arm64 Electron macOS artifacts
               uses: actions/upload-artifact@v7
               with:
