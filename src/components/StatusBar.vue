@@ -15,6 +15,8 @@
                         ">
                         <HeadlessServerStatus v-if="isLinux && visibility.headless" />
 
+                        <UpdateCheckStatus v-if="isLinux || isWeb" />
+
                         <TooltipWrapper
                             v-if="!isLinux && !isWeb && visibility.proxy"
                             :content="
@@ -417,6 +419,7 @@
     } from '@/stores';
     import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
     import HeadlessServerStatus from '@/components/HeadlessServerStatus.vue';
+    import UpdateCheckStatus from '@/components/UpdateCheckStatus.vue';
     import { formatSeconds, timeToText } from '@/shared/utils';
     import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
     import { useIntervalFn, useNow } from '@vueuse/core';

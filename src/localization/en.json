@@ -3251,6 +3251,11 @@
         "headless_ca_cert_restart_required": "Restart VRCX to apply.",
         "headless_ca_cert_import": "Import certificate…",
         "headless_ca_cert_remove": "Remove",
-        "headless_ca_cert_restart_now": "Restart now"
+        "headless_ca_cert_restart_now": "Restart now",
+        "update_check": "VRCX Update",
+        "update_check_available": "VRCX {version} is out.",
+        "update_check_fork_ready": "This fork already has a build for it: {tag}. Redeploy your server to pick it up.",
+        "update_check_fork_missing": "This fork hasn't synced to it yet.",
+        "update_check_open_issue": "Open an issue"
     }
 }
