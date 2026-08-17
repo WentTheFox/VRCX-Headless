@@ -37,6 +37,7 @@ import {
     loginWithCredentials,
     logoutSession,
     restoreSession,
+    scheduleSessionRestoreRetries,
     waitForPipelineConnected,
     wsState
 } from './session.js';
@@ -84,6 +85,11 @@ Options:
   --websocket=URL      Custom pipeline endpoint
   --tls-cert=PATH      PEM certificate file, for \`serve\` over HTTPS
   --tls-key=PATH       PEM private key file, for \`serve\` over HTTPS
+  --trust-proxy        Trust X-Forwarded-Proto from a reverse proxy that
+                        terminates TLS in front of \`serve\` (nginx, Caddy, …)
+                        — without it, the session cookie never gets the
+                        \`Secure\` flag in that deployment, since \`serve\`'s
+                        own listener genuinely is plain HTTP
 
 Environment:
   VRCX_DATABASE        Absolute path to VRCX.sqlite3
@@ -97,6 +103,8 @@ Environment:
   VRCX_SERVER_PORT     HTTP/WS bind port                   (default: 9000)
   VRCX_SERVER_TLS_CERT PEM certificate file, instead of --tls-cert
   VRCX_SERVER_TLS_KEY  PEM private key file, instead of --tls-key
+  VRCX_SERVER_TRUST_PROXY
+                       1 to trust X-Forwarded-Proto, instead of --trust-proxy
 
   Both a cert and a key are required to serve over HTTPS; \`serve\` refuses
   to start on a partial pair rather than silently falling back to HTTP.
@@ -163,6 +171,17 @@ function resolveTlsOptions(flags) {
         );
     }
     return { cert: readFileSync(certPath), key: readFileSync(keyPath) };
+}
+
+/**
+ * @param {Record<string, any>} flags
+ * @returns {boolean}
+ */
+function resolveTrustProxy(flags) {
+    if (flags['trust-proxy'] === true) {
+        return true;
+    }
+    return process.env.VRCX_SERVER_TRUST_PROXY === '1';
 }
 
 /**
@@ -410,6 +429,7 @@ async function main() {
 
     if (command === 'serve') {
         const tls = resolveTlsOptions(flags);
+        const trustProxy = resolveTrustProxy(flags);
         const handle = await openDatabase({ ...openOptions, create: false });
         try {
             acquireLock(handle.databasePath);
@@ -431,11 +451,22 @@ async function main() {
             log.warn(
                 'Not logged in to VRChat; serving db/config RPC only. Run `login` for the pipeline stream.'
             );
+            // A failed restoreSession() above is a one-shot attempt — this
+            // keeps trying in the background so a transient boot-time
+            // failure (VRChat/the network not ready yet, most likely on an
+            // auto-restarting container) doesn't require a second manual
+            // restart to recover from. No-ops on its own if there was
+            // never a saved session to restore.
+            scheduleSessionRestoreRetries(stores, handle).catch((err) => {
+                log.error('Failed to schedule session-restore retries', {
+                    message: err.message
+                });
+            });
         }
 
         const { server, streamClientCount, useHttps } = await createHttpServer(
             handle,
-            { tls }
+            { tls, trustProxy }
         );
         const host = process.env.VRCX_SERVER_HOST || '0.0.0.0';
         const port = Number(process.env.VRCX_SERVER_PORT) || 9000;

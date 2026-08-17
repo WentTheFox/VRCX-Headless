@@ -193,26 +193,27 @@ function expiredSessionCookieHeader(secure) {
 }
 
 /**
- * Shared by `/api/login` and `/api/totp/confirm` — a freshly-confirmed TOTP
- * code is just as good as an existing session's code for starting a new
- * session, so enrollment doesn't need a separate "now log in again" step.
+ * Shared by every route that mints a session — the bearer routes
+ * (`/api/login`, `/api/totp/confirm`, `/api/session/refresh`) and their
+ * cookie-only `/api/web/*` mirrors below.
  * @param {import('./db.js').DatabaseHandle} handle
  * @param {http.ServerResponse} res
  * @param {boolean} secure
+ * @param {boolean} includeToken Whether the raw token also rides in the
+ *   JSON body. `true` for the desktop agent — not same-origin, so it can't
+ *   rely on the cookie at all and needs the raw value to send back as
+ *   `Authorization: Bearer <token>`. `false` for the browser's `/api/web/*`
+ *   routes: the whole point of those is that the token *never* reaches
+ *   browser JS, not even transiently in a fetch() response it immediately
+ *   discards — an `HttpOnly` cookie is worthless against XSS if the same
+ *   response that sets it also hands the value back in a JS-readable body.
  */
-async function sendNewSession(handle, res, secure) {
+async function sendNewSession(handle, res, secure, includeToken) {
     const token = await createSession(handle);
-    // The raw token rides alongside the cookie so a non-browser client
-    // (phase 5's desktop agent — not same-origin, can't rely on an
-    // HttpOnly cookie) can pull it out of the JSON body and send it back as
-    // `Authorization: Bearer <token>` instead. The browser client already
-    // ignores response fields it doesn't know about.
-    sendJson(
-        res,
-        200,
-        { ok: true, token },
-        { 'Set-Cookie': sessionCookieHeader(token, secure) }
-    );
+    const body = includeToken ? { ok: true, token } : { ok: true };
+    sendJson(res, 200, body, {
+        'Set-Cookie': sessionCookieHeader(token, secure)
+    });
 }
 
 /**
@@ -223,6 +224,18 @@ async function sendNewSession(handle, res, secure) {
  *   (`VRCX_SERVER_TLS_CERT`/`VRCX_SERVER_TLS_KEY`, or `--tls-cert`/
  *   `--tls-key`) and validates that a partial pair is a config error, not
  *   something this function silently papers over.
+ * @param {boolean} [options.trustProxy] Set when a reverse proxy (nginx,
+ *   Caddy, …) terminates TLS in front of `serve` and forwards plain HTTP —
+ *   the common deployment this project's own docs recommend. Without this,
+ *   `serve` has no way to know the browser's actual connection was HTTPS
+ *   (its own listener genuinely is plain HTTP in that setup), so it would
+ *   never add `; Secure` to the session cookie — silently *wrong* in the
+ *   opposite direction of the usual worry: not "insecure cookie sent over
+ *   HTTP", but "cookie missing the one flag that would have caught it if
+ *   it ever were". Only honour `X-Forwarded-Proto` when this is explicitly
+ *   set — trusting it unconditionally would let anyone who can reach the
+ *   listener directly (bypassing the proxy) claim their own plain-HTTP
+ *   request was secure.
  */
 export async function createHttpServer(handle, options = {}) {
     // Unlike phase 3's original password-auth design, an unconfigured
@@ -240,8 +253,16 @@ export async function createHttpServer(handle, options = {}) {
     }
 
     const useHttps = Boolean(options.tls);
+    const trustProxy = Boolean(options.trustProxy);
+    /**
+     * @param {http.IncomingMessage} req
+     * @returns {boolean}
+     */
+    const isSecureRequest = (req) =>
+        useHttps ||
+        (trustProxy && req.headers['x-forwarded-proto'] === 'https');
     const requestListener = (req, res) => {
-        handleRequest(handle, req, res, useHttps).catch((err) => {
+        handleRequest(handle, req, res, isSecureRequest(req)).catch((err) => {
             log.error('HTTP request handler error', { message: err.message });
             if (!res.headersSent) {
                 sendJson(res, 500, { ok: false, error: 'Internal error' });
@@ -366,7 +387,26 @@ async function handleRequest(handle, req, res, secure) {
             sendJson(res, 401, { ok: false, error: 'Invalid code' });
             return;
         }
-        await sendNewSession(handle, res, secure);
+        await sendNewSession(handle, res, secure, true);
+        return;
+    }
+
+    // Cookie-only mirror of /api/login, for the browser client
+    // (client-web/bootstrap.js) — identical check, but the response never
+    // carries the raw token (see sendNewSession's own doc comment). The
+    // desktop agent keeps using the bearer route above; it isn't
+    // same-origin, so an HttpOnly cookie wouldn't help it anyway.
+    if (req.method === 'POST' && url.pathname === '/api/web/login') {
+        const body = await readJsonBody(req);
+        if (typeof body.code !== 'string' || !body.code) {
+            sendJson(res, 400, { ok: false, error: 'code is required' });
+            return;
+        }
+        if (!(await checkTotpCode(handle, body.code))) {
+            sendJson(res, 401, { ok: false, error: 'Invalid code' });
+            return;
+        }
+        await sendNewSession(handle, res, secure, false);
         return;
     }
 
@@ -413,7 +453,30 @@ async function handleRequest(handle, req, res, secure) {
             return;
         }
         await setServerTotp(handle, body.secret);
-        await sendNewSession(handle, res, secure);
+        await sendNewSession(handle, res, secure, true);
+        return;
+    }
+
+    // Cookie-only mirror of /api/totp/confirm — see /api/web/login above.
+    if (req.method === 'POST' && url.pathname === '/api/web/totp/confirm') {
+        if (await hasServerTotp(handle)) {
+            sendJson(res, 403, {
+                ok: false,
+                error: 'Already configured — use the setup-totp CLI command to rotate'
+            });
+            return;
+        }
+        const body = await readJsonBody(req);
+        if (typeof body.secret !== 'string' || !body.secret) {
+            sendJson(res, 400, { ok: false, error: 'secret is required' });
+            return;
+        }
+        if (!verifyTotpCode(body.secret, body.code)) {
+            sendJson(res, 400, { ok: false, error: 'Invalid code' });
+            return;
+        }
+        await setServerTotp(handle, body.secret);
+        await sendNewSession(handle, res, secure, false);
         return;
     }
 
@@ -431,7 +494,24 @@ async function handleRequest(handle, req, res, secure) {
             return;
         }
         await destroySession(handle, existingToken);
-        await sendNewSession(handle, res, secure);
+        await sendNewSession(handle, res, secure, true);
+        return;
+    }
+
+    // Cookie-only mirror of /api/session/refresh — see /api/web/login
+    // above. This is the one both clients actually hit on every single
+    // launch (§8/§10 "Session tokens survive a serve restart"), so it's
+    // the route where never handing the token back to browser JS matters
+    // most: it's the one moment an attacker with persistent XSS could
+    // reliably wait for and steal from, with no user interaction needed.
+    if (req.method === 'POST' && url.pathname === '/api/web/session/refresh') {
+        const existingToken = readSessionToken(req);
+        if (!(await validateSession(handle, existingToken))) {
+            sendJson(res, 401, { ok: false, error: 'Not authenticated' });
+            return;
+        }
+        await destroySession(handle, existingToken);
+        await sendNewSession(handle, res, secure, false);
         return;
     }
 

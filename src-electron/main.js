@@ -162,10 +162,29 @@ ipcMain.handle('callDotNetMethod', (event, className, methodName, args) => {
 let serverUrl = null;
 /** @type {string | null} */
 let serverToken = null;
+/**
+ * Every server this client has ever paired with, not just the active one —
+ * `{url, token, label, isDefault}[]`, persisted as one JSON blob under
+ * `VRCX_Servers`. `serverUrl`/`serverToken` above stay exactly what they
+ * always were (the *active* connection's own cache, read by every existing
+ * call site); this is the backing store `completeSession()` also upserts
+ * into, and what the `vrcx-list-servers`/`vrcx-switch-server`/etc. IPC
+ * handlers below operate on.
+ * @type {{url: string, token: string, label: string, isDefault: boolean}[]}
+ */
+let servers = [];
 /** @type {import('ws').WebSocket | null} */
 let agentSocket = null;
 /** @type {NodeJS.Timeout | null} */
 let agentReconnectTimer = null;
+/** Updated opportunistically by every `vrcx-rpc` call and a periodic
+ * health-check timer; pushed to the renderer on change (not every tick) so
+ * the "Headless" status-bar indicator (`src/components/HeadlessServerStatus.vue`)
+ * can reflect it without polling.
+ * @type {boolean} */
+let serverReachable = true;
+/** @type {NodeJS.Timeout | null} */
+let serverHealthCheckTimer = null;
 
 /**
  * @param {string} url
@@ -194,6 +213,71 @@ async function fetchJson(url, options) {
  * Reconnects after 5s on close, mirroring `src/services/websocket.js`'s own
  * pipeline-reconnect interval, for as long as a server URL/token is set.
  */
+/**
+ * Pushes `vrcx-server-status-changed` to the renderer only when
+ * `serverReachable` actually flips, not on every check — the "Headless"
+ * status-bar indicator (`src/components/HeadlessServerStatus.vue`) listens
+ * for this instead of polling.
+ * @param {boolean} reachable
+ */
+function setServerReachable(reachable) {
+    if (reachable === serverReachable) {
+        return;
+    }
+    serverReachable = reachable;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('vrcx-server-status-changed', {
+            url: serverUrl,
+            reachable: serverReachable
+        });
+    }
+}
+
+const HEALTH_CHECK_INTERVAL_MS = 20_000;
+
+/**
+ * A cheap authenticated ping on a flat interval, regardless of other RPC
+ * traffic — simpler than tracking idle time between real requests, and
+ * negligible cost. `vrcx-rpc` below also updates `serverReachable`
+ * opportunistically on every real call, so this timer mostly matters
+ * during idle periods (an open app with nothing happening) where nothing
+ * else would otherwise notice a dropped connection for a while.
+ */
+function startServerHealthCheck() {
+    stopServerHealthCheck();
+    serverHealthCheckTimer = setInterval(async () => {
+        if (!serverUrl || !serverToken) {
+            return;
+        }
+        try {
+            await fetchJson(`${serverUrl}/api/rpc`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${serverToken}`
+                },
+                body: JSON.stringify({
+                    target: 'config',
+                    method: 'getString',
+                    args: ['lastUserLoggedIn', '']
+                })
+            });
+            // Any real HTTP response (even a 401) means the server was
+            // reachable — only a network-level failure below means it wasn't.
+            setServerReachable(true);
+        } catch {
+            setServerReachable(false);
+        }
+    }, HEALTH_CHECK_INTERVAL_MS);
+}
+
+function stopServerHealthCheck() {
+    if (serverHealthCheckTimer) {
+        clearInterval(serverHealthCheckTimer);
+        serverHealthCheckTimer = null;
+    }
+}
+
 function connectAgentSocket() {
     if (agentReconnectTimer) {
         clearTimeout(agentReconnectTimer);
@@ -297,19 +381,174 @@ async function refreshServerSession() {
 }
 
 /**
+ * @param {string} url
+ * @returns {string}
+ */
+function serverLabel(url) {
+    try {
+        return new URL(url).host;
+    } catch {
+        return url;
+    }
+}
+
+/**
+ * Reads `VRCX_Servers` into `servers`. Migrates the old flat
+ * `VRCX_ServerUrl`/`VRCX_ServerToken` keys into a single-entry array (marked
+ * default) if `VRCX_Servers` doesn't exist yet — the legacy keys are left
+ * alone afterward rather than deleted, since removing them buys nothing and
+ * a read-only migration should stay exactly that.
+ */
+function loadServers() {
+    const raw = VRCXStorage.Get('VRCX_Servers');
+    if (raw) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                servers = parsed;
+                return;
+            }
+        } catch {
+            // Corrupt value — fall through to the legacy-key migration
+            // below rather than crashing the whole app over a bad string.
+        }
+    }
+    const legacyUrl = VRCXStorage.Get('VRCX_ServerUrl');
+    const legacyToken = VRCXStorage.Get('VRCX_ServerToken');
+    if (legacyUrl && legacyToken) {
+        servers = [
+            {
+                url: legacyUrl,
+                token: legacyToken,
+                label: serverLabel(legacyUrl),
+                isDefault: true
+            }
+        ];
+        saveServers();
+        return;
+    }
+    servers = [];
+}
+
+function saveServers() {
+    VRCXStorage.Set('VRCX_Servers', JSON.stringify(servers));
+    VRCXStorage.Save();
+}
+
+/**
+ * @returns {{url: string, token: string, label: string, isDefault: boolean} | null}
+ */
+function getDefaultServer() {
+    return servers.find((s) => s.isDefault) ?? servers[0] ?? null;
+}
+
+/**
+ * Adds or updates a server entry and persists the whole list.
+ * `completeSession()` calls this on every login/refresh, so `isDefault`
+ * left `undefined` (not `false`) is what "don't touch the existing default
+ * flag" means here — an ordinary token refresh must not silently un-default
+ * whatever was already the default just because it happened to refresh
+ * first. The very first server ever added still becomes default
+ * automatically (`servers.length === 0` at insert time).
+ * @param {string} url
+ * @param {string} token
+ * @param {{isDefault?: boolean}} [options]
+ */
+function upsertServer(url, token, { isDefault } = {}) {
+    const existing = servers.find((s) => s.url === url);
+    if (existing) {
+        existing.token = token;
+        if (isDefault !== undefined) {
+            existing.isDefault = isDefault;
+        }
+    } else {
+        servers.push({
+            url,
+            token,
+            label: serverLabel(url),
+            isDefault: isDefault ?? servers.length === 0
+        });
+    }
+    if (isDefault) {
+        for (const s of servers) {
+            if (s.url !== url) {
+                s.isDefault = false;
+            }
+        }
+    }
+    saveServers();
+}
+
+/**
+ * Refuses to remove the currently-active server — the renderer's own UI is
+ * expected to check `active` (from `vrcx-list-servers`) and disable that
+ * row, this is the backstop. Best-effort `/api/logout` for the removed
+ * entry's own token; failures are swallowed since the entry is being
+ * deleted either way and there's no meaningful recovery action if the
+ * server itself can't be reached to log out of.
+ * @param {string} url
+ * @returns {Promise<{ok: true} | {ok: false, error: string}>}
+ */
+async function removeServer(url) {
+    if (url === serverUrl) {
+        return { ok: false, error: 'Switch away from this server first.' };
+    }
+    const target = servers.find((s) => s.url === url);
+    if (!target) {
+        return { ok: false, error: 'Unknown server.' };
+    }
+    try {
+        await fetchJson(`${url}/api/logout`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${target.token}`
+            },
+            body: '{}'
+        });
+    } catch {
+        // Best-effort — see doc comment above.
+    }
+    const wasDefault = target.isDefault;
+    servers = servers.filter((s) => s.url !== url);
+    if (wasDefault && servers.length > 0) {
+        servers[0].isDefault = true;
+    }
+    saveServers();
+    return { ok: true };
+}
+
+/**
+ * @param {string} url
+ * @returns {boolean} whether a matching server was found
+ */
+function setDefaultServer(url) {
+    let found = false;
+    for (const s of servers) {
+        s.isDefault = s.url === url;
+        found ||= s.isDefault;
+    }
+    if (found) {
+        saveServers();
+    }
+    return found;
+}
+
+/**
  * Shared by `connectToServer` and `confirmTotpSetup` — both end with "we
  * have a fresh session token for this server, remember it and open the
- * agent channel."
+ * agent channel." Also the write path for `servers` (§ above) — every
+ * successful login/refresh keeps that list's copy of this server's token
+ * in sync, not just the active `serverUrl`/`serverToken` cache.
  * @param {string} normalizedUrl
  * @param {string} token
  */
 function completeSession(normalizedUrl, token) {
     serverUrl = normalizedUrl;
     serverToken = token;
-    VRCXStorage.Set('VRCX_ServerUrl', serverUrl);
-    VRCXStorage.Set('VRCX_ServerToken', serverToken);
-    VRCXStorage.Save();
+    upsertServer(normalizedUrl, token);
     connectAgentSocket();
+    startServerHealthCheck();
 }
 
 /**
@@ -411,13 +650,6 @@ ipcMain.handle('vrcx-connect-server', async (_event, url, code) => {
     return result;
 });
 
-// Lets client-desktop/setup.js pre-fill the URL step with what's already
-// stored (VRCX_ServerUrl, read into `serverUrl` at startup) instead of
-// asking for it again on every `serve` restart — sessions are
-// process-lifetime only (phase 3), so this screen reappears often, but the
-// server address itself rarely changes.
-ipcMain.handle('vrcx-get-stored-server-url', () => serverUrl);
-
 ipcMain.handle('vrcx-totp-setup', async (_event, url) => {
     try {
         return { ok: true, ...(await checkTotpSetupNeeded(url)) };
@@ -433,6 +665,83 @@ ipcMain.handle('vrcx-totp-confirm', async (_event, url, secret, code) => {
     }
     return result;
 });
+
+// #region | Multi-server: list/switch/remove/default, for
+// src/components/HeadlessServerStatus.vue's post-auth server-switcher
+// panel. Adding a *new* server reuses vrcx-connect-server/vrcx-totp-confirm
+// above as-is — completeSession() already upserts into `servers`, and
+// loadRealApp()'s fresh page load is exactly the "start clean" a
+// newly-added server needs too, no separate handler required for that half.
+
+ipcMain.handle('vrcx-list-servers', () =>
+    servers.map(({ url, label, isDefault }) => ({
+        url,
+        label,
+        isDefault,
+        active: url === serverUrl
+    }))
+);
+
+/**
+ * Re-activates an already-paired server without asking for a fresh TOTP
+ * code — the stored token from a previous pairing is used directly,
+ * validated via the same `/api/session/refresh` call `refreshServerSession`
+ * makes for the active connection, just scoped to a specific stored entry.
+ * Switching also makes the target the new default: the natural reading of
+ * "switch servers" is "this is what I want running", including on the next
+ * launch — `vrcx-set-default-server` below is for the rarer case of
+ * designating a future default without switching to it right now.
+ */
+ipcMain.handle('vrcx-switch-server', async (_event, url) => {
+    const target = servers.find((s) => s.url === url);
+    if (!target) {
+        return { ok: false, error: 'Unknown server.' };
+    }
+    let response;
+    try {
+        response = await fetchJson(`${target.url}/api/session/refresh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${target.token}`
+            },
+            body: '{}'
+        });
+    } catch (err) {
+        return {
+            ok: false,
+            error: `Could not reach ${target.url}: ${err.message}`
+        };
+    }
+    if (response.status !== 200 || !response.body?.ok || !response.body.token) {
+        return {
+            ok: false,
+            error: 'The stored session for that server is no longer valid — remove it and pair again.'
+        };
+    }
+    target.token = response.body.token;
+    setDefaultServer(url);
+    restartApp();
+    return { ok: true };
+});
+
+ipcMain.handle('vrcx-remove-server', (_event, url) => removeServer(url));
+
+ipcMain.handle('vrcx-set-default-server', (_event, url) => {
+    const ok = setDefaultServer(url);
+    return ok ? { ok: true } : { ok: false, error: 'Unknown server.' };
+});
+
+ipcMain.handle('vrcx-get-server-status', () => {
+    const active = servers.find((s) => s.url === serverUrl);
+    return {
+        url: serverUrl,
+        label: active?.label ?? (serverUrl ? serverLabel(serverUrl) : null),
+        reachable: serverReachable
+    };
+});
+
+// #endregion
 
 ipcMain.handle('vrcx-rpc', async (_event, target, method, args) => {
     if (!serverUrl || !serverToken) {
@@ -450,6 +759,9 @@ ipcMain.handle('vrcx-rpc', async (_event, target, method, args) => {
                 body: JSON.stringify({ target, method, args })
             }
         );
+        // A real HTTP response — even a 401 — means the server itself was
+        // reachable; only the network-level catch below means it wasn't.
+        setServerReachable(true);
         if (httpStatus === 401) {
             return {
                 ok: false,
@@ -460,6 +772,7 @@ ipcMain.handle('vrcx-rpc', async (_event, target, method, args) => {
             body ?? { ok: false, error: `Unexpected response (${httpStatus})` }
         );
     } catch (err) {
+        setServerReachable(false);
         return { ok: false, error: err?.message ?? String(err) };
     }
 });
@@ -556,7 +869,14 @@ ipcMain.handle('notification:showNotification', (event, title, body, icon) => {
     notification.show();
 });
 
-ipcMain.handle('app:restart', () => {
+/**
+ * Extracted so `vrcx-switch-server` (below) can trigger the exact same
+ * clean relaunch the renderer's own "restart VRCX" action already uses —
+ * switching servers needs every Pinia store to start fresh against the
+ * new one rather than trying to hot-swap already-populated reactive
+ * state, and a full relaunch is the simplest way to guarantee that.
+ */
+function restartApp() {
     if (process.platform === 'linux') {
         const options = {
             execPath: process.execPath,
@@ -575,6 +895,10 @@ ipcMain.handle('app:restart', () => {
         app.relaunch();
         app.quit();
     }
+}
+
+ipcMain.handle('app:restart', () => {
+    restartApp();
 });
 
 ipcMain.handle('app:getOverlayWindow', () => {
@@ -708,12 +1032,24 @@ function createWindow() {
     // completeSession() (called inside refreshServerSession() on success)
     // already opens the agent socket, so there's nothing left to do here
     // beyond loading the real app.
-    serverUrl = VRCXStorage.Get('VRCX_ServerUrl') || null;
-    serverToken = VRCXStorage.Get('VRCX_ServerToken') || null;
+    //
+    // Reads the *default* entry from the multi-server list, not a flat
+    // single-server key — loadServers() also handles migrating an older
+    // install's VRCX_ServerUrl/VRCX_ServerToken into that list the first
+    // time it runs.
+    loadServers();
+    const defaultServer = getDefaultServer();
+    serverUrl = defaultServer?.url ?? null;
+    serverToken = defaultServer?.token ?? null;
     refreshServerSession().then((connected) => {
         if (connected) {
             loadRealApp();
         } else {
+            // The default server specifically failed — if there's at
+            // least one *other* stored server, client-desktop/setup.js's
+            // own multi-server picker (fed by vrcx-list-servers) surfaces
+            // it immediately instead of only offering a bare URL field for
+            // a server already known not to be working right now.
             loadServerSetup();
         }
     });

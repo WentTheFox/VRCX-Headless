@@ -18,9 +18,28 @@
  * VRCX.sqlite3, don't run both at once" warning already covers by
  * documentation; this closes the half of the risk this fork's own code can
  * actually enforce.
+ *
+ * Staleness used to be checked by pid liveness alone (`kill(pid, 0)`), which
+ * is unsound the moment a container is involved: if `serve` is SIGKILLed,
+ * OOM-killed, or the host loses power instead of exiting cleanly (so
+ * `installLockReleaseOnExit`'s handler never runs), the lockfile survives on
+ * the bind-mounted data volume with the old container's pid in it — and a
+ * fresh container gets its own, separately-numbered-from-zero pid namespace
+ * where pid 1 (or whatever pid got reused) is *always* alive, being that
+ * container's own main process. `kill(pid, 0)` has no way to tell "the
+ * numerically same pid, but a completely different process" from "still the
+ * same process" across that boundary, so the lock looked permanently held —
+ * found via a real homelab deployment hitting exactly this after a restart.
+ * Fixed by additionally recording each pid's `/proc/<pid>/stat` start-time
+ * field (`readProcStartTime`) when the lock is written, and requiring it to
+ * still match, when available, before trusting a `kill`-alive pid as the
+ * lock's real owner — start time is stable for a process's whole lifetime
+ * and, unlike a container's own uptime, measured against the shared host
+ * kernel's boot clock, so it stays meaningful across a container restart.
  */
 import {
     closeSync,
+    existsSync,
     openSync,
     readFileSync,
     unlinkSync,
@@ -35,11 +54,80 @@ function lockPathFor(databasePath) {
     return `${databasePath}.lock`;
 }
 
+/** @type {boolean | undefined} */
+let procAvailable;
+
+/**
+ * @returns {boolean} whether `/proc/<pid>/stat` is readable at all on this
+ *   platform — checked once via `/proc/self`, which always resolves for
+ *   *this* process if procfs exists at all, regardless of which pid a
+ *   later call asks about
+ */
+function isProcAvailable() {
+    if (procAvailable === undefined) {
+        procAvailable = existsSync('/proc/self/stat');
+    }
+    return procAvailable;
+}
+
+/**
+ * A process's start-time field from `/proc/<pid>/stat` (field 22 — see
+ * `man proc`), used as a PID-reuse-proof identity check: unlike the pid
+ * itself, this is stable for a given process's whole lifetime and — because
+ * it's measured against the *host* kernel's boot clock, not any container's
+ * own uptime — stays meaningful across a container restart even though
+ * containers get a fresh, reused-from-zero PID namespace each time.
+ * `comm` (field 2) is parenthesized and may itself contain spaces/parens,
+ * so fields are read from the *last* `)` rather than by splitting on the
+ * first space.
+ * @param {number} pid
+ * @returns {string | null | undefined} the start-time field; `null` if
+ *   `/proc` says no such process exists right now; `undefined` if that
+ *   can't be determined (no procfs on this platform, or some other read
+ *   error) — callers should fall back to a plain `kill(pid, 0)` probe
+ */
+function readProcStartTime(pid) {
+    if (!isProcAvailable()) {
+        return undefined;
+    }
+    let stat;
+    try {
+        stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+    } catch (err) {
+        return err.code === 'ENOENT' ? null : undefined;
+    }
+    try {
+        const afterComm = stat.slice(stat.lastIndexOf(')') + 2);
+        const fields = afterComm.trim().split(' ');
+        return fields[19] ?? undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
  * @param {number} pid
- * @returns {boolean} whether a process with this pid is currently alive
+ * @param {string | null} [procStart] the start-time this pid is *expected*
+ *   to have, as recorded when the lock was written — when both this and the
+ *   pid's *current* start time are available, a mismatch means the pid was
+ *   reused by an unrelated process (the bug this whole check exists for:
+ *   fresh containers commonly reuse pid 1 for their main process, so a lock
+ *   left behind by a process that was SIGKILLed/OOM-killed/power-lost
+ *   instead of exiting cleanly would otherwise look permanently "still
+ *   held" on every subsequent container start). Falls back to a plain
+ *   `kill(pid, 0)` probe — the only check this file had before — whenever
+ *   `/proc` isn't available or the lock predates this field.
+ * @returns {boolean} whether the process that (was supposed to have)
+ *   written the lock is still alive
  */
-function isProcessAlive(pid) {
+function isProcessAlive(pid, procStart) {
+    const currentStart = readProcStartTime(pid);
+    if (currentStart === null) {
+        return false;
+    }
+    if (currentStart !== undefined && procStart != null) {
+        return currentStart === procStart;
+    }
     try {
         // Signal 0 sends nothing; it only probes whether the process
         // exists and is signalable. ESRCH = gone, EPERM = alive but owned
@@ -54,8 +142,9 @@ function isProcessAlive(pid) {
 
 /**
  * @param {string} lockPath
- * @returns {{ pid: number, startedAt: string } | null} `null` if the file
- *   is missing or unparsable (treated as no real lock either way)
+ * @returns {{ pid: number, startedAt: string, procStart?: string | null } | null}
+ *   `null` if the file is missing or unparsable (treated as no real lock
+ *   either way)
  */
 function readLockFile(lockPath) {
     try {
@@ -75,7 +164,7 @@ function readLockFile(lockPath) {
  */
 export function isLocked(databasePath) {
     const existing = readLockFile(lockPathFor(databasePath));
-    if (existing && isProcessAlive(existing.pid)) {
+    if (existing && isProcessAlive(existing.pid, existing.procStart)) {
         return { locked: true, pid: existing.pid };
     }
     return { locked: false };
@@ -100,7 +189,8 @@ export function acquireLock(databasePath) {
                 fd,
                 JSON.stringify({
                     pid: process.pid,
-                    startedAt: new Date().toISOString()
+                    startedAt: new Date().toISOString(),
+                    procStart: readProcStartTime(process.pid) ?? null
                 })
             );
             closeSync(fd);
@@ -110,7 +200,7 @@ export function acquireLock(databasePath) {
                 throw err;
             }
             const existing = readLockFile(lockPath);
-            if (existing && isProcessAlive(existing.pid)) {
+            if (existing && isProcessAlive(existing.pid, existing.procStart)) {
                 throw new Error(
                     `Another process already has ${databasePath} open (pid ${existing.pid}). ` +
                         'Only one `serve`/`pipeline` can run against a database at a time.',

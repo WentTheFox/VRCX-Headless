@@ -3218,6 +3218,26 @@
         "clocks_label": "Clocks",
         "clocks_none": "None",
         "timezone": "Timezone",
-        "now_playing": "Now Playing"
+        "now_playing": "Now Playing",
+        "headless": "Headless",
+        "headless_servers": "Headless Servers",
+        "headless_reachable": "Reachable",
+        "headless_unreachable": "Unreachable",
+        "headless_none": "No servers saved yet.",
+        "headless_add": "Add server",
+        "headless_set_default": "Set default",
+        "headless_switch": "Switch",
+        "headless_switch_confirm": "Switch to {url}? The app will restart to reload against it.",
+        "headless_switch_failed": "Could not switch servers.",
+        "headless_remove": "Remove",
+        "headless_remove_confirm": "Remove {url}? You'll need to pair with it again to reconnect.",
+        "headless_cancel": "Cancel",
+        "headless_continue": "Continue",
+        "headless_confirm": "Confirm",
+        "headless_connect": "Connect",
+        "headless_scan": "Scan this with a 2FA app, then enter the current code to confirm.",
+        "headless_url_required": "Server URL is required.",
+        "headless_connect_failed": "Could not connect.",
+        "headless_code_mismatch": "That code didn't match."
     }
 }

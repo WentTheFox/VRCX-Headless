@@ -91,6 +91,55 @@ describe('acquireLock / releaseLock', () => {
         writeFileSync(`${databasePath}.lock`, 'not json at all');
         expect(() => acquireLock(databasePath)).not.toThrow();
     });
+
+    it('writes procStart alongside pid/startedAt', () => {
+        acquireLock(databasePath);
+        const contents = JSON.parse(
+            readFileSync(`${databasePath}.lock`, 'utf8')
+        );
+        // null on a platform without /proc (procStart stays a graceful
+        // no-op there — see isProcessAlive's kill-based fallback), a
+        // non-empty string on Linux.
+        expect(
+            contents.procStart === null ||
+                typeof contents.procStart === 'string'
+        ).toBe(true);
+    });
+
+    it('reclaims a lock whose pid was reused by an unrelated process (the container-restart bug)', () => {
+        // Reproduces a real deployment failure: serve is SIGKILLed/OOM-killed
+        // instead of exiting cleanly, so the lockfile survives on the
+        // bind-mounted data volume with the old container's pid. A fresh
+        // container gets its own pid namespace, and its own main process
+        // can easily land on the exact same pid (most commonly pid 1) —
+        // which a plain kill(pid, 0) can't distinguish from "still the same
+        // process". Simulated here by claiming our own (definitely alive)
+        // pid, but with a procStart that cannot possibly match our real one.
+        writeFileSync(
+            `${databasePath}.lock`,
+            JSON.stringify({
+                pid: process.pid,
+                startedAt: new Date().toISOString(),
+                procStart: 'not-our-actual-start-time'
+            })
+        );
+        expect(() => acquireLock(databasePath)).not.toThrow();
+        const contents = JSON.parse(
+            readFileSync(`${databasePath}.lock`, 'utf8')
+        );
+        expect(contents.pid).toBe(process.pid);
+    });
+
+    it('still refuses when pid and procStart both genuinely match the current process', () => {
+        acquireLock(databasePath);
+        const held = JSON.parse(readFileSync(`${databasePath}.lock`, 'utf8'));
+        releaseLock(databasePath);
+        // Re-seed the exact lock our own acquire just wrote (same pid, same
+        // real procStart) to simulate re-checking against a still-live
+        // holder rather than relying on acquireLock's own write.
+        writeFileSync(`${databasePath}.lock`, JSON.stringify(held));
+        expect(() => acquireLock(databasePath)).toThrow(/already has/i);
+    });
 });
 
 describe('isLocked', () => {
