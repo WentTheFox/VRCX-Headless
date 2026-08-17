@@ -16,12 +16,34 @@
 import { rpcCall } from './rpc-client.js';
 
 class ClientConfigRepository {
-    #cache = new Map();
+    // Found live: a naive single-value-per-key cache is wrong whenever the
+    // same key is read with two different `defaultValue`s (real case —
+    // src/stores/auth.js:127 reads `lastUserLoggedIn` with default `''` at
+    // store setup, then autoLoginAfterMounted() at src/stores/auth.js:207
+    // reads the *same* key with the implicit default `null` to ask "does
+    // this key exist at all?"). A key-only cache serves the second call the
+    // first call's `''`, so `!== null` is wrongly true on a database that
+    // has never had a user log in, and auto-login proceeds to call
+    // getCurrentUser() against a session with no cookies — a pointless
+    // 401 "Missing Credentials", not a real error. The real (unaliased)
+    // configRepository has no such cache — every call independently asks
+    // SQLite with its own default — so this is a gap this shim introduced,
+    // not upstream behaviour to route around. `#variants` caches per
+    // (method, key, defaultValue) tuple, correct but only as cache-friendly
+    // as the caller's own defaults happen to agree; `#written` short-circuits
+    // that entirely once a real setX() has actually run for a key, since at
+    // that point the value is definitive regardless of what default some
+    // other call site asks for.
+    /** @type {Map<string, Map<string, any>>} */
+    #variants = new Map();
+    /** @type {Map<string, any>} */
+    #written = new Map();
 
     async init() {}
 
     async remove(key) {
-        this.#cache.delete(key);
+        this.#variants.delete(key);
+        this.#written.delete(key);
         await rpcCall('config', 'remove', [key]);
     }
 
@@ -79,9 +101,16 @@ class ClientConfigRepository {
      * @param {any} defaultValue
      */
     async #get(method, key, defaultValue) {
-        if (this.#cache.has(key)) return this.#cache.get(key);
+        if (this.#written.has(key)) return this.#written.get(key);
+        const variant = `${method}:${JSON.stringify(defaultValue)}`;
+        let variants = this.#variants.get(key);
+        if (variants?.has(variant)) return variants.get(variant);
         const value = await rpcCall('config', method, [key, defaultValue]);
-        this.#cache.set(key, value);
+        if (!variants) {
+            variants = new Map();
+            this.#variants.set(key, variants);
+        }
+        variants.set(variant, value);
         return value;
     }
 
@@ -91,7 +120,11 @@ class ClientConfigRepository {
      * @param {any} value
      */
     async #set(method, key, value) {
-        this.#cache.set(key, value);
+        this.#written.set(key, value);
+        // Stale defaulted misses under the old value are no longer valid —
+        // the key definitely exists now, so #get's #written check above
+        // takes over regardless of what default a future call asks for.
+        this.#variants.delete(key);
         await rpcCall('config', method, [key, value]);
     }
 }

@@ -64,6 +64,18 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         if (isMacOS.value) {
             noUpdater.value = true;
         }
+        // Fork addition (VRCX-Headless): the headless server has no install
+        // flow this could ever act on, and unlike a real client build,
+        // nothing here ever sets `noUpdater` from a native `getNoUpdater()`
+        // call — left unguarded, this store's own self-invoked init (below)
+        // hits VRCX's update API on every server boot for nothing, logging a
+        // spurious "Failed to check for VRCX update" if that API is
+        // unreachable from wherever `serve` happens to be deployed.
+        // `HEADLESS` only ever exists as a real global on the server
+        // (server/src/globals.js) — undefined, hence falsy, everywhere else.
+        if (typeof HEADLESS !== 'undefined' && HEADLESS) {
+            noUpdater.value = true;
+        }
 
         const [VRCX_autoUpdateVRCX, VRCX_id] = await Promise.all([
             configRepository.getString('VRCX_autoUpdateVRCX', 'Auto Download'),

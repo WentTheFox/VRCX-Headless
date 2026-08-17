@@ -116,7 +116,19 @@ const IMPLEMENTED = {
     // other native VRCX instances over an IPC server — the same
     // no-other-instances-to-notify reasoning as the already-no-op
     // IPCAnnounceStart above, not a stand-in for a missing capability.
-    async SendIpc() {}
+    async SendIpc() {},
+    // Found live: called synchronously, unawaited, at the top of
+    // promptTOTP()/promptEmailOTP() (src/stores/auth.js) — the *whole*
+    // 2FA login flow, not just this one call. The Proxy's default fallback
+    // throws synchronously (it's not an async function), so with no entry
+    // here that throw aborted promptTOTP() before
+    // `twoFactorAuthDialogVisible.value = true` ever ran: any VRChat
+    // account with 2FA enabled couldn't log in via the web client at all.
+    // Same "native window-chrome concern, no browser-tab equivalent" as
+    // SetTrayIconNotification above — a no-op is the correct behaviour,
+    // not a stand-in for a missing capability, but unlike that one this
+    // was blocking a core flow rather than a background hint.
+    async FlashWindow() {}
 };
 
 export const appApiTarget = new Proxy(IMPLEMENTED, {
