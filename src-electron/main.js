@@ -962,6 +962,29 @@ ipcMain.handle('vrcx-get-ca-cert-status', () => {
     return { imported: fs.existsSync(customCaCertPath) };
 });
 
+/**
+ * Relays `GET /api/update-check` (`server/src/update-check.js`) the same
+ * way every other server-facing call here does — the renderer can't reach
+ * the server directly (CORS), so main.js does the authenticated fetch and
+ * hands back the JSON.
+ */
+ipcMain.handle('vrcx-check-update', async () => {
+    if (!serverUrl || !serverToken) {
+        return { ok: false };
+    }
+    try {
+        const { status: httpStatus, body } = await fetchJson(`${serverUrl}/api/update-check`, {
+            headers: { Authorization: `Bearer ${serverToken}` }
+        });
+        if (httpStatus !== 200 || !body?.ok) {
+            return { ok: false };
+        }
+        return { ok: true, result: body.result };
+    } catch {
+        return { ok: false };
+    }
+});
+
 ipcMain.handle('notification:showNotification', (_event, title, body, icon) => {
     if (activeNotification) {
         activeNotification.close();

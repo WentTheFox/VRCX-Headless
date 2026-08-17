@@ -36,6 +36,7 @@ import { log } from './log.js';
 import { pipelineRelay } from './pipeline-relay.js';
 import { repoRoot } from './globals.js';
 import { dispatchRpc } from './rpc.js';
+import { checkForUpdateSafe } from './update-check.js';
 import {
     generateTotpSecret,
     totpProvisioningUri,
@@ -534,6 +535,21 @@ async function handleRequest(handle, req, res, secure) {
         const body = await readJsonBody(req);
         const result = await dispatchRpc(handle, body);
         sendJson(res, 200, result);
+        return;
+    }
+
+    // Client-facing surface for update-check.js — see CLAUDE.md's "Server/
+    // Docker versioning" for what "a matching fork release" means. Best-
+    // effort (checkForUpdateSafe, not checkForUpdate): a GitHub API hiccup
+    // shouldn't turn into an error toast for every connected client just
+    // because the update banner couldn't refresh this time.
+    if (req.method === 'GET' && url.pathname === '/api/update-check') {
+        if (!(await validateSession(handle, readSessionToken(req)))) {
+            sendJson(res, 401, { ok: false, error: 'Not authenticated' });
+            return;
+        }
+        const result = await checkForUpdateSafe();
+        sendJson(res, 200, { ok: true, result });
         return;
     }
 

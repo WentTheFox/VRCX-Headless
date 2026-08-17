@@ -46,6 +46,7 @@ import {
     totpProvisioningUri,
     verifyTotpCode
 } from './totp.js';
+import { checkForUpdate } from './update-check.js';
 import { installWebApi } from './webapi-init.js';
 
 import { AppDebug } from '../../src/services/appConfig.js';
@@ -62,6 +63,12 @@ Database:
                         database's write lock, unless --force is given.
   tables               Print row counts for the main tables
   query <sql>          Run a read-only SQL query and print positional rows
+  check-update [--force] [--json]
+                        Check GitHub for a newer upstream VRCX release and
+                        whether this fork already has a matching release.
+                        Exits 1 specifically when a sync is needed and no
+                        fork release exists for it yet (not an error) —
+                        --force bypasses the 6h cache
 
 VRChat session:
   login                Log in to VRChat (prompts for credentials and 2FA)
@@ -312,6 +319,35 @@ async function main() {
         }
         handle.close();
         return 0;
+    }
+
+    if (command === 'check-update') {
+        const result = await checkForUpdate({ force: flags.force === true });
+        if (flags.json === true) {
+            console.log(JSON.stringify(result));
+        } else {
+            console.log(`current VRCX version : ${result.currentVrcxVersion}`);
+            console.log(`latest VRCX version  : ${result.latestVrcxVersion}`);
+            if (!result.vrcxUpdateAvailable) {
+                console.log('Up to date with upstream.');
+            } else if (result.forkReleaseAvailable) {
+                console.log(
+                    `Upstream update available — fork release already exists: ${result.forkReleaseTag}`
+                );
+            } else {
+                console.log(
+                    'Upstream update available — no matching fork release yet.'
+                );
+                console.log(`Open an issue: ${result.issueUrl}`);
+            }
+        }
+        // Non-zero specifically means "a sync is needed and nobody's cut a
+        // release for it yet" — not an error — so the scheduled CI workflow
+        // (task: daily check) can key off the exit code directly, the same
+        // way `git diff --exit-code` uses its own exit code as a signal.
+        return result.vrcxUpdateAvailable && !result.forkReleaseAvailable
+            ? 1
+            : 0;
     }
 
     if (command === 'login') {

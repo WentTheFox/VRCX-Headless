@@ -71,7 +71,8 @@ contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
     // asynchronously via onStreamEvent, not as this call's return value.
     streamConnect: () => ipcRenderer.send('vrcx-stream-connect'),
     streamClose: () => ipcRenderer.send('vrcx-stream-close'),
-    onStreamEvent: (callback) => registerManagedListener('vrcx-stream-event', (_event, evt) => callback(evt))
+    onStreamEvent: (callback) => registerManagedListener('vrcx-stream-event', (_event, evt) => callback(evt)),
+    checkForUpdate: () => ipcRenderer.invoke('vrcx-check-update')
 });
 
 const validChannels = ['launch-command'];
