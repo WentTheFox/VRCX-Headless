@@ -44,6 +44,38 @@ it's a separate download from the `dotnet build` step above, not something
 that step already produced. The result is an AppImage under `build/`
 (`VRCX_<version>_x64.AppImage` or the arm64 equivalent).
 
+## Windows
+
+The `PLATFORM=linux` build flag is historical, not descriptive — it means
+"the Electron client," as opposed to `PLATFORM=windows`'s **CefSharp**
+client, not "runs only on Linux." The Electron shell and its headless-server
+connection code are plain cross-platform Node/Chromium and run on Windows
+the same way. Live-verified on Windows (2026-08-17): server connection
+(including importing a self-signed CA cert from the connection screen, for
+a server with an OS-trusted-but-not-Node-trusted cert — see `CLAUDE.md`'s
+`vrcx-import-ca-cert` note if you hit `fetch failed` on a self-hosted
+server), VRChat autodetect/launch, the `/api/stream` pipeline relay, and
+local-machine polling (game running, SteamVR, GameLog tailing) all work —
+see `CLAUDE.md`'s "Desktop client OS support" table (§1) for exactly which
+native capabilities are and aren't OS-branched yet.
+
+Steps 1–2 above are unchanged on Windows (`dotnet build` needs no
+Windows-specific flags; `npm run prod-linux` still means "build for the
+Electron client," not "for Linux"). What's verified is running the result
+directly, not a packaged installer:
+
+```powershell
+npm run prod-linux
+& .\node_modules\.bin\electron.exe .
+```
+
+**Packaging a Windows installer (`npm run build-electron`) is untested** —
+`package.json`'s electron-builder config has a `linux` block and a `mac`
+block but no `win` block yet, so this would fall back to electron-builder's
+own defaults rather than something this fork has configured or verified.
+Treat that as an open gap, not a documented path, until someone builds and
+smoke-tests one.
+
 ## First run
 
 There is no bundled server and no same-origin default — phase 5's "always
