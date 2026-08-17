@@ -112,6 +112,20 @@ jobs:
             # on at least one real Linux desktop this was tested against);
             # `xvfb-run` supplies the real X11 display Electron's GTK init
             # needs, which is what most packaging mistakes break.
+            #
+            # `--x11` is required here, not optional: without it, main.js's
+            # own top-level `tryRelaunchWithArgs()` (needed on a real desktop
+            # so `--ozone-platform-hint=auto` actually reaches Chromium
+            # before any GPU process spawns) exits this process almost
+            # immediately after spawning a *detached* relaunch child —
+            # `xvfb-run` sees its directly-wrapped command exit and tears
+            # down the virtual X server right as that detached child is
+            # still starting up and needs it, so the child dies with
+            # "Missing X server or $DISPLAY". `--x11` skips that whole
+            # relaunch dance and applies the ozone-platform switch directly
+            # on the one process xvfb-run is actually watching. Found live
+            # (2026-08-17): every run of this workflow since it was added
+            # failed on exactly this, unnoticed until now.
             - name: Smoke-test the AppImage boots
               run: |
                   set -euo pipefail
@@ -120,7 +134,7 @@ jobs:
                   chmod +x '${{ steps.appimage.outputs.path }}'
                   xvfb-run --auto-servernum -- \
                       timeout --signal=TERM 15s \
-                      '${{ steps.appimage.outputs.path }}' --appimage-extract-and-run --no-sandbox --disable-gpu \
+                      '${{ steps.appimage.outputs.path }}' --appimage-extract-and-run --x11 --no-sandbox --disable-gpu \
                       > appimage-boot.log 2>&1 &
                   boot_pid=$!
                   sleep 10
