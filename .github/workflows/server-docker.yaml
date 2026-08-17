@@ -57,18 +57,24 @@ jobs:
             - uses: docker/setup-qemu-action@v3
             - uses: docker/setup-buildx-action@v3
 
-            # See CLAUDE.md's "Server/Docker versioning": server/VERSION is
-            # this fork's own release counter (bumped independently of an
-            # upstream sync, since a Docker release happens far more often
-            # than that); Version is upstream's own date-based tag, already
-            # tracked at the repo root for the Electron build. A tag push
-            # (`git tag vX.Y.Z`) is what's expected to have bumped the
-            # former — this step doesn't enforce that, it just reads
-            # whatever's currently committed.
+            # See CLAUDE.md's "Server/Docker versioning": the release
+            # version is real semver with the VRCX base as the *major*
+            # component — <vrcx-date-no-dots>.<fork-build>.0, e.g.
+            # 20260718.1.0 — computed here the same way
+            # server/src/globals.js's buildServerVersion() does. `fork`
+            # (server/VERSION) is this fork's own release counter, reset to
+            # 1 on each upstream sync; `vrcx` (the repo-root Version file)
+            # is upstream's own date-based tag. A tag push
+            # (`git tag v<vrcx-no-dots>.<fork>.0`) is what's expected to
+            # have bumped server/VERSION to match — this step doesn't
+            # enforce that, it just reads whatever's currently committed.
             - id: version
               run: |
-                  echo "fork=$(cat server/VERSION)" >> "$GITHUB_OUTPUT"
-                  echo "vrcx=$(cat Version)" >> "$GITHUB_OUTPUT"
+                  vrcx=$(cat Version)
+                  fork=$(cat server/VERSION)
+                  echo "vrcx=$vrcx" >> "$GITHUB_OUTPUT"
+                  echo "fork=$fork" >> "$GITHUB_OUTPUT"
+                  echo "server_version=$(echo "$vrcx" | tr -d '.').$fork.0" >> "$GITHUB_OUTPUT"
 
             - id: meta
               uses: docker/metadata-action@v5
@@ -79,9 +85,9 @@ jobs:
                       type=ref,event=pr
                       type=semver,pattern={{version}}
                       type=semver,pattern={{major}}.{{minor}}
+                      type=semver,pattern={{major}}
                       type=sha,format=short
                       type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-                      type=raw,value=vrcx-${{ steps.version.outputs.vrcx }}
 
             # Build the native-arch image first and load it into the local
             # daemon, so the container is proven to actually boot before
@@ -96,8 +102,7 @@ jobs:
                   load: true
                   tags: vrcx-headless-server:smoke
                   build-args: |
-                      FORK_VERSION=${{ steps.version.outputs.fork }}
-                      VRCX_VERSION=${{ steps.version.outputs.vrcx }}
+                      SERVER_VERSION=${{ steps.version.outputs.server_version }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
@@ -107,7 +112,7 @@ jobs:
                   docker run --rm vrcx-headless-server:smoke migrate --create
                   docker run --rm vrcx-headless-server:smoke --help
                   label=$(docker inspect -f '{{ index .Config.Labels "org.opencontainers.image.version" }}' vrcx-headless-server:smoke)
-                  expected="${{ steps.version.outputs.fork }}+vrcx.${{ steps.version.outputs.vrcx }}"
+                  expected="${{ steps.version.outputs.server_version }}"
                   if [ "$label" != "$expected" ]; then
                       echo "version label mismatch: got '$label', expected '$expected'" >&2
                       exit 1
@@ -180,7 +185,6 @@ jobs:
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
                   build-args: |
-                      FORK_VERSION=${{ steps.version.outputs.fork }}
-                      VRCX_VERSION=${{ steps.version.outputs.vrcx }}
+                      SERVER_VERSION=${{ steps.version.outputs.server_version }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max

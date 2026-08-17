@@ -86,19 +86,19 @@ RUN npm run prod-web
 # ---- runtime ----------------------------------------------------------------
 FROM node:24-alpine AS runtime
 
-# CI passes both as --build-arg, read from server/VERSION and the repo-root
-# Version file respectively (see .github/workflows/server-docker.yaml and
-# CLAUDE.md's "Server/Docker versioning"). Defaults only apply to a manual
-# `docker build` that didn't pass them — server/src/cli.js's `info` command
-# is the actual source of truth for a running container's own idea of this.
-ARG FORK_VERSION=0.0.0-unset
-ARG VRCX_VERSION=unknown
+# CI computes this the same way server/src/globals.js's buildServerVersion()
+# does (VRCX date, dots stripped, as the semver major) and passes it as a
+# single --build-arg — see .github/workflows/server-docker.yaml and
+# CLAUDE.md's "Server/Docker versioning". The default only applies to a
+# manual `docker build` that didn't pass it — `... info` is the actual
+# source of truth for a running container's own idea of this.
+ARG SERVER_VERSION=0.0.0-unset
 
 LABEL org.opencontainers.image.title="VRCX Headless Server"
 LABEL org.opencontainers.image.description="Headless VRCX server: owns VRCX.sqlite3 and the VRChat API connection"
 LABEL org.opencontainers.image.source="https://github.com/WentTheFox/VRCX-Headless"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.version="${FORK_VERSION}+vrcx.${VRCX_VERSION}"
+LABEL org.opencontainers.image.version="${SERVER_VERSION}"
 
 WORKDIR /app
 

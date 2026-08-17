@@ -15,7 +15,12 @@ import { readFileSync } from 'node:fs';
 
 import { mountHeadlessApp } from './app.js';
 import { migrate, openDatabase, readTargetDatabaseVersion } from './db.js';
-import { buildUserAgent, readForkVersion, readVersion } from './globals.js';
+import {
+    buildServerVersion,
+    buildUserAgent,
+    readForkVersion,
+    readVersion
+} from './globals.js';
 import { installGroupInstanceRelay } from './group-instance-relay.js';
 import { setServerTotp } from './http-auth.js';
 import { createHttpServer } from './http-server.js';
@@ -230,7 +235,7 @@ async function main() {
         console.log(`logged in as       : ${lastUser || '(nobody)'}`);
         console.log(`user agent         : ${buildUserAgent(readVersion())}`);
         console.log(
-            `server version     : ${readForkVersion()}+vrcx.${readVersion()}`
+            `server version     : ${buildServerVersion(readForkVersion(), readVersion())} (vrcx ${readVersion()})`
         );
         handle.close();
         return 0;
