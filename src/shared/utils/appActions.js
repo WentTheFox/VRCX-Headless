@@ -16,9 +16,7 @@ function downloadAndSaveJson(fileName, data) {
         const link = document.createElement('a');
         link.setAttribute(
             'href',
-            `data:application/json;charset=utf-8,${encodeURIComponent(
-                JSON.stringify(data, null, 2)
-            )}`
+            `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`
         );
         link.setAttribute('download', `${fileName}.json`);
         document.body.appendChild(link);
@@ -93,10 +91,4 @@ function openFolderGeneric(path) {
     AppApi.OpenFolderAndSelectItem(path, true);
 }
 
-export {
-    downloadAndSaveJson,
-    copyToClipboard,
-    openExternalLink,
-    openDiscordProfile,
-    openFolderGeneric
-};
+export { downloadAndSaveJson, copyToClipboard, openExternalLink, openDiscordProfile, openFolderGeneric };

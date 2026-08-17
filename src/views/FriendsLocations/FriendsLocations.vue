@@ -84,15 +84,10 @@
         <div v-if="settingsReady" ref="scrollbarRef" class="friend-view__scroll">
             <div v-if="virtualRows.length" class="friend-view__virtual" :style="virtualListStyle">
                 <template v-for="row in virtualRows" :key="row.key">
-                    <div
-                        class="friend-view__virtual-row"
-                        :class="`friend-view__virtual-row--${row.type}`">
+                    <div class="friend-view__virtual-row" :class="`friend-view__virtual-row--${row.type}`">
                         <template v-if="row.type === 'header'">
                             <header class="friend-view__instance-header">
-                                <Location
-                                    class="text-xs"
-                                    :location="getRowInstanceId(row)"
-                                    style="display: inline" />
+                                <Location class="text-xs" :location="getRowInstanceId(row)" style="display: inline" />
                                 <span class="friend-view__instance-count">({{ getRowCount(row) }})</span>
                             </header>
                         </template>

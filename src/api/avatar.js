@@ -51,10 +51,7 @@ const avatarReq = {
                 queryKey: queryKeys.avatar(params.id),
                 nextData: args
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh avatar query after mutation:',
-                    err
-                );
+                console.error('Failed to refresh avatar query after mutation:', err);
             });
             return args;
         });
@@ -82,10 +79,7 @@ const avatarReq = {
                     ref
                 }
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh current user query after avatar select:',
-                    err
-                );
+                console.error('Failed to refresh current user query after avatar select:', err);
             });
             return args;
         });
@@ -113,10 +107,7 @@ const avatarReq = {
                     ref
                 }
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh current user query after fallback avatar select:',
-                    err
-                );
+                console.error('Failed to refresh current user query after fallback avatar select:', err);
             });
             return args;
         });

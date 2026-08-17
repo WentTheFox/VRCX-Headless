@@ -1,9 +1,5 @@
 import { useFavoriteStore, useUserStore } from '../stores';
-import {
-    handleFavoriteAdd,
-    handleFavoriteDelete,
-    handleFavoriteGroupClear
-} from '../coordinators/favoriteCoordinator';
+import { handleFavoriteAdd, handleFavoriteDelete, handleFavoriteGroupClear } from '../coordinators/favoriteCoordinator';
 import { queryClient } from '../queries';
 import { request } from '../services/request';
 
@@ -115,13 +111,10 @@ const favoriteReq = {
      * @returns { Promise<{json: any, params}> }
      */
     saveFavoriteGroup(params) {
-        return request(
-            `favorite/group/${params.type}/${params.group}/${getCurrentUserId()}`,
-            {
-                method: 'PUT',
-                params
-            }
-        ).then((json) => {
+        return request(`favorite/group/${params.type}/${params.group}/${getCurrentUserId()}`, {
+            method: 'PUT',
+            params
+        }).then((json) => {
             const args = {
                 json,
                 params
@@ -139,13 +132,10 @@ const favoriteReq = {
      * @returns { Promise<{json: any, params}> }
      */
     clearFavoriteGroup(params) {
-        return request(
-            `favorite/group/${params.type}/${params.group}/${getCurrentUserId()}`,
-            {
-                method: 'DELETE',
-                params
-            }
-        ).then((json) => {
+        return request(`favorite/group/${params.type}/${params.group}/${getCurrentUserId()}`, {
+            method: 'DELETE',
+            params
+        }).then((json) => {
             const args = {
                 json,
                 params

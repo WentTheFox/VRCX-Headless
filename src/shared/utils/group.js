@@ -12,8 +12,7 @@ function hasGroupPermission(ref, permission) {
         ref &&
         ref.myMember &&
         ref.myMember.permissions &&
-        (ref.myMember.permissions.includes('*') ||
-            ref.myMember.permissions.includes(permission))
+        (ref.myMember.permissions.includes('*') || ref.myMember.permissions.includes(permission))
     ) {
         return true;
     }

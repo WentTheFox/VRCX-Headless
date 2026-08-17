@@ -29,9 +29,7 @@ function normalizeReleaseVersion(version) {
     const normalizedVersion = String(version || '')
         .replace(/^VRCX\s+/, '')
         .trim();
-    return /^\d{4}\.\d{2}\.\d{2}$/.test(normalizedVersion)
-        ? normalizedVersion
-        : '';
+    return /^\d{4}\.\d{2}\.\d{2}$/.test(normalizedVersion) ? normalizedVersion : '';
 }
 
 /**
@@ -73,9 +71,4 @@ function getLatestWhatsNewRelease() {
     return getWhatsNewRelease(latestVersion);
 }
 
-export {
-    getLatestWhatsNewRelease,
-    getWhatsNewRelease,
-    normalizeReleaseVersion,
-    whatsNewReleases
-};
+export { getLatestWhatsNewRelease, getWhatsNewRelease, normalizeReleaseVersion, whatsNewReleases };

@@ -33,10 +33,7 @@ const { WebSocket: WsClient } = require('ws');
  * @type {string}
  */
 const customCaCertPath = path.join(getVRCXPath(), 'custom-ca.pem');
-if (
-    fs.existsSync(customCaCertPath) &&
-    process.env.NODE_EXTRA_CA_CERTS !== customCaCertPath
-) {
+if (fs.existsSync(customCaCertPath) && process.env.NODE_EXTRA_CA_CERTS !== customCaCertPath) {
     process.env.NODE_EXTRA_CA_CERTS = customCaCertPath;
     app.relaunch();
     app.exit(0);
@@ -344,11 +341,7 @@ function connectAgentSocket() {
             return;
         }
         try {
-            const result = await interopApi.callMethod(
-                className,
-                methodName,
-                Array.isArray(args) ? args : []
-            );
+            const result = await interopApi.callMethod(className, methodName, Array.isArray(args) ? args : []);
             ws.send(JSON.stringify({ requestId, ok: true, result }));
         } catch (err) {
             ws.send(
@@ -409,9 +402,7 @@ ipcMain.on('vrcx-stream-connect', () => {
         }
     };
     ws.on('open', () => send({ type: 'open' }));
-    ws.on('message', (data) =>
-        send({ type: 'message', data: data.toString() })
-    );
+    ws.on('message', (data) => send({ type: 'message', data: data.toString() }));
     ws.on('close', (code, reason) => {
         send({ type: 'close', code, reason: reason?.toString() });
         if (streamSocket === ws) {
@@ -452,17 +443,14 @@ async function refreshServerSession() {
         return false;
     }
     try {
-        const { status: httpStatus, body } = await fetchJson(
-            `${serverUrl}/api/session/refresh`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${serverToken}`
-                },
-                body: '{}'
-            }
-        );
+        const { status: httpStatus, body } = await fetchJson(`${serverUrl}/api/session/refresh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${serverToken}`
+            },
+            body: '{}'
+        });
         if (httpStatus !== 200 || !body?.ok || !body.token) {
             return false;
         }
@@ -692,10 +680,7 @@ async function checkTotpSetupNeeded(url) {
         return { needed: false };
     }
     if (response.status !== 200 || !response.body?.ok) {
-        throw new Error(
-            response.body?.error ??
-                `Could not reach the server (${response.status})`
-        );
+        throw new Error(response.body?.error ?? `Could not reach the server (${response.status})`);
     }
     return {
         needed: true,
@@ -841,17 +826,14 @@ ipcMain.handle('vrcx-rpc', async (_event, target, method, args) => {
         return { ok: false, error: 'Not connected to a server' };
     }
     try {
-        const { status: httpStatus, body } = await fetchJson(
-            `${serverUrl}/api/rpc`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${serverToken}`
-                },
-                body: JSON.stringify({ target, method, args })
-            }
-        );
+        const { status: httpStatus, body } = await fetchJson(`${serverUrl}/api/rpc`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${serverToken}`
+            },
+            body: JSON.stringify({ target, method, args })
+        });
         // A real HTTP response — even a 401 — means the server itself was
         // reachable; only the network-level catch below means it wasn't.
         setServerReachable(true);
@@ -861,9 +843,7 @@ ipcMain.handle('vrcx-rpc', async (_event, target, method, args) => {
                 error: 'Not authenticated with the VRCX server'
             };
         }
-        return (
-            body ?? { ok: false, error: `Unexpected response (${httpStatus})` }
-        );
+        return body ?? { ok: false, error: `Unexpected response (${httpStatus})` };
     } catch (err) {
         setServerReachable(false);
         return { ok: false, error: err?.message ?? String(err) };
@@ -1068,11 +1048,7 @@ ipcMain.handle('app:setTrayIconNotification', (_event, notify) => {
 });
 
 function tryRelaunchWithArgs(args) {
-    if (
-        process.platform !== 'linux' ||
-        x11 ||
-        args.includes('--ozone-platform-hint=auto')
-    ) {
+    if (process.platform !== 'linux' || x11 || args.includes('--ozone-platform-hint=auto')) {
         return;
     }
 

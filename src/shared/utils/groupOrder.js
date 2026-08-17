@@ -37,12 +37,7 @@ export function normalizeGroupOrder(order, groupIds) {
  */
 export function moveGroupInOrder(order, groupId, toIndex) {
     const fromIndex = order.indexOf(groupId);
-    if (
-        fromIndex === -1 ||
-        toIndex < 0 ||
-        toIndex >= order.length ||
-        fromIndex === toIndex
-    ) {
+    if (fromIndex === -1 || toIndex < 0 || toIndex >= order.length || fromIndex === toIndex) {
         return false;
     }
 

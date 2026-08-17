@@ -35,9 +35,7 @@ export function evictMapCache(cache, maxSize, isRetainedFn, opts = {}) {
             cache.delete(removable[i].key);
         }
         if (logLabel) {
-            console.log(
-                `${logLabel}: Deleted ${toDelete}. Current cache size: ${cache.size}`
-            );
+            console.log(`${logLabel}: Deleted ${toDelete}. Current cache size: ${cache.size}`);
         }
         return { deletedCount: toDelete };
     }
@@ -59,9 +57,7 @@ export function evictMapCache(cache, maxSize, isRetainedFn, opts = {}) {
         cache.delete(key);
     }
     if (logLabel) {
-        console.log(
-            `${logLabel}: Deleted ${deletedCount}. Current cache size: ${cache.size}`
-        );
+        console.log(`${logLabel}: Deleted ${deletedCount}. Current cache size: ${cache.size}`);
     }
     return { deletedCount };
 }

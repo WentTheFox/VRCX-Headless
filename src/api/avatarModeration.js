@@ -37,9 +37,7 @@ const avatarModerationReq = {
         return request(
             `auth/user/avatarmoderations?targetAvatarId=${encodeURIComponent(
                 params.targetAvatarId
-            )}&avatarModerationType=${encodeURIComponent(
-                params.avatarModerationType
-            )}`,
+            )}&avatarModerationType=${encodeURIComponent(params.avatarModerationType)}`,
             {
                 method: 'DELETE'
             }

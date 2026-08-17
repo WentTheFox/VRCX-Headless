@@ -1,8 +1,4 @@
-import {
-    extractFileId,
-    extractFileVersion,
-    extractVariantVersion
-} from '../common';
+import { extractFileId, extractFileVersion, extractVariantVersion } from '../common';
 import { useAuthStore, useAvatarStore, useWorldStore } from '../../../stores';
 import { compareUnityVersion } from '../avatar';
 
@@ -22,26 +18,16 @@ async function getBundleLocation(input) {
     let variant = '';
     if (assetUrl) {
         // continue
-    } else if (
-        avatarStore.avatarDialog.visible &&
-        avatarStore.avatarDialog.ref.unityPackages.length > 0
-    ) {
+    } else if (avatarStore.avatarDialog.visible && avatarStore.avatarDialog.ref.unityPackages.length > 0) {
         unityPackages = avatarStore.avatarDialog.ref.unityPackages;
         for (let i = unityPackages.length - 1; i > -1; i--) {
             unityPackage = unityPackages[i];
-            if (
-                unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
-                unityPackage.variant !== 'security'
-            ) {
+            if (unityPackage.variant && unityPackage.variant !== 'standard' && unityPackage.variant !== 'security') {
                 continue;
             }
             if (
                 unityPackage.platform === 'standalonewindows' &&
-                compareUnityVersion(
-                    unityPackage.unitySortNumber,
-                    sdkUnityVersion
-                )
+                compareUnityVersion(unityPackage.unitySortNumber, sdkUnityVersion)
             ) {
                 assetUrl = unityPackage.assetUrl;
                 if (unityPackage.variant !== 'standard') {
@@ -50,33 +36,21 @@ async function getBundleLocation(input) {
                 break;
             }
         }
-    } else if (
-        avatarStore.avatarDialog.visible &&
-        avatarStore.avatarDialog.ref.assetUrl
-    ) {
+    } else if (avatarStore.avatarDialog.visible && avatarStore.avatarDialog.ref.assetUrl) {
         assetUrl = avatarStore.avatarDialog.ref.assetUrl;
-    } else if (
-        worldStore.worldDialog.visible &&
-        worldStore.worldDialog.ref.unityPackages.length > 0
-    ) {
+    } else if (worldStore.worldDialog.visible && worldStore.worldDialog.ref.unityPackages.length > 0) {
         unityPackages = worldStore.worldDialog.ref.unityPackages;
         for (let i = unityPackages.length - 1; i > -1; i--) {
             unityPackage = unityPackages[i];
             if (
                 unityPackage.platform === 'standalonewindows' &&
-                compareUnityVersion(
-                    unityPackage.unitySortNumber,
-                    sdkUnityVersion
-                )
+                compareUnityVersion(unityPackage.unitySortNumber, sdkUnityVersion)
             ) {
                 assetUrl = unityPackage.assetUrl;
                 break;
             }
         }
-    } else if (
-        worldStore.worldDialog.visible &&
-        worldStore.worldDialog.ref.assetUrl
-    ) {
+    } else if (worldStore.worldDialog.visible && worldStore.worldDialog.ref.assetUrl) {
         assetUrl = worldStore.worldDialog.ref.assetUrl;
     }
     if (!assetUrl) {
@@ -91,12 +65,7 @@ async function getBundleLocation(input) {
         variant,
         variantVersion
     );
-    const cacheInfo = await AssetBundleManager.CheckVRChatCache(
-        fileId,
-        fileVersion,
-        variant,
-        variantVersion
-    );
+    const cacheInfo = await AssetBundleManager.CheckVRChatCache(fileId, fileVersion, variant, variantVersion);
     let inCache = false;
     if (cacheInfo.Item1 > 0) {
         inCache = true;

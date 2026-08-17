@@ -40,12 +40,7 @@ export function applyTransforms(img, angleDeg, flipH, flipV) {
  * @param {File} [originalFile]
  * @returns {Promise<Blob|null>}
  */
-export function cropImage(
-    originalImage,
-    previewScale,
-    cropperResult,
-    originalFile
-) {
+export function cropImage(originalImage, previewScale, cropperResult, originalFile) {
     if (!cropperResult?.coordinates || !originalImage) {
         return Promise.resolve(null);
     }
@@ -74,9 +69,7 @@ export function cropImage(
         }
     }
 
-    const source = hasTransform
-        ? applyTransforms(originalImage, angle, flipH, flipV)
-        : originalImage;
+    const source = hasTransform ? applyTransforms(originalImage, angle, flipH, flipV) : originalImage;
 
     const cropCanvas = document.createElement('canvas');
     cropCanvas.width = cropW;
@@ -120,14 +113,8 @@ export function useImageCropper() {
             const img = new Image();
             img.onload = () => {
                 originalImage.value = img;
-                if (
-                    img.width > MAX_PREVIEW_SIZE ||
-                    img.height > MAX_PREVIEW_SIZE
-                ) {
-                    const scale = Math.min(
-                        MAX_PREVIEW_SIZE / img.width,
-                        MAX_PREVIEW_SIZE / img.height
-                    );
+                if (img.width > MAX_PREVIEW_SIZE || img.height > MAX_PREVIEW_SIZE) {
+                    const scale = Math.min(MAX_PREVIEW_SIZE / img.width, MAX_PREVIEW_SIZE / img.height);
                     previewScale.value = scale;
                     const cvs = document.createElement('canvas');
                     cvs.width = Math.round(img.width * scale);
@@ -160,12 +147,7 @@ export function useImageCropper() {
      */
     function getCroppedBlob(originalFile) {
         const result = cropperRef.value?.getResult();
-        return cropImage(
-            originalImage.value,
-            previewScale.value,
-            result,
-            originalFile
-        );
+        return cropImage(originalImage.value, previewScale.value, result, originalFile);
     }
 
     return {

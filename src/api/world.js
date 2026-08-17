@@ -75,10 +75,7 @@ const worldReq = {
                 queryKey: queryKeys.world(args.ref.id),
                 nextData: args
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh world query after mutation:',
-                    err
-                );
+                console.error('Failed to refresh world query after mutation:', err);
             });
             return args;
         });
@@ -102,10 +99,7 @@ const worldReq = {
                 queryKey: queryKeys.world(args.ref.id),
                 nextData: args
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh world query after publish:',
-                    err
-                );
+                console.error('Failed to refresh world query after publish:', err);
             });
             return args;
         });
@@ -129,10 +123,7 @@ const worldReq = {
                 queryKey: queryKeys.world(args.ref.id),
                 nextData: args
             }).catch((err) => {
-                console.error(
-                    'Failed to refresh world query after unpublish:',
-                    err
-                );
+                console.error('Failed to refresh world query after unpublish:', err);
             });
             return args;
         });

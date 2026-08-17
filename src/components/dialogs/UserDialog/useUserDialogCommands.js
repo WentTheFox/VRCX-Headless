@@ -142,11 +142,7 @@ export function useUserDialogCommands(
     function handleSendPlayerModeration(args) {
         const ref = applyPlayerModeration(args.json);
         const D = userDialog.value;
-        if (
-            D.visible === false ||
-            (ref.targetUserId !== D.id &&
-                ref.sourceUserId !== currentUser.value.id)
-        ) {
+        if (D.visible === false || (ref.targetUserId !== D.id && ref.sourceUserId !== currentUser.value.id)) {
             return;
         }
         if (ref.type === 'block') {
@@ -167,24 +163,22 @@ export function useUserDialogCommands(
      */
     function setPlayerModeration(userId, type) {
         const D = userDialog.value;
-        AppApi.SetVRChatUserModeration(currentUser.value.id, userId, type).then(
-            (result) => {
-                if (result) {
-                    if (type === 4) {
-                        D.isShowAvatar = false;
-                        D.isHideAvatar = true;
-                    } else if (type === 5) {
-                        D.isShowAvatar = true;
-                        D.isHideAvatar = false;
-                    } else {
-                        D.isShowAvatar = false;
-                        D.isHideAvatar = false;
-                    }
+        AppApi.SetVRChatUserModeration(currentUser.value.id, userId, type).then((result) => {
+            if (result) {
+                if (type === 4) {
+                    D.isShowAvatar = false;
+                    D.isHideAvatar = true;
+                } else if (type === 5) {
+                    D.isShowAvatar = true;
+                    D.isHideAvatar = false;
                 } else {
-                    toast.error(t('message.avatar.change_moderation_failed'));
+                    D.isShowAvatar = false;
+                    D.isHideAvatar = false;
                 }
+            } else {
+                toast.error(t('message.avatar.change_moderation_failed'));
             }
-        );
+        });
     }
 
     /**
@@ -235,16 +229,10 @@ export function useUserDialogCommands(
                 showUserDialog(userId);
             },
             'Copy Profile URL': () => {
-                copyToClipboard(
-                    `https://vrchat.com/home/user/${D().id}`,
-                    t('message.user.url_copied')
-                );
+                copyToClipboard(`https://vrchat.com/home/user/${D().id}`, t('message.user.url_copied'));
             },
             'Copy DisplayName': () => {
-                copyToClipboard(
-                    D().ref.displayName,
-                    t('message.user.display_name_copied')
-                );
+                copyToClipboard(D().ref.displayName, t('message.user.display_name_copied'));
             },
             'Copy UserId': () => {
                 copyToClipboard(D().id, t('message.user.id_copied'));
@@ -323,11 +311,7 @@ export function useUserDialogCommands(
             },
             'Show Avatar Author': () => {
                 const { currentAvatarImageUrl } = D().ref;
-                showAvatarAuthorDialog(
-                    D().id,
-                    D().$avatarInfo.ownerId,
-                    currentAvatarImageUrl
-                );
+                showAvatarAuthorDialog(D().id, D().$avatarInfo.ownerId, currentAvatarImageUrl);
             },
             'Show Fallback Avatar Details': () => {
                 const { fallbackAvatar } = D().ref;
@@ -405,19 +389,11 @@ export function useUserDialogCommands(
                                 notificationId: key
                             })
                             .then((args) => {
-                                useNotificationStore().handleNotificationAccept(
-                                    args
-                                );
+                                useNotificationStore().handleNotificationAccept(args);
                             })
                             .catch((err) => {
-                                if (
-                                    err &&
-                                    err.message &&
-                                    err.message.includes('404')
-                                ) {
-                                    useNotificationStore().handleNotificationHide(
-                                        key
-                                    );
+                                if (err && err.message && err.message.includes('404')) {
+                                    useNotificationStore().handleNotificationHide(key);
                                 }
                             });
                     }
@@ -443,9 +419,7 @@ export function useUserDialogCommands(
                                 notificationId: key
                             })
                             .then(() => {
-                                useNotificationStore().handleNotificationHide(
-                                    key
-                                );
+                                useNotificationStore().handleNotificationHide(key);
                             });
                     }
                 }
@@ -487,11 +461,10 @@ export function useUserDialogCommands(
                     })
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.deletePlayerModeration({
-                            moderated: userId,
-                            type: 'block'
-                        });
+                    const args = await playerModerationRequest.deletePlayerModeration({
+                        moderated: userId,
+                        type: 'block'
+                    });
                     handlePlayerModerationDelete(args);
                 }
             },
@@ -504,11 +477,10 @@ export function useUserDialogCommands(
                     destructive: true
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.sendPlayerModeration({
-                            moderated: userId,
-                            type: 'block'
-                        });
+                    const args = await playerModerationRequest.sendPlayerModeration({
+                        moderated: userId,
+                        type: 'block'
+                    });
                     handleSendPlayerModeration(args);
                 }
             },
@@ -520,11 +492,10 @@ export function useUserDialogCommands(
                     })
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.deletePlayerModeration({
-                            moderated: userId,
-                            type: 'mute'
-                        });
+                    const args = await playerModerationRequest.deletePlayerModeration({
+                        moderated: userId,
+                        type: 'mute'
+                    });
                     handlePlayerModerationDelete(args);
                 }
             },
@@ -537,11 +508,10 @@ export function useUserDialogCommands(
                     destructive: true
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.sendPlayerModeration({
-                            moderated: userId,
-                            type: 'mute'
-                        });
+                    const args = await playerModerationRequest.sendPlayerModeration({
+                        moderated: userId,
+                        type: 'mute'
+                    });
                     handleSendPlayerModeration(args);
                 }
             },
@@ -549,17 +519,14 @@ export function useUserDialogCommands(
                 confirm: () => ({
                     title: t('confirm.title'),
                     description: t('confirm.command_question', {
-                        command: t(
-                            'dialog.user.actions.moderation_enable_avatar_interaction'
-                        )
+                        command: t('dialog.user.actions.moderation_enable_avatar_interaction')
                     })
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.deletePlayerModeration({
-                            moderated: userId,
-                            type: 'interactOff'
-                        });
+                    const args = await playerModerationRequest.deletePlayerModeration({
+                        moderated: userId,
+                        type: 'interactOff'
+                    });
                     handlePlayerModerationDelete(args);
                 }
             },
@@ -567,18 +534,15 @@ export function useUserDialogCommands(
                 confirm: () => ({
                     title: t('confirm.title'),
                     description: t('confirm.command_question', {
-                        command: t(
-                            'dialog.user.actions.moderation_disable_avatar_interaction'
-                        )
+                        command: t('dialog.user.actions.moderation_disable_avatar_interaction')
                     }),
                     destructive: true
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.sendPlayerModeration({
-                            moderated: userId,
-                            type: 'interactOff'
-                        });
+                    const args = await playerModerationRequest.sendPlayerModeration({
+                        moderated: userId,
+                        type: 'interactOff'
+                    });
                     handleSendPlayerModeration(args);
                 }
             },
@@ -586,17 +550,14 @@ export function useUserDialogCommands(
                 confirm: () => ({
                     title: t('confirm.title'),
                     description: t('confirm.command_question', {
-                        command: t(
-                            'dialog.user.actions.moderation_enable_chatbox'
-                        )
+                        command: t('dialog.user.actions.moderation_enable_chatbox')
                     })
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.deletePlayerModeration({
-                            moderated: userId,
-                            type: 'muteChat'
-                        });
+                    const args = await playerModerationRequest.deletePlayerModeration({
+                        moderated: userId,
+                        type: 'muteChat'
+                    });
                     handlePlayerModerationDelete(args);
                 }
             },
@@ -604,18 +565,15 @@ export function useUserDialogCommands(
                 confirm: () => ({
                     title: t('confirm.title'),
                     description: t('confirm.command_question', {
-                        command: t(
-                            'dialog.user.actions.moderation_disable_chatbox'
-                        )
+                        command: t('dialog.user.actions.moderation_disable_chatbox')
                     }),
                     destructive: true
                 }),
                 handler: async (userId) => {
-                    const args =
-                        await playerModerationRequest.sendPlayerModeration({
-                            moderated: userId,
-                            type: 'muteChat'
-                        });
+                    const args = await playerModerationRequest.sendPlayerModeration({
+                        moderated: userId,
+                        type: 'muteChat'
+                    });
                     handleSendPlayerModeration(args);
                 }
             },

@@ -47,9 +47,7 @@ describe('appActions utils', () => {
     let consoleErrorSpy;
 
     beforeEach(() => {
-        consoleErrorSpy = vi
-            .spyOn(console, 'error')
-            .mockImplementation(() => {});
+        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         vi.clearAllMocks();
         mocks.searchStore.directAccessParse.mockReturnValue(false);
         mocks.modalStore.confirm.mockResolvedValue({ ok: false });
@@ -119,9 +117,7 @@ describe('appActions utils', () => {
         openExternalLink('https://example.com');
         await flushPromises();
         await flushPromises();
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-            'https://example.com'
-        );
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://example.com');
     });
 
     test('openExternalLink opens link when confirmed', async () => {
@@ -133,25 +129,18 @@ describe('appActions utils', () => {
 
     test('openDiscordProfile validates empty discord id', () => {
         openDiscordProfile('');
-        expect(mocks.toast.error).toHaveBeenCalledWith(
-            'No Discord ID provided!'
-        );
+        expect(mocks.toast.error).toHaveBeenCalledWith('No Discord ID provided!');
     });
 
     test('openDiscordProfile shows error toast when api fails', async () => {
         AppApi.OpenDiscordProfile.mockRejectedValue(new Error('fail'));
         openDiscordProfile('123');
         await flushPromises();
-        expect(mocks.toast.error).toHaveBeenCalledWith(
-            'Failed to open Discord profile!'
-        );
+        expect(mocks.toast.error).toHaveBeenCalledWith('Failed to open Discord profile!');
     });
 
     test('openFolderGeneric delegates to AppApi', () => {
         openFolderGeneric('/tmp/a.txt');
-        expect(AppApi.OpenFolderAndSelectItem).toHaveBeenCalledWith(
-            '/tmp/a.txt',
-            true
-        );
+        expect(AppApi.OpenFolderAndSelectItem).toHaveBeenCalledWith('/tmp/a.txt', true);
     });
 });

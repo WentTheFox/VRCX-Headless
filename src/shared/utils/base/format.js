@@ -161,21 +161,13 @@ function formatFileSize(bytes) {
  */
 function convertYoutubeTime(duration) {
     let a = duration.match(/\d+/g);
-    if (
-        duration.indexOf('M') >= 0 &&
-        duration.indexOf('H') === -1 &&
-        duration.indexOf('S') === -1
-    ) {
+    if (duration.indexOf('M') >= 0 && duration.indexOf('H') === -1 && duration.indexOf('S') === -1) {
         a = [0, a[0], 0];
     }
     if (duration.indexOf('H') >= 0 && duration.indexOf('M') === -1) {
         a = [a[0], 0, a[1]];
     }
-    if (
-        duration.indexOf('H') >= 0 &&
-        duration.indexOf('M') === -1 &&
-        duration.indexOf('S') === -1
-    ) {
+    if (duration.indexOf('H') >= 0 && duration.indexOf('M') === -1 && duration.indexOf('S') === -1) {
         a = [a[0], 0, 0];
     }
     let length = 0;
@@ -194,10 +186,4 @@ function convertYoutubeTime(duration) {
     return length;
 }
 
-export {
-    timeToText,
-    timeAgo,
-    formatSeconds,
-    formatFileSize,
-    convertYoutubeTime
-};
+export { timeToText, timeAgo, formatSeconds, formatFileSize, convertYoutubeTime };

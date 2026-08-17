@@ -67,9 +67,7 @@ function resolveSystemLanguage(systemLanguage, codes) {
         const hasHant = parts.includes('Hant');
         const hasHans = parts.includes('Hans');
         const traditionalRegions = ['TW', 'HK', 'MO'];
-        const hasTraditionalRegion = parts.some((p) =>
-            traditionalRegions.includes(p)
-        );
+        const hasTraditionalRegion = parts.some((p) => traditionalRegions.includes(p));
 
         if (hasHant || hasTraditionalRegion) {
             return codes.includes('zh-TW') ? 'zh-TW' : null;

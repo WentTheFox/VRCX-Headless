@@ -24,10 +24,7 @@ import { useAvatarProviderStore } from '../stores/avatarProvider';
 import { useAvatarStore } from '../stores/avatar';
 import { useFavoriteStore } from '../stores/favorite';
 import { useModalStore } from '../stores/modal';
-import {
-    syncAvatarSearchIndex,
-    removeAvatarSearchIndex
-} from './searchIndexCoordinator';
+import { syncAvatarSearchIndex, removeAvatarSearchIndex } from './searchIndexCoordinator';
 import { useUiStore } from '../stores/ui';
 import { useUserStore } from '../stores/user';
 import { useVRCXUpdaterStore } from '../stores/vrcxUpdater';
@@ -50,11 +47,7 @@ export function applyAvatar(json) {
     } else {
         const { unityPackages } = ref;
         Object.assign(ref, json);
-        if (
-            json.unityPackages?.length > 0 &&
-            unityPackages.length > 0 &&
-            !json.unityPackages[0].assetUrl
-        ) {
+        if (json.unityPackages?.length > 0 && unityPackages.length > 0 && !json.unityPackages[0].assetUrl) {
             ref.unityPackages = unityPackages;
         }
     }
@@ -118,8 +111,7 @@ export function showAvatarDialog(avatarId, options = {}) {
     D.galleryLoading = true;
     D.isFavorite =
         favoriteStore.getCachedFavoritesByObjectId(avatarId) ||
-        (userStore.isLocalUserVrcPlusSupporter &&
-            favoriteStore.localAvatarFavoritesList.includes(avatarId));
+        (userStore.isLocalUserVrcPlusSupporter && favoriteStore.localAvatarFavoritesList.includes(avatarId));
     D.isBlocked = avatarStore.cachedAvatarModerations.has(avatarId);
     const ref2 = avatarStore.cachedAvatars.get(avatarId);
     if (typeof ref2 !== 'undefined') {
@@ -140,9 +132,7 @@ export function showAvatarDialog(avatarId, options = {}) {
             if (/quest/.test(ref.tags)) {
                 D.isQuestFallback = true;
             }
-            const { isPC, isQuest, isIos } = getAvailablePlatforms(
-                ref.unityPackages
-            );
+            const { isPC, isQuest, isIos } = getAvailablePlatforms(ref.unityPackages);
             D.isPC = isPC;
             D.isQuest = isQuest;
             D.isIos = isIos;
@@ -180,9 +170,7 @@ export async function getAvatarHistory() {
     const avatarStore = useAvatarStore();
     const userStore = useUserStore();
 
-    const historyArray = await database.getAvatarHistory(
-        userStore.currentUser.id
-    );
+    const historyArray = await database.getAvatarHistory(userStore.currentUser.id);
     for (let i = 0; i < historyArray.length; i++) {
         const avatar = historyArray[i];
         if (avatar.authorId === userStore.currentUser.id) {
@@ -333,8 +321,7 @@ export async function lookupAvatars(type, search) {
             toast.error(msg);
         }
     } else if (type === 'authorId') {
-        const length =
-            avatarProviderStore.avatarRemoteDatabaseProviderList.length;
+        const length = avatarProviderStore.avatarRemoteDatabaseProviderList.length;
         for (let i = 0; i < length; ++i) {
             const url = avatarProviderStore.avatarRemoteDatabaseProviderList[i];
             const avatarArray = await lookupAvatarsByAuthor(url, search);
@@ -540,13 +527,8 @@ export async function checkAvatarCacheRemote(fileId, ownerUserId) {
     if (advancedSettingsStore.avatarRemoteDatabase) {
         try {
             toast.dismiss(avatarStore.loadingToastId);
-            avatarStore.setLoadingToastId(
-                toast.loading(t('message.avatar_lookup.loading'))
-            );
-            const avatarId = await lookupAvatarByImageFileId(
-                ownerUserId,
-                fileId
-            );
+            avatarStore.setLoadingToastId(toast.loading(t('message.avatar_lookup.loading')));
+            const avatarId = await lookupAvatarByImageFileId(ownerUserId, fileId);
             return avatarId;
         } catch (err) {
             console.error('Failed to lookup avatar by image file id:', err);
@@ -563,11 +545,7 @@ export async function checkAvatarCacheRemote(fileId, ownerUserId) {
  * @param ownerUserId
  * @param currentAvatarImageUrl
  */
-export async function showAvatarAuthorDialog(
-    refUserId,
-    ownerUserId,
-    currentAvatarImageUrl
-) {
+export async function showAvatarAuthorDialog(refUserId, ownerUserId, currentAvatarImageUrl) {
     const userStore = useUserStore();
     const t = i18n.global.t;
 
@@ -613,8 +591,7 @@ export function addAvatarWearTime(avatarId) {
     if (!userStore.currentUser.$previousAvatarSwapTime || !avatarId) {
         return;
     }
-    const timeSpent =
-        Date.now() - userStore.currentUser.$previousAvatarSwapTime;
+    const timeSpent = Date.now() - userStore.currentUser.$previousAvatarSwapTime;
     database.addAvatarTimeSpent(avatarId, timeSpent);
 }
 

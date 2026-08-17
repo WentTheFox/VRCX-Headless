@@ -17,12 +17,9 @@ class ConfigRepository {
 
     async remove(key) {
         const _key = transformKey(key);
-        await sqliteService.executeNonQuery(
-            `DELETE FROM configs WHERE key = @key`,
-            {
-                '@key': _key
-            }
-        );
+        await sqliteService.executeNonQuery(`DELETE FROM configs WHERE key = @key`, {
+            '@key': _key
+        });
     }
 
     /**
@@ -57,13 +54,10 @@ class ConfigRepository {
     async setString(key, value) {
         const _key = transformKey(key);
         const _value = String(value);
-        await sqliteService.executeNonQuery(
-            `INSERT OR REPLACE INTO configs (key, value) VALUES (@key, @value)`,
-            {
-                '@key': _key,
-                '@value': _value
-            }
-        );
+        await sqliteService.executeNonQuery(`INSERT OR REPLACE INTO configs (key, value) VALUES (@key, @value)`, {
+            '@key': _key,
+            '@value': _value
+        });
     }
 
     /**

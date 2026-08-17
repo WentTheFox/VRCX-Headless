@@ -108,10 +108,7 @@ export function useGroupDialogCommands(
                 }),
                 handler: (id) => {
                     groupRequest.blockGroup({ groupId: id }).then((args) => {
-                        if (
-                            groupDialog.value.visible &&
-                            groupDialog.value.id === args.params.groupId
-                        ) {
+                        if (groupDialog.value.visible && groupDialog.value.id === args.params.groupId) {
                             showGroupDialog(args.params.groupId);
                         }
                     });
@@ -129,10 +126,7 @@ export function useGroupDialogCommands(
                             userId: currentUser.value.id
                         })
                         .then((args) => {
-                            if (
-                                groupDialog.value.visible &&
-                                groupDialog.value.id === args.params.groupId
-                            ) {
+                            if (groupDialog.value.visible && groupDialog.value.id === args.params.groupId) {
                                 showGroupDialog(args.params.groupId);
                             }
                         });

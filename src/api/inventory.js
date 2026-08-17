@@ -21,12 +21,9 @@ const inventoryReq = {
      * @returns {Promise<{json: any, params}>}
      */
     getUserInventoryItem(params) {
-        return request(
-            `user/${params.userId}/inventory/${params.inventoryId}`,
-            {
-                method: 'GET'
-            }
-        ).then((json) => {
+        return request(`user/${params.userId}/inventory/${params.inventoryId}`, {
+            method: 'GET'
+        }).then((json) => {
             const args = {
                 json,
                 params

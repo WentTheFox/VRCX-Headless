@@ -225,11 +225,7 @@ export const useSearchIndexStore = defineStore('SearchIndex', () => {
         } else {
             for (const [id, entry] of newFavAvatars) {
                 const existing = favAvatars.get(id);
-                if (
-                    !existing ||
-                    existing.name !== entry.name ||
-                    existing.imageUrl !== entry.imageUrl
-                ) {
+                if (!existing || existing.name !== entry.name || existing.imageUrl !== entry.imageUrl) {
                     changed = true;
                     break;
                 }
@@ -240,11 +236,7 @@ export const useSearchIndexStore = defineStore('SearchIndex', () => {
         } else if (!changed) {
             for (const [id, entry] of newFavWorlds) {
                 const existing = favWorlds.get(id);
-                if (
-                    !existing ||
-                    existing.name !== entry.name ||
-                    existing.imageUrl !== entry.imageUrl
-                ) {
+                if (!existing || existing.name !== entry.name || existing.imageUrl !== entry.imageUrl) {
                     changed = true;
                     break;
                 }
@@ -265,10 +257,7 @@ export const useSearchIndexStore = defineStore('SearchIndex', () => {
     }
 
     watch(
-        [
-            () => favoriteStore.localAvatarFavorites,
-            () => favoriteStore.localWorldFavorites
-        ],
+        [() => favoriteStore.localAvatarFavorites, () => favoriteStore.localWorldFavorites],
         rebuildFavoritesFromStore,
         { deep: true, immediate: true }
     );

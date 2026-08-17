@@ -34,11 +34,7 @@ vi.mock('pinia', () => ({
     storeToRefs: (store) => {
         const result = {};
         for (const key in store) {
-            if (
-                store[key] &&
-                typeof store[key] === 'object' &&
-                '__v_isRef' in store[key]
-            ) {
+            if (store[key] && typeof store[key] === 'object' && '__v_isRef' in store[key]) {
                 result[key] = store[key];
             }
         }
@@ -125,8 +121,7 @@ function mountComponent() {
                 Dialog: {
                     props: ['open'],
                     emits: ['update:open'],
-                    template:
-                        '<div data-testid="dialog" v-if="open"><slot /></div>'
+                    template: '<div data-testid="dialog" v-if="open"><slot /></div>'
                 },
                 DialogContent: { template: '<div><slot /></div>' },
                 DialogHeader: { template: '<div><slot /></div>' },
@@ -137,18 +132,10 @@ function mountComponent() {
                 Button: {
                     emits: ['click'],
                     props: ['variant', 'disabled', 'size'],
-                    template:
-                        '<button @click="$emit(\'click\')" :disabled="disabled"><slot /></button>'
+                    template: '<button @click="$emit(\'click\')" :disabled="disabled"><slot /></button>'
                 },
                 InputGroupAction: {
-                    props: [
-                        'modelValue',
-                        'placeholder',
-                        'size',
-                        'type',
-                        'min',
-                        'max'
-                    ],
+                    props: ['modelValue', 'placeholder', 'size', 'type', 'min', 'max'],
                     emits: ['update:modelValue', 'input'],
                     template:
                         '<div data-testid="input-group"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'input\')" /><slot name="actions" /></div>'
@@ -246,15 +233,9 @@ describe('VRChatConfigDialog.vue', () => {
             await flushPromises();
             await nextTick();
 
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.max_cache_size'
-            );
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.cache_expiry_delay'
-            );
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.fpv_steadycam_fov'
-            );
+            expect(wrapper.text()).toContain('dialog.config_json.max_cache_size');
+            expect(wrapper.text()).toContain('dialog.config_json.cache_expiry_delay');
+            expect(wrapper.text()).toContain('dialog.config_json.fpv_steadycam_fov');
         });
 
         test('renders resolution selectors', async () => {
@@ -263,15 +244,9 @@ describe('VRChatConfigDialog.vue', () => {
             await flushPromises();
             await nextTick();
 
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.camera_resolution'
-            );
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.spout_resolution'
-            );
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.screenshot_resolution'
-            );
+            expect(wrapper.text()).toContain('dialog.config_json.camera_resolution');
+            expect(wrapper.text()).toContain('dialog.config_json.spout_resolution');
+            expect(wrapper.text()).toContain('dialog.config_json.screenshot_resolution');
         });
 
         test('renders checkbox options', async () => {
@@ -280,12 +255,8 @@ describe('VRChatConfigDialog.vue', () => {
             await flushPromises();
             await nextTick();
 
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.picture_sort_by_date'
-            );
-            expect(wrapper.text()).toContain(
-                'dialog.config_json.disable_discord_presence'
-            );
+            expect(wrapper.text()).toContain('dialog.config_json.picture_sort_by_date');
+            expect(wrapper.text()).toContain('dialog.config_json.disable_discord_presence');
         });
 
         test('renders footer buttons', async () => {
@@ -302,9 +273,7 @@ describe('VRChatConfigDialog.vue', () => {
 
     describe('config loading', () => {
         test('reads config file when dialog opens', async () => {
-            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(
-                JSON.stringify({ cache_size: 50 })
-            );
+            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(JSON.stringify({ cache_size: 50 }));
 
             mountComponent();
             isVRChatConfigDialogVisible.value = true;
@@ -318,9 +287,7 @@ describe('VRChatConfigDialog.vue', () => {
 
     describe('save logic', () => {
         test('calls AppApi.WriteConfigFile on save', async () => {
-            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(
-                JSON.stringify({ cache_size: 50 })
-            );
+            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(JSON.stringify({ cache_size: 50 }));
             isVRChatConfigDialogVisible.value = true;
 
             const wrapper = mountComponent();
@@ -328,18 +295,14 @@ describe('VRChatConfigDialog.vue', () => {
             await nextTick();
             await flushPromises();
 
-            const saveBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.config_json.save'));
+            const saveBtn = wrapper.findAll('button').find((b) => b.text().includes('dialog.config_json.save'));
             await saveBtn.trigger('click');
 
             expect(mocks.appApi.WriteConfigFile).toHaveBeenCalled();
         });
 
         test('removes empty string values before saving', async () => {
-            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(
-                JSON.stringify({ cache_directory: '', cache_size: 50 })
-            );
+            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(JSON.stringify({ cache_directory: '', cache_size: 50 }));
             isVRChatConfigDialogVisible.value = true;
 
             const wrapper = mountComponent();
@@ -347,21 +310,15 @@ describe('VRChatConfigDialog.vue', () => {
             await nextTick();
             await flushPromises();
 
-            const saveBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.config_json.save'));
+            const saveBtn = wrapper.findAll('button').find((b) => b.text().includes('dialog.config_json.save'));
             await saveBtn.trigger('click');
 
-            const savedJson = JSON.parse(
-                mocks.appApi.WriteConfigFile.mock.calls[0][0]
-            );
+            const savedJson = JSON.parse(mocks.appApi.WriteConfigFile.mock.calls[0][0]);
             expect(savedJson).not.toHaveProperty('cache_directory');
         });
 
         test('closes dialog after save', async () => {
-            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(
-                JSON.stringify({})
-            );
+            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(JSON.stringify({}));
             isVRChatConfigDialogVisible.value = true;
 
             const wrapper = mountComponent();
@@ -369,9 +326,7 @@ describe('VRChatConfigDialog.vue', () => {
             await nextTick();
             await flushPromises();
 
-            const saveBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.config_json.save'));
+            const saveBtn = wrapper.findAll('button').find((b) => b.text().includes('dialog.config_json.save'));
             await saveBtn.trigger('click');
 
             expect(isVRChatConfigDialogVisible.value).toBe(false);
@@ -389,9 +344,7 @@ describe('VRChatConfigDialog.vue', () => {
 
             const deleteBtn = wrapper
                 .findAll('button')
-                .find((b) =>
-                    b.text().includes('dialog.config_json.delete_cache')
-                );
+                .find((b) => b.text().includes('dialog.config_json.delete_cache'));
             expect(deleteBtn).toBeTruthy();
             await deleteBtn.trigger('click');
 
@@ -409,16 +362,12 @@ describe('VRChatConfigDialog.vue', () => {
 
             const deleteBtn = wrapper
                 .findAll('button')
-                .find((b) =>
-                    b.text().includes('dialog.config_json.delete_cache')
-                );
+                .find((b) => b.text().includes('dialog.config_json.delete_cache'));
             await deleteBtn.trigger('click');
             await flushPromises();
 
             expect(mocks.assetBundleManager.DeleteAllCache).toHaveBeenCalled();
-            expect(mocks.toast.success).toHaveBeenCalledWith(
-                'message.cache.deleted'
-            );
+            expect(mocks.toast.success).toHaveBeenCalledWith('message.cache.deleted');
         });
 
         test('sweep cache button calls sweepVRChatCache', async () => {
@@ -429,11 +378,7 @@ describe('VRChatConfigDialog.vue', () => {
             await nextTick();
             await flushPromises();
 
-            const sweepBtn = wrapper
-                .findAll('button')
-                .find((b) =>
-                    b.text().includes('dialog.config_json.sweep_cache')
-                );
+            const sweepBtn = wrapper.findAll('button').find((b) => b.text().includes('dialog.config_json.sweep_cache'));
             expect(sweepBtn).toBeTruthy();
             await sweepBtn.trigger('click');
 
@@ -443,9 +388,7 @@ describe('VRChatConfigDialog.vue', () => {
 
     describe('close behavior', () => {
         test('clicking cancel closes dialog', async () => {
-            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(
-                JSON.stringify({})
-            );
+            mocks.appApi.ReadConfigFileSafe.mockResolvedValue(JSON.stringify({}));
             isVRChatConfigDialogVisible.value = true;
 
             const wrapper = mountComponent();
@@ -453,9 +396,7 @@ describe('VRChatConfigDialog.vue', () => {
             await nextTick();
             await flushPromises();
 
-            const cancelBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.config_json.cancel'));
+            const cancelBtn = wrapper.findAll('button').find((b) => b.text().includes('dialog.config_json.cancel'));
             await cancelBtn.trigger('click');
 
             expect(isVRChatConfigDialogVisible.value).toBe(false);
@@ -471,16 +412,10 @@ describe('VRChatConfigDialog.vue', () => {
             await nextTick();
             await flushPromises();
 
-            const docsBtn = wrapper
-                .findAll('button')
-                .find((b) =>
-                    b.text().includes('dialog.config_json.vrchat_docs')
-                );
+            const docsBtn = wrapper.findAll('button').find((b) => b.text().includes('dialog.config_json.vrchat_docs'));
             await docsBtn.trigger('click');
 
-            expect(mocks.openExternalLink).toHaveBeenCalledWith(
-                'https://docs.vrchat.com/docs/configuration-file'
-            );
+            expect(mocks.openExternalLink).toHaveBeenCalledWith('https://docs.vrchat.com/docs/configuration-file');
         });
     });
 });

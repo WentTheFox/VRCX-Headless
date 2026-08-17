@@ -36,10 +36,7 @@ function installUnhandledRejectionReporting() {
         if (event.reason?.alreadyToasted) {
             return;
         }
-        const message =
-            event.reason instanceof Error
-                ? event.reason.message
-                : String(event.reason);
+        const message = event.reason instanceof Error ? event.reason.message : String(event.reason);
         toast.error(`Something went wrong: ${message}`);
     });
 }
@@ -79,14 +76,10 @@ export async function initInteropApi(isVrOverlay = false) {
             // Dynamic import (not a static one) so WINDOWS/Electron builds,
             // where WEB is a compile-time `false`, tree-shake this whole
             // subtree away instead of bundling client-web/** dead weight.
-            const { webApiTarget } =
-                await import('../../client-web/shims/webapi-target.js');
-            const { appApiTarget } =
-                await import('../../client-web/shims/app-api.js');
-            const { vrcxStorageTarget } =
-                await import('../../client-web/shims/vrcx-storage.js');
-            const { logWatcherTarget } =
-                await import('../../client-web/shims/log-watcher.js');
+            const { webApiTarget } = await import('../../client-web/shims/webapi-target.js');
+            const { appApiTarget } = await import('../../client-web/shims/app-api.js');
+            const { vrcxStorageTarget } = await import('../../client-web/shims/vrcx-storage.js');
+            const { logWatcherTarget } = await import('../../client-web/shims/log-watcher.js');
             window.WebApi = webApiTarget;
             window.AppApi = appApiTarget;
             window.VRCXStorage = vrcxStorageTarget;
@@ -120,10 +113,8 @@ export async function initInteropApi(isVrOverlay = false) {
             // branch above: a WINDOWS/CefSharp build tree-shakes this whole
             // subtree away instead of bundling client-desktop/** dead
             // weight.
-            const { webApiTarget } =
-                await import('../../client-desktop/shims/webapi-target.js');
-            const { installPipelineRelay } =
-                await import('../../client-desktop/shims/pipeline-relay.js');
+            const { webApiTarget } = await import('../../client-desktop/shims/webapi-target.js');
+            const { installPipelineRelay } = await import('../../client-desktop/shims/pipeline-relay.js');
             installPipelineRelay();
             window.AppApi = InteropApi.AppApiElectron;
             window.WebApi = webApiTarget;

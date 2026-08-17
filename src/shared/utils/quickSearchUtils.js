@@ -1,7 +1,5 @@
 import { localeIncludes } from './base/string';
-import removeConfusables, {
-    removeWhitespace
-} from '../../services/confusables';
+import removeConfusables, { removeWhitespace } from '../../services/confusables';
 
 /**
  * Tests whether a name matches a query using locale-aware comparison.
@@ -42,9 +40,7 @@ export function isPrefixMatch(name, query, comparer) {
     if (!cleanQuery) {
         return false;
     }
-    return (
-        comparer.compare(name.substring(0, cleanQuery.length), cleanQuery) === 0
-    );
+    return comparer.compare(name.substring(0, cleanQuery.length), cleanQuery) === 0;
 }
 
 /**
@@ -111,13 +107,7 @@ export function searchFriends(query, friends, comparer, limit = 10) {
  * @param {number} [limit]
  * @returns {Array<{id: string, name: string, type: string, imageUrl: string}>}
  */
-export function searchAvatars(
-    query,
-    avatarMap,
-    comparer,
-    authorId = null,
-    limit = 10
-) {
+export function searchAvatars(query, avatarMap, comparer, authorId = null, limit = 10) {
     if (!query || !avatarMap) {
         return [];
     }
@@ -160,13 +150,7 @@ export function searchAvatars(
  * @param {number} [limit]
  * @returns {Array<{id: string, name: string, type: string, imageUrl: string}>}
  */
-export function searchWorlds(
-    query,
-    worldMap,
-    comparer,
-    ownerId = null,
-    limit = 10
-) {
+export function searchWorlds(query, worldMap, comparer, ownerId = null, limit = 10) {
     if (!query || !worldMap) {
         return [];
     }
@@ -209,13 +193,7 @@ export function searchWorlds(
  * @param {number} [limit]
  * @returns {Array<{id: string, name: string, type: string, imageUrl: string}>}
  */
-export function searchGroups(
-    query,
-    groupMap,
-    comparer,
-    ownerId = null,
-    limit = 10
-) {
+export function searchGroups(query, groupMap, comparer, ownerId = null, limit = 10) {
     if (!query || !groupMap) {
         return [];
     }
@@ -257,12 +235,7 @@ export function searchGroups(
  * @param {number} [limit]
  * @returns {Array<{id: string, name: string, type: string, imageUrl: string}>}
  */
-export function searchFavoriteAvatars(
-    query,
-    favoriteAvatars,
-    comparer,
-    limit = 10
-) {
+export function searchFavoriteAvatars(query, favoriteAvatars, comparer, limit = 10) {
     if (!query || !favoriteAvatars) {
         return [];
     }
@@ -301,12 +274,7 @@ export function searchFavoriteAvatars(
  * @param {number} [limit]
  * @returns {Array<{id: string, name: string, type: string, imageUrl: string}>}
  */
-export function searchFavoriteWorlds(
-    query,
-    favoriteWorlds,
-    comparer,
-    limit = 10
-) {
+export function searchFavoriteWorlds(query, favoriteWorlds, comparer, limit = 10) {
     if (!query || !favoriteWorlds) {
         return [];
     }

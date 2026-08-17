@@ -141,10 +141,7 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog({
                 memberSortOrder: { value: 'joinedAt:desc', name: 'sort.joined' }
             });
-            const { groupDialogMemberSortValue } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberSortValue } = useGroupMembers(groupDialog, createDeps());
             expect(groupDialogMemberSortValue.value).toBe('joinedAt:desc');
         });
 
@@ -152,10 +149,7 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog({
                 memberSortOrder: {}
             });
-            const { groupDialogMemberSortValue } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberSortValue } = useGroupMembers(groupDialog, createDeps());
             expect(groupDialogMemberSortValue.value).toBe('');
         });
     });
@@ -165,19 +159,13 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog({
                 memberFilter: { id: null }
             });
-            const { groupDialogMemberFilterKey } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberFilterKey } = useGroupMembers(groupDialog, createDeps());
             expect(groupDialogMemberFilterKey.value).toBe('everyone');
         });
 
         test('returns usersWithNoRole when filter id is empty string', () => {
             const groupDialog = createGroupDialog({ memberFilter: { id: '' } });
-            const { groupDialogMemberFilterKey } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberFilterKey } = useGroupMembers(groupDialog, createDeps());
             expect(groupDialogMemberFilterKey.value).toBe('usersWithNoRole');
         });
 
@@ -185,19 +173,13 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog({
                 memberFilter: { id: 'role_123' }
             });
-            const { groupDialogMemberFilterKey } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberFilterKey } = useGroupMembers(groupDialog, createDeps());
             expect(groupDialogMemberFilterKey.value).toBe('role:role_123');
         });
 
         test('returns null when no filter', () => {
             const groupDialog = createGroupDialog({ memberFilter: null });
-            const { groupDialogMemberFilterKey } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberFilterKey } = useGroupMembers(groupDialog, createDeps());
             expect(groupDialogMemberFilterKey.value).toBeNull();
         });
     });
@@ -213,10 +195,7 @@ describe('useGroupMembers', () => {
                     memberCount: 10
                 }
             });
-            const { groupDialogMemberFilterGroups } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { groupDialogMemberFilterGroups } = useGroupMembers(groupDialog, createDeps());
             const groups = groupDialogMemberFilterGroups.value;
 
             expect(groups.length).toBeGreaterThanOrEqual(1);
@@ -236,13 +215,8 @@ describe('useGroupMembers', () => {
                     memberCount: 10
                 }
             });
-            const { groupDialogMemberFilterGroups } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
-            const rolesGroup = groupDialogMemberFilterGroups.value.find(
-                (g) => g.key === 'roles'
-            );
+            const { groupDialogMemberFilterGroups } = useGroupMembers(groupDialog, createDeps());
+            const rolesGroup = groupDialogMemberFilterGroups.value.find((g) => g.key === 'roles');
 
             if (rolesGroup) {
                 expect(rolesGroup.items).toHaveLength(1);
@@ -253,19 +227,12 @@ describe('useGroupMembers', () => {
         test('omits roles group when no non-default roles exist', () => {
             const groupDialog = createGroupDialog({
                 ref: {
-                    roles: [
-                        { id: 'role_1', name: 'Default', defaultRole: true }
-                    ],
+                    roles: [{ id: 'role_1', name: 'Default', defaultRole: true }],
                     memberCount: 10
                 }
             });
-            const { groupDialogMemberFilterGroups } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
-            const rolesGroup = groupDialogMemberFilterGroups.value.find(
-                (g) => g.key === 'roles'
-            );
+            const { groupDialogMemberFilterGroups } = useGroupMembers(groupDialog, createDeps());
+            const rolesGroup = groupDialogMemberFilterGroups.value.find((g) => g.key === 'roles');
             expect(rolesGroup).toBeUndefined();
         });
     });
@@ -273,8 +240,7 @@ describe('useGroupMembers', () => {
     describe('groupMembersSearch', () => {
         test('clears results when search is less than 3 characters', () => {
             const groupDialog = createGroupDialog({ memberSearch: 'ab' });
-            const { groupMembersSearch, isGroupMembersLoading } =
-                useGroupMembers(groupDialog, createDeps());
+            const { groupMembersSearch, isGroupMembersLoading } = useGroupMembers(groupDialog, createDeps());
 
             groupMembersSearch();
 
@@ -295,14 +261,12 @@ describe('useGroupMembers', () => {
 
             // wait for the debounced call
             await vi.waitFor(() => {
-                expect(groupRequest.getGroupMembersSearch).toHaveBeenCalledWith(
-                    {
-                        groupId: 'grp_1',
-                        query: 'abc',
-                        n: 100,
-                        offset: 0
-                    }
-                );
+                expect(groupRequest.getGroupMembersSearch).toHaveBeenCalledWith({
+                    groupId: 'grp_1',
+                    query: 'abc',
+                    n: 100,
+                    offset: 0
+                });
             });
         });
     });
@@ -310,8 +274,7 @@ describe('useGroupMembers', () => {
     describe('loadMoreGroupMembers', () => {
         test('does not load when already done', async () => {
             const groupDialog = createGroupDialog();
-            const { loadMoreGroupMembers, isGroupMembersDone } =
-                useGroupMembers(groupDialog, createDeps());
+            const { loadMoreGroupMembers, isGroupMembersDone } = useGroupMembers(groupDialog, createDeps());
             isGroupMembersDone.value = true;
 
             await loadMoreGroupMembers();
@@ -321,8 +284,7 @@ describe('useGroupMembers', () => {
 
         test('does not load when already loading', async () => {
             const groupDialog = createGroupDialog();
-            const { loadMoreGroupMembers, isGroupMembersLoading } =
-                useGroupMembers(groupDialog, createDeps());
+            const { loadMoreGroupMembers, isGroupMembersLoading } = useGroupMembers(groupDialog, createDeps());
             isGroupMembersLoading.value = true;
 
             await loadMoreGroupMembers();
@@ -337,11 +299,10 @@ describe('useGroupMembers', () => {
                 params: { groupId: 'grp_1', n: 100, offset: 0 }
             });
 
-            const {
-                loadMoreGroupMembers,
-                isGroupMembersDone,
-                loadMoreGroupMembersParams
-            } = useGroupMembers(groupDialog, createDeps());
+            const { loadMoreGroupMembers, isGroupMembersDone, loadMoreGroupMembersParams } = useGroupMembers(
+                groupDialog,
+                createDeps()
+            );
 
             loadMoreGroupMembersParams.value = {
                 n: 100,
@@ -364,8 +325,7 @@ describe('useGroupMembers', () => {
                 params: { groupId: 'grp_1', n: 100, offset: 0 }
             });
 
-            const { loadMoreGroupMembers, loadMoreGroupMembersParams } =
-                useGroupMembers(groupDialog, createDeps());
+            const { loadMoreGroupMembers, loadMoreGroupMembersParams } = useGroupMembers(groupDialog, createDeps());
 
             loadMoreGroupMembersParams.value = {
                 n: 100,
@@ -389,8 +349,7 @@ describe('useGroupMembers', () => {
                 params: { groupId: 'grp_1', n: 100, offset: 0 }
             });
 
-            const { loadMoreGroupMembers, loadMoreGroupMembersParams } =
-                useGroupMembers(groupDialog, deps);
+            const { loadMoreGroupMembers, loadMoreGroupMembersParams } = useGroupMembers(groupDialog, deps);
 
             loadMoreGroupMembersParams.value = {
                 n: 100,
@@ -410,11 +369,10 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog();
             queryRequest.fetch.mockRejectedValue(new Error('fail'));
 
-            const {
-                loadMoreGroupMembers,
-                isGroupMembersDone,
-                loadMoreGroupMembersParams
-            } = useGroupMembers(groupDialog, createDeps());
+            const { loadMoreGroupMembers, isGroupMembersDone, loadMoreGroupMembersParams } = useGroupMembers(
+                groupDialog,
+                createDeps()
+            );
 
             loadMoreGroupMembersParams.value = {
                 n: 100,
@@ -433,10 +391,7 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog({
                 memberSortOrder: { value: 'joinedAt:desc' }
             });
-            const { setGroupMemberSortOrder } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { setGroupMemberSortOrder } = useGroupMembers(groupDialog, createDeps());
 
             await setGroupMemberSortOrder({ value: 'joinedAt:desc' });
 
@@ -451,10 +406,7 @@ describe('useGroupMembers', () => {
             const groupDialog = createGroupDialog();
             // Use markRaw to prevent Vue from wrapping the filter in a Proxy
             groupDialog.value.memberFilter = filter;
-            const { setGroupMemberFilter } = useGroupMembers(
-                groupDialog,
-                createDeps()
-            );
+            const { setGroupMemberFilter } = useGroupMembers(groupDialog, createDeps());
 
             await setGroupMemberFilter(filter);
 

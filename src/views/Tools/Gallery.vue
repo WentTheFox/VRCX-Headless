@@ -507,10 +507,12 @@
                                         variant="ghost"
                                         class="rounded-full ml-auto"
                                         @click="toggleFavoritePrint(image.id)">
-                                        <Star 
-                                            :class="favoritePrintIds.has(image.id)
-                                                ? 'text-yellow-500 fill-yellow-500'
-                                                : 'hover:text-yellow-500'" />
+                                        <Star
+                                            :class="
+                                                favoritePrintIds.has(image.id)
+                                                    ? 'text-yellow-500 fill-yellow-500'
+                                                    : 'hover:text-yellow-500'
+                                            " />
                                     </Button>
                                 </ItemFooter>
                             </div>

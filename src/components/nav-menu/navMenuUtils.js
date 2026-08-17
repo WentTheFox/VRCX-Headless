@@ -32,23 +32,12 @@ export function normalizeHiddenKeys(hiddenKeys, definitionMap) {
  * @param {Function} generateFolderId - Function to generate unique folder IDs
  * @returns {Array} Sanitized layout
  */
-export function sanitizeLayout(
-    layout,
-    hiddenKeys,
-    definitionMap,
-    allDefinitions,
-    t,
-    generateFolderId
-) {
+export function sanitizeLayout(layout, hiddenKeys, definitionMap, allDefinitions, t, generateFolderId) {
     const usedKeys = new Set();
     const normalizedHiddenKeys = normalizeHiddenKeys(hiddenKeys, definitionMap);
     const hiddenSet = new Set(normalizedHiddenKeys);
     const normalized = [];
-    const chartsKeys = [
-        'charts-instance',
-        'charts-mutual',
-        'charts-hot-worlds'
-    ];
+    const chartsKeys = ['charts-instance', 'charts-mutual', 'charts-hot-worlds'];
 
     const appendItemEntry = (key, target = normalized) => {
         if (!key || usedKeys.has(key) || !definitionMap.has(key)) {
@@ -99,9 +88,7 @@ export function sanitizeLayout(
 
                 if (folderItems.length >= 1) {
                     const folderNameKey = entry.nameKey || null;
-                    const folderName = folderNameKey
-                        ? t(folderNameKey)
-                        : entry.name || '';
+                    const folderName = folderNameKey ? t(folderNameKey) : entry.name || '';
                     normalized.push({
                         type: 'folder',
                         id: entry.id || generateFolderId(),
@@ -119,9 +106,7 @@ export function sanitizeLayout(
         if (!usedKeys.has(item.key) && !hiddenSet.has(item.key)) {
             if (chartsKeys.includes(item.key)) {
                 const chartsFolder = normalized.find(
-                    (entry) =>
-                        entry.type === 'folder' &&
-                        entry.id === 'default-folder-charts'
+                    (entry) => entry.type === 'folder' && entry.id === 'default-folder-charts'
                 );
                 if (chartsFolder && Array.isArray(chartsFolder.items)) {
                     chartsFolder.items.push(item.key);
@@ -133,17 +118,12 @@ export function sanitizeLayout(
         }
     });
 
-    if (
-        !chartsKeys.some((key) => usedKeys.has(key)) &&
-        !chartsKeys.some((key) => hiddenSet.has(key))
-    ) {
+    if (!chartsKeys.some((key) => usedKeys.has(key)) && !chartsKeys.some((key) => hiddenSet.has(key))) {
         appendChartsFolder();
     }
 
     // Ensure direct-access is always the last item
-    const directAccessIdx = normalized.findIndex(
-        (entry) => entry.type === 'item' && entry.key === 'direct-access'
-    );
+    const directAccessIdx = normalized.findIndex((entry) => entry.type === 'item' && entry.key === 'direct-access');
     if (directAccessIdx !== -1 && directAccessIdx !== normalized.length - 1) {
         const [directAccessEntry] = normalized.splice(directAccessIdx, 1);
         normalized.push(directAccessEntry);
@@ -167,9 +147,7 @@ export function getFirstNavRoute(layout, definitionMap) {
             }
         }
         if (entry.type === 'folder' && entry.items?.length) {
-            const definition = entry.items
-                .map((key) => definitionMap.get(key))
-                .find((def) => def?.routeName);
+            const definition = entry.items.map((key) => definitionMap.get(key)).find((def) => def?.routeName);
             if (definition?.routeName) {
                 return definition.routeName;
             }

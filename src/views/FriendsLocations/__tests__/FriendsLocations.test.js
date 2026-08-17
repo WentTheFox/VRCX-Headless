@@ -70,8 +70,7 @@ vi.mock('../../../stores', () => ({
     }),
     useFavoriteStore: () => ({
         favoriteFriendGroups: mocks.favoriteFriendGroups,
-        groupedByGroupKeyFavoriteFriends:
-            mocks.groupedByGroupKeyFavoriteFriends,
+        groupedByGroupKeyFavoriteFriends: mocks.groupedByGroupKeyFavoriteFriends,
         localFriendFavorites: mocks.localFriendFavorites
     }),
     useLocationStore: () => ({
@@ -100,8 +99,7 @@ vi.mock('../../../shared/utils', () => ({
             timer = setTimeout(() => fn(...args), delay);
         };
     },
-    getFriendsSortFunction: () => (a, b) =>
-        String(a?.displayName ?? '').localeCompare(String(b?.displayName ?? ''))
+    getFriendsSortFunction: () => (a, b) => String(a?.displayName ?? '').localeCompare(String(b?.displayName ?? ''))
 }));
 
 vi.mock('lucide-vue-next', () => ({
@@ -167,8 +165,7 @@ vi.mock('../../../components/ui/slider', () => ({
     Slider: {
         props: ['modelValue'],
         emits: ['update:modelValue'],
-        template:
-            '<button data-testid="set-scale" @click="$emit(\'update:modelValue\', [0.8])">set-scale</button>'
+        template: '<button data-testid="set-scale" @click="$emit(\'update:modelValue\', [0.8])">set-scale</button>'
     }
 }));
 
@@ -184,8 +181,7 @@ vi.mock('../../../components/ui/switch', () => ({
 vi.mock('../components/FriendsLocationsCard.vue', () => ({
     default: {
         props: ['friend'],
-        template:
-            '<div data-testid="friend-card">{{ friend.displayName }}</div>'
+        template: '<div data-testid="friend-card">{{ friend.displayName }}</div>'
     }
 }));
 
@@ -235,17 +231,12 @@ describe('FriendsLocations.vue', () => {
         mocks.configSetString.mockReset();
         mocks.configSetBool.mockReset();
 
-        mocks.configGetString.mockImplementation((_key, defaultValue) =>
-            Promise.resolve(defaultValue ?? '1')
-        );
+        mocks.configGetString.mockImplementation((_key, defaultValue) => Promise.resolve(defaultValue ?? '1'));
         mocks.configGetBool.mockResolvedValue(false);
     });
 
     test('renders online friend cards after initial settings load', async () => {
-        mocks.onlineFriends.value = [
-            makeFriend('usr_1', 'Alice'),
-            makeFriend('usr_2', 'Bob')
-        ];
+        mocks.onlineFriends.value = [makeFriend('usr_1', 'Alice'), makeFriend('usr_2', 'Bob')];
         const wrapper = mount(FriendsLocations);
         await flushSettings();
 
@@ -254,16 +245,11 @@ describe('FriendsLocations.vue', () => {
     });
 
     test('filters cards by search text in DOM', async () => {
-        mocks.onlineFriends.value = [
-            makeFriend('usr_1', 'Alice'),
-            makeFriend('usr_2', 'Bob')
-        ];
+        mocks.onlineFriends.value = [makeFriend('usr_1', 'Alice'), makeFriend('usr_2', 'Bob')];
         const wrapper = mount(FriendsLocations);
         await flushSettings();
 
-        await wrapper
-            .get('[data-testid="friend-locations-search"]')
-            .setValue('bob');
+        await wrapper.get('[data-testid="friend-locations-search"]').setValue('bob');
         await flushSettings();
 
         const cards = wrapper.findAll('[data-testid="friend-card"]');
@@ -291,19 +277,11 @@ describe('FriendsLocations.vue', () => {
         mocks.configSetBool.mockClear();
 
         await wrapper.get('[data-testid="set-scale"]').trigger('click');
-        await wrapper
-            .get('[data-testid="toggle-same-instance"]')
-            .trigger('click');
+        await wrapper.get('[data-testid="toggle-same-instance"]').trigger('click');
         vi.advanceTimersByTime(200);
 
-        expect(mocks.configSetString).toHaveBeenCalledWith(
-            'VRCX_FriendLocationCardScale',
-            '0.8'
-        );
-        expect(mocks.configSetBool).toHaveBeenCalledWith(
-            'VRCX_FriendLocationShowSameInstance',
-            true
-        );
+        expect(mocks.configSetString).toHaveBeenCalledWith('VRCX_FriendLocationCardScale', '0.8');
+        expect(mocks.configSetBool).toHaveBeenCalledWith('VRCX_FriendLocationShowSameInstance', true);
         vi.useRealTimers();
     });
 
@@ -311,8 +289,6 @@ describe('FriendsLocations.vue', () => {
         const wrapper = mount(FriendsLocations);
         await flushSettings();
 
-        expect(wrapper.get('[data-testid="empty-state"]').text()).toBe(
-            'nomatch'
-        );
+        expect(wrapper.get('[data-testid="empty-state"]').text()).toBe('nomatch');
     });
 });

@@ -19,10 +19,7 @@ export function useOptionKeySelect(optionsMap, getCurrentValue, onSelect) {
             if (option === current) {
                 return true;
             }
-            return (
-                option?.value === current?.value ||
-                option?.name === current?.name
-            );
+            return option?.value === current?.value || option?.name === current?.name;
         });
         return found ? String(found[0]) : '';
     });

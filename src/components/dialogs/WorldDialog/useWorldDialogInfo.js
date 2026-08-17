@@ -1,10 +1,5 @@
 import { computed } from 'vue';
-import {
-    commaNumber,
-    compareUnityVersion,
-    formatDateFilter,
-    timeToText
-} from '../../../shared/utils';
+import { commaNumber, compareUnityVersion, formatDateFilter, timeToText } from '../../../shared/utils';
 import { database } from '../../../services/database';
 
 /**
@@ -38,9 +33,7 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
     const favoriteRate = computed(() => {
         return (
             Math.round(
-                (((worldDialog.value.ref?.favorites -
-                    worldDialog.value.ref?.visits) /
-                    worldDialog.value.ref?.visits) *
+                (((worldDialog.value.ref?.favorites - worldDialog.value.ref?.visits) / worldDialog.value.ref?.visits) *
                     100 +
                     100) *
                     100
@@ -60,12 +53,7 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
         const platforms = [];
         if (ref.unityPackages) {
             for (const unityPackage of ref.unityPackages) {
-                if (
-                    !compareUnityVersion(
-                        unityPackage.unitySortNumber,
-                        sdkUnityVersion
-                    )
-                ) {
+                if (!compareUnityVersion(unityPackage.unitySortNumber, sdkUnityVersion)) {
                     continue;
                 }
                 let platform = 'PC';
@@ -93,19 +81,12 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
         }
         let newest = {};
         for (const unityPackage of ref.unityPackages) {
-            if (
-                unityPackage.variant &&
-                unityPackage.variant !== 'standard' &&
-                unityPackage.variant !== 'security'
-            ) {
+            if (unityPackage.variant && unityPackage.variant !== 'standard' && unityPackage.variant !== 'security') {
                 continue;
             }
             const platform = unityPackage.platform;
             const createdAt = unityPackage.created_at;
-            if (
-                !newest[platform] ||
-                new Date(createdAt) > new Date(newest[platform])
-            ) {
+            if (!newest[platform] || new Date(createdAt) > new Date(newest[platform])) {
                 newest[platform] = createdAt;
             }
         }

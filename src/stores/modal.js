@@ -161,14 +161,11 @@ export const useModalStore = defineStore('Modal', () => {
         alertDestructive.value = options.destructive === true;
 
         if (mode === 'alert') {
-            alertOkText.value =
-                options.confirmText || t('dialog.alertdialog.ok');
+            alertOkText.value = options.confirmText || t('dialog.alertdialog.ok');
             alertCancelText.value = '';
         } else {
-            alertOkText.value =
-                options.confirmText || t('dialog.alertdialog.confirm');
-            alertCancelText.value =
-                options.cancelText || t('dialog.alertdialog.cancel');
+            alertOkText.value = options.confirmText || t('dialog.alertdialog.confirm');
+            alertCancelText.value = options.cancelText || t('dialog.alertdialog.cancel');
         }
 
         alertOpen.value = true;
@@ -188,10 +185,7 @@ export const useModalStore = defineStore('Modal', () => {
         }
 
         const inputValue = options.inputValue ?? '';
-        const inputValueCopy =
-            typeof inputValue === 'string'
-                ? inputValue.slice()
-                : String(inputValue);
+        const inputValueCopy = typeof inputValue === 'string' ? inputValue.slice() : String(inputValue);
 
         promptTitle.value = options.title;
         promptDescription.value = options.description;
@@ -199,13 +193,10 @@ export const useModalStore = defineStore('Modal', () => {
         promptInputValue.value = inputValueCopy;
         promptInputType.value = options.inputType || 'text';
         promptPattern.value = options.pattern ?? null;
-        promptErrorMessage.value =
-            options.errorMessage || t('dialog.prompt.input_invalid');
+        promptErrorMessage.value = options.errorMessage || t('dialog.prompt.input_invalid');
 
-        promptOkText.value =
-            options.confirmText || t('dialog.alertdialog.confirm');
-        promptCancelText.value =
-            options.cancelText || t('dialog.alertdialog.cancel');
+        promptOkText.value = options.confirmText || t('dialog.alertdialog.confirm');
+        promptCancelText.value = options.cancelText || t('dialog.alertdialog.cancel');
 
         promptOpen.value = true;
 
@@ -336,10 +327,8 @@ export const useModalStore = defineStore('Modal', () => {
         otpDismissible.value = options.dismissible !== false;
         otpMode.value = options.mode || 'totp';
 
-        otpOkText.value =
-            options.confirmText || t('dialog.alertdialog.confirm');
-        otpCancelText.value =
-            options.cancelText || t('dialog.alertdialog.cancel');
+        otpOkText.value = options.confirmText || t('dialog.alertdialog.confirm');
+        otpCancelText.value = options.cancelText || t('dialog.alertdialog.cancel');
 
         otpOpen.value = true;
 

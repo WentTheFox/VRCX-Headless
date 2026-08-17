@@ -1,12 +1,7 @@
 import { ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 
-import {
-    buildLegacyInstanceTag,
-    getLaunchURL,
-    isRealInstance,
-    parseLocation
-} from '../../../shared/utils';
+import { buildLegacyInstanceTag, getLaunchURL, isRealInstance, parseLocation } from '../../../shared/utils';
 import { useGroupStore, useInstanceStore, useUserStore } from '../../../stores';
 import { groupRequest } from '../../../api';
 import { handleGroupPermissions } from '../../../coordinators/groupCoordinator';
@@ -20,8 +15,7 @@ import configRepository from '../../../services/config';
  */
 export function useNewInstanceBuilder(locationTagRef) {
     const { cachedGroups } = useGroupStore();
-    const { currentUser, isLocalUserVrcPlusSupporter } =
-        storeToRefs(useUserStore());
+    const { currentUser, isLocalUserVrcPlusSupporter } = storeToRefs(useUserStore());
     const { createNewInstance } = useInstanceStore();
 
     const newInstanceDialog = ref({
@@ -98,10 +92,7 @@ export function useNewInstanceBuilder(locationTagRef) {
 
         configRepository
             .getString('instanceDialogMinimumAvatarPerformance', '')
-            .then(
-                (value) =>
-                    (newInstanceDialog.value.minimumAvatarPerformance = value)
-            );
+            .then((value) => (newInstanceDialog.value.minimumAvatarPerformance = value));
     }
     /**
      *
@@ -123,22 +114,13 @@ export function useNewInstanceBuilder(locationTagRef) {
         configRepository.setString('instanceDialogAccessType', accessType);
         configRepository.setString('instanceRegion', region);
         configRepository.setString('instanceDialogInstanceName', instanceName);
-        configRepository.setString(
-            'instanceDialogUserId',
-            legacyUserId === currentUser.value.id ? '' : legacyUserId
-        );
+        configRepository.setString('instanceDialogUserId', legacyUserId === currentUser.value.id ? '' : legacyUserId);
         configRepository.setString('instanceDialogGroupId', groupId);
-        configRepository.setString(
-            'instanceDialogGroupAccessType',
-            groupAccessType
-        );
+        configRepository.setString('instanceDialogGroupAccessType', groupAccessType);
         configRepository.setBool('instanceDialogQueueEnabled', queueEnabled);
         configRepository.setBool('instanceDialogAgeGate', ageGate);
         configRepository.setString('instanceDialogDisplayName', displayName);
-        configRepository.setString(
-            'instanceDialogMinimumAvatarPerformance',
-            minimumAvatarPerformance
-        );
+        configRepository.setString('instanceDialogMinimumAvatarPerformance', minimumAvatarPerformance);
     }
 
     // --- Group role loading (shared between buildInstance & buildLegacyInstance) ---
@@ -224,9 +206,7 @@ export function useNewInstanceBuilder(locationTagRef) {
             D.strict = false;
         }
 
-        const instanceName =
-            D.instanceName ||
-            String((99999 * Math.random() + 1).toFixed(0)).padStart(5, '0');
+        const instanceName = D.instanceName || String((99999 * Math.random() + 1).toFixed(0)).padStart(5, '0');
 
         D.instanceId = buildLegacyInstanceTag({
             instanceName,
@@ -286,16 +266,12 @@ export function useNewInstanceBuilder(locationTagRef) {
      *
      */
     async function handleCreateNewInstance() {
-        const args = await createNewInstance(
-            newInstanceDialog.value.worldId,
-            newInstanceDialog.value
-        );
+        const args = await createNewInstance(newInstanceDialog.value.worldId, newInstanceDialog.value);
 
         if (args) {
             newInstanceDialog.value.location = args.json.location;
             newInstanceDialog.value.instanceId = args.json.instanceId;
-            newInstanceDialog.value.secureOrShortName =
-                args.json.shortName || args.json.secureName;
+            newInstanceDialog.value.secureOrShortName = args.json.shortName || args.json.secureName;
             newInstanceDialog.value.instanceCreated = true;
             updateNewInstanceDialog();
         }
@@ -319,9 +295,7 @@ export function useNewInstanceBuilder(locationTagRef) {
      * @param value
      */
     function handleRoleIdsChange(value) {
-        const next = Array.isArray(value)
-            ? value.map((v) => String(v ?? '')).filter(Boolean)
-            : [];
+        const next = Array.isArray(value) ? value.map((v) => String(v ?? '')).filter(Boolean) : [];
         newInstanceDialog.value.roleIds = next;
         buildInstance();
     }

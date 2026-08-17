@@ -80,10 +80,7 @@ function compareByUpdatedAt(a, b) {
  * @returns
  */
 function compareByDisplayName(a, b) {
-    if (
-        typeof a.displayName !== 'string' ||
-        typeof b.displayName !== 'string'
-    ) {
+    if (typeof a.displayName !== 'string' || typeof b.displayName !== 'string') {
         return 0;
     }
     return a.displayName.localeCompare(b.displayName);
@@ -109,10 +106,7 @@ function compareById(a, b) {
  * @returns
  */
 function compareByMemberCount(a, b) {
-    if (
-        typeof a.memberCount !== 'number' ||
-        typeof b.memberCount !== 'number'
-    ) {
+    if (typeof a.memberCount !== 'number' || typeof b.memberCount !== 'number') {
         return 0;
     }
     return a.memberCount - b.memberCount;
@@ -165,11 +159,7 @@ function compareByStatus(a, b) {
  */
 function compareByLastActive(a, b) {
     if (a.state === 'online' && b.state === 'online') {
-        if (
-            a.ref?.$online_for &&
-            b.ref?.$online_for &&
-            a.ref.$online_for === b.ref.$online_for
-        ) {
+        if (a.ref?.$online_for && b.ref?.$online_for && a.ref.$online_for === b.ref.$online_for) {
             return compareByActivityField(a, b, 'last_login');
         }
         return compareByActivityField(a, b, '$online_for');
@@ -212,16 +202,10 @@ function compareByActivityField(a, b, field) {
 
     // When the field is just and empty string, it means they've been
     // in whatever active state for the longest
-    if (
-        a.ref[field] < b.ref[field] ||
-        (a.ref[field] !== '' && b.ref[field] === '')
-    ) {
+    if (a.ref[field] < b.ref[field] || (a.ref[field] !== '' && b.ref[field] === '')) {
         return 1;
     }
-    if (
-        a.ref[field] > b.ref[field] ||
-        (a.ref[field] === '' && b.ref[field] !== '')
-    ) {
+    if (a.ref[field] > b.ref[field] || (a.ref[field] === '' && b.ref[field] !== '')) {
         return -1;
     }
     return 0;
