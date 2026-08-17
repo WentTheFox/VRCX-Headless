@@ -123,6 +123,21 @@ Azure-signing release pipeline, untouched): x64 only, no code signing, no
 publish step — this exists to catch build breaks early, not to ship
 releases.
 
+## CI (release)
+
+`.github/workflows/desktop-release.yaml` is the actual release path, separate
+from the build-verification CI above: triggered by the same `v*` tag push
+that cuts a Docker release (CLAUDE.md's "Cutting a release"), it builds all
+six OS/arch combos (Windows/macOS/Linux × x64/arm64), self-signs the Windows
+and macOS artifacts with the certs from
+`build-scripts/generate-self-signed-certs.sh`, and attaches everything to a
+**draft** GitHub Release — see CLAUDE.md's "Desktop client release
+artifacts" for why draft rather than immediate-publish, and for which of the
+six legs are still genuinely unverified (in short: Linux and Windows x64
+build *mechanics* match already-proven sequences; the signing pipeline as a
+whole, `windows-11-arm`, and the entire macOS leg do not have a real run
+behind them yet).
+
 ## Not covered here
 
 - **Shrinking the bundled `.NET`/`node-api-dotnet` footprint.** Still fully

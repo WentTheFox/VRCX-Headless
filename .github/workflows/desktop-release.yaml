@@ -1,0 +1,212 @@
+# Fork-only workflow: builds and self-signs the Electron desktop client for
+# every OS/arch combo VRCX-Headless supports (Windows/macOS/Linux, x64+arm64)
+# and attaches the results to a DRAFT GitHub Release for the pushed tag.
+#
+# Triggers on the same `v*` tag push server-docker.yaml already uses, so one
+# `git tag && git push` (CLAUDE.md's "Cutting a release") cuts both releases
+# together.
+#
+# Draft, not published: this repo has GitHub's "Immutable releases" setting
+# active, meaning a *published* release's assets can never be edited or
+# replaced afterward -- only drafts stay mutable. This is also the first-ever
+# run of self-signed cross-platform signing in this fork's history (new RIDs,
+# new certs, a genuinely unverified macOS build), so staying in draft until a
+# human confirms the real signed artifacts work is the only way to get a look
+# before that point of no return. Switching to immediate-publish later is a
+# one-line change (drop `--draft` in the publish-release job), not a redesign.
+#
+# Signing needs two SEPARATE self-signed certs (Windows Authenticode + macOS
+# codesign, both CN=WentTheFox/C=HU/ST=Pest/L=Budapest), generated once
+# locally via build-scripts/generate-self-signed-certs.sh and stored as the
+# secrets referenced below. Neither is CA-issued: this reduces some
+# SmartScreen/Gatekeeper friction but does not eliminate it, and does not
+# satisfy Apple notarization.
+name: Desktop Client Release
+
+on:
+    push:
+        tags:
+            - 'v*'
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        name: Build (${{ matrix.id }})
+        runs-on: ${{ matrix.runs-on }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - id: linux-x64
+                      runs-on: ubuntu-latest
+                      csproj: Dotnet/VRCX-Electron.csproj
+                      dotnet-arch: x64
+                      dotnet-platform: x64
+                      dotnet-rid: ''
+                      electron-script: build-electron
+                      os-family: linux
+                    - id: linux-arm64
+                      runs-on: ubuntu-latest
+                      csproj: Dotnet/VRCX-Electron-arm64.csproj
+                      dotnet-arch: arm64
+                      dotnet-platform: arm64
+                      dotnet-rid: ''
+                      electron-script: build-electron-arm64
+                      os-family: linux
+                    # Windows x64's dotnet build -> pnpm -> build-electron
+                    # sequence is already manually live-verified (see
+                    # client-desktop/README.md's "Windows" section) -- CI
+                    # automation and signing are what's new here, not the
+                    # build mechanics themselves.
+                    - id: win-x64
+                      runs-on: windows-latest
+                      csproj: Dotnet/VRCX-Electron.csproj
+                      dotnet-arch: x64
+                      dotnet-platform: x64
+                      dotnet-rid: win-x64
+                      electron-script: build-electron
+                      os-family: windows
+                    # Native arm64 runner, not a cross-compile from
+                    # windows-latest -- avoids node-api-dotnet resolving the
+                    # wrong (host-arch) prebuilt native binary via pnpm's
+                    # normal optionalDependency selection. Genuinely
+                    # first-of-its-kind here: verify this runner label is
+                    # actually available before trusting this leg; if not,
+                    # the fallback is `-r win-arm64` on windows-latest.
+                    - id: win-arm64
+                      runs-on: windows-11-arm
+                      csproj: Dotnet/VRCX-Electron-arm64.csproj
+                      dotnet-arch: arm64
+                      dotnet-platform: arm64
+                      dotnet-rid: win-arm64
+                      electron-script: build-electron-arm64
+                      os-family: windows
+                    # Native Intel runner for x64 (avoids Rosetta), native
+                    # Apple Silicon runner for arm64 -- same reasoning as
+                    # win-arm64 above. Nothing about the macOS Electron build
+                    # has ever been exercised in this fork before, manually
+                    # or in CI -- treat both mac legs as genuinely unverified.
+                    - id: macos-x64
+                      runs-on: macos-13
+                      csproj: Dotnet/VRCX-Electron.csproj
+                      dotnet-arch: x64
+                      dotnet-platform: x64
+                      dotnet-rid: osx-x64
+                      electron-script: build-electron
+                      os-family: macos
+                    - id: macos-arm64
+                      runs-on: macos-latest
+                      csproj: Dotnet/VRCX-Electron-arm64.csproj
+                      dotnet-arch: arm64
+                      dotnet-platform: arm64
+                      dotnet-rid: osx-arm64
+                      electron-script: build-electron-arm64
+                      os-family: macos
+        env:
+            WIN_CSC_LINK: ${{ matrix.os-family == 'windows' && secrets.WIN_CSC_LINK || '' }}
+            WIN_CSC_KEY_PASSWORD: ${{ matrix.os-family == 'windows' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+            CSC_LINK: ${{ matrix.os-family == 'macos' && secrets.CSC_LINK || '' }}
+            CSC_KEY_PASSWORD: ${{ matrix.os-family == 'macos' && secrets.CSC_KEY_PASSWORD || '' }}
+        defaults:
+            run:
+                # windows-latest/windows-11-arm default to pwsh -- matches
+                # github_actions.yml's own build_dotnet_windows job, which
+                # sets this for the same reason.
+                shell: bash
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+            - name: Setup .NET 10
+              uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+              with:
+                  dotnet-version: '10.0.x'
+
+            - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+              with:
+                  path: ~/.nuget/packages
+                  key: ${{ runner.os }}-${{ matrix.id }}-nuget-${{ hashFiles(matrix.csproj) }}
+                  restore-keys: |
+                      ${{ runner.os }}-${{ matrix.id }}-nuget-
+
+            - name: Build the .NET side (${{ matrix.id }})
+              run: |
+                  set -euo pipefail
+                  rid_flag=""
+                  if [ -n "${{ matrix.dotnet-rid }}" ]; then rid_flag="-r ${{ matrix.dotnet-rid }}"; fi
+                  dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a ${{ matrix.dotnet-arch }} $rid_flag
+
+            - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+            - name: Node.js
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+              with:
+                  node-version: lts/*
+                  cache: pnpm
+
+            - run: pnpm install --frozen-lockfile
+
+            # PLATFORM=linux means "the Electron client", not "runs on
+            # Linux" -- this is the correct script even for Windows/macOS
+            # builds, per client-desktop/README.md.
+            - name: Build the Vue app (PLATFORM=linux, i.e. the Electron client)
+              run: pnpm run prod-linux
+
+            - name: Package the Electron app (${{ matrix.id }})
+              run: pnpm run ${{ matrix.electron-script }}
+
+            - name: Locate the built installer/AppImage/dmg
+              id: artifact
+              run: |
+                  set -euo pipefail
+                  path="$(find build -maxdepth 1 \( -name '*.AppImage' -o -name '*.exe' -o -name '*.dmg' \) -print -quit)"
+                  if [ -z "$path" ]; then
+                      echo "No packaged artifact found under build/ for ${{ matrix.id }}" >&2
+                      exit 1
+                  fi
+                  echo "path=$path" >> "$GITHUB_OUTPUT"
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+              with:
+                  name: desktop-${{ matrix.id }}
+                  path: ${{ steps.artifact.outputs.path }}
+
+    publish-release:
+        name: Publish draft release
+        needs: build
+        if: startsWith(github.ref, 'refs/tags/v')
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+              with:
+                  pattern: desktop-*
+                  path: dist
+                  merge-multiple: true
+
+            - name: List collected assets
+              run: ls -la dist
+
+            # Draft, not published -- see the top-of-file comment and
+            # CLAUDE.md's "Cutting a release" section: this repo has
+            # "Immutable releases" enabled, so a *published* release's
+            # assets can never be replaced afterward. Staying in draft until
+            # a human confirms the signed artifacts are good is the only way
+            # to get a look before that point of no return. To switch to
+            # immediate-publish later, drop `--draft` below -- deliberately
+            # a one-line change, not a redesign.
+            - name: Create draft GitHub Release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  tag="${GITHUB_REF_NAME}"
+                  gh release create "$tag" \
+                      --draft \
+                      --title "VRCX-Headless Desktop $tag" \
+                      --notes "Desktop client (Electron) build for $tag. Self-signed installers/images for Windows (x64/arm64), macOS (x64/arm64), and Linux (x64/arm64) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are self-signed only (not notarized) -- Gatekeeper will still show an 'unidentified developer' warning on first launch." \
+                      dist/*
