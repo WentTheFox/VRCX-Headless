@@ -28,7 +28,18 @@
  * @returns {Promise<any>}
  */
 export async function rpcCall(target, method, args = []) {
-    const body = await window.vrcxDesktopAgent.rpc(target, method, args);
+    // Real src/** call sites routinely pass a live Vue reactive object as an
+    // argument (e.g. the current user, a location object) — fine for
+    // client-web/shims/rpc-client.js's fetch()+JSON.stringify(args), which
+    // walks a Proxy transparently, but window.vrcxDesktopAgent.rpc crosses
+    // Electron's contextBridge via the structured clone algorithm, which
+    // throws "An object could not be cloned" on a reactive Proxy. Found live
+    // (2026-08-17): a real Discord presence update, once VRChat was actually
+    // running, surfaced this on the very next RPC call. JSON-round-tripping
+    // here strips reactivity down to plain data before the IPC hop, matching
+    // exactly what the web client's network transport already does.
+    const plainArgs = JSON.parse(JSON.stringify(args));
+    const body = await window.vrcxDesktopAgent.rpc(target, method, plainArgs);
     if (!body.ok) {
         throw new Error(body.error ?? 'RPC call failed');
     }
