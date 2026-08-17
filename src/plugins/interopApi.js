@@ -122,9 +122,8 @@ export async function initInteropApi(isVrOverlay = false) {
             // weight.
             const { webApiTarget } =
                 await import('../../client-desktop/shims/webapi-target.js');
-            const { installPipelineRelay } = await import(
-                '../../client-desktop/shims/pipeline-relay.js'
-            );
+            const { installPipelineRelay } =
+                await import('../../client-desktop/shims/pipeline-relay.js');
             installPipelineRelay();
             window.AppApi = InteropApi.AppApiElectron;
             window.WebApi = webApiTarget;

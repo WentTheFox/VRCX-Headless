@@ -74,9 +74,7 @@
                     </p>
                 </div>
 
-                <div
-                    v-if="addStep === 'closed'"
-                    class="flex flex-col gap-1 border-t border-border pt-2">
+                <div v-if="addStep === 'closed'" class="flex flex-col gap-1 border-t border-border pt-2">
                     <span class="text-[11px] text-foreground">{{ t('status_bar.headless_ca_cert') }}</span>
                     <p class="text-[10px] text-muted-foreground m-0">
                         {{

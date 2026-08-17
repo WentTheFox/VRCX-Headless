@@ -412,7 +412,9 @@ ipcMain.on('vrcx-stream-connect', () => {
         }
     };
     ws.on('open', () => send({ type: 'open' }));
-    ws.on('message', (data) => send({ type: 'message', data: data.toString() }));
+    ws.on('message', (data) =>
+        send({ type: 'message', data: data.toString() })
+    );
     ws.on('close', (code, reason) => {
         send({ type: 'close', code, reason: reason?.toString() });
         if (streamSocket === ws) {
@@ -957,9 +959,7 @@ ipcMain.handle('dialog:openDirectory', async () => {
 ipcMain.handle('vrcx-import-ca-cert', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile'],
-        filters: [
-            { name: 'Certificates', extensions: ['pem', 'crt', 'cer'] }
-        ]
+        filters: [{ name: 'Certificates', extensions: ['pem', 'crt', 'cer'] }]
     });
     if (result.canceled || result.filePaths.length === 0) {
         return { ok: false };
