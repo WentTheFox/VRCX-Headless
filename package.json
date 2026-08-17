@@ -24,7 +24,7 @@
         "localization": "node ./src/shared/utils/localizationHelperCLI.js",
         "format": "oxfmt src src-electron eslint.config.mjs vitest.config.js vitest.setup.js",
         "format:check": "oxfmt --check src src-electron eslint.config.mjs vitest.config.js vitest.setup.js",
-        "lint": "npm run lint:oxlint && npm run lint:eslint",
+        "lint": "pnpm run lint:oxlint && pnpm run lint:eslint",
         "lint:eslint": "eslint .",
         "lint:oxlint": "oxlint .",
         "typecheck:js": "tsc -p tsconfig.checkjs.json",
@@ -35,9 +35,9 @@
         "test:server": "vitest run --config server/vitest.config.js",
         "server": "node --disable-warning=ExperimentalWarning --import ./server/register-hooks.mjs server/src/cli.js",
         "build:licenses": "node ./build-scripts/generate-third-party-licenses.js",
-        "prod": "cross-env PLATFORM=windows vite build src && npm run build:licenses",
-        "prod-linux": "cross-env PLATFORM=linux vite build src && npm run build:licenses",
-        "prod-web": "cross-env PLATFORM=web vite build client-web --config src/vite.config.js && cross-env PLATFORM=web npm run build:licenses",
+        "prod": "cross-env PLATFORM=windows vite build src && pnpm run build:licenses",
+        "prod-linux": "cross-env PLATFORM=linux vite build src && pnpm run build:licenses",
+        "prod-web": "cross-env PLATFORM=web vite build client-web --config src/vite.config.js && cross-env PLATFORM=web pnpm run build:licenses",
         "build-electron": "node ./build-scripts/download-dotnet-runtime.js --arch=x64 && node ./build-scripts/patch-package-version.js && cross-env DEBUG=electron-builder electron-builder --config electron-builder.config.js --x64 --publish never",
         "build-electron-arm64": "node ./build-scripts/download-dotnet-runtime.js --arch=arm64 && node ./build-scripts/patch-package-version.js && electron-builder --config electron-builder.config.js --arm64 --publish never",
         "postbuild-electron": "node ./build-scripts/patch-node-api-dotnet.js --arch=x64 && node ./build-scripts/rename-builds.js --arch=x64",
@@ -45,8 +45,9 @@
         "start-electron": "electron . --hot-reload"
     },
     "dependencies": {
+        "@vue/runtime-core": "^3.5.40",
         "hazardous": "^0.3.0",
-        "node-api-dotnet": "^0.9.23",
+        "node-api-dotnet": "^0.9.21",
         "qrcode-generator": "^2.0.4",
         "ws": "^8.21.2"
     },
@@ -85,7 +86,7 @@
         "embla-carousel-vue": "^8.6.0",
         "eslint": "^10.8.0",
         "eslint-plugin-jsdoc": "^63.2.2",
-        "eslint-plugin-oxlint": "^1.75.0",
+        "eslint-plugin-oxlint": "1.75.0",
         "eslint-plugin-vue": "^10.10.0",
         "globals": "^17.7.0",
         "graphology": "^0.26.0",
@@ -97,7 +98,7 @@
         "lucide-vue-next": "^1.0.0",
         "noty": "^3.2.0-beta-deprecated",
         "oxfmt": "^0.60.0",
-        "oxlint": "^1.75.0",
+        "oxlint": "1.75.0",
         "pinia": "^4.0.2",
         "reka-ui": "^2.10.1",
         "remixicon": "^4.9.1",
@@ -137,14 +138,8 @@
     },
     "engines": {
         "node": ">=24.15.0",
-        "npm": ">=11.5.0"
+        "pnpm": ">=11.22.0"
     },
-    "allowScripts": {
-        "@sentry/cli": true,
-        "core-js": true,
-        "electron-winstaller": true,
-        "vue-demi": true,
-        "electron": true
-    },
+    "packageManager": "pnpm@11.22.0",
     "desktopName": "VRCX"
 }

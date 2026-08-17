@@ -35,14 +35,15 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v6
+            - uses: pnpm/action-setup@v4
             - uses: actions/setup-node@v6
               with:
                   node-version: 24
-                  cache: npm
-            - run: npm ci
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
             - name: Check server/root dependency drift
               run: node server/scripts/check-deps.js
-            - run: npm run test:server
+            - run: pnpm run test:server
 
     build:
         name: Build and publish

@@ -12,18 +12,26 @@
 # served by server/src/http-server.js at `/`.
 #
 # Dependencies come from server/package.json rather than the root manifest: the
-# root keeps everything in devDependencies, so `--omit=dev` there installs
-# nothing while `--include=dev` would drag in electron and vite. See
-# server/scripts/check-deps.js for the drift guard that keeps the two in step.
+# root keeps everything in devDependencies, so `pnpm install --prod` there
+# installs nothing while a plain `pnpm install` would drag in electron and
+# vite. See server/scripts/check-deps.js for the drift guard that keeps the
+# two in step.
 
 # ---- dependencies -----------------------------------------------------------
 FROM node:24-alpine AS deps
 
+RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
+
 WORKDIR /app
 COPY server/package.json ./package.json
-# No package-lock for this manifest, and every dependency is pure JS, so there
-# is nothing to compile and nothing arch-specific about this layer.
-RUN npm install --omit=dev --no-audit --no-fund
+# pnpm-workspace.yaml, not just package.json — this is a standalone install
+# (server/package.json has no lockfile of its own, always resolved fresh),
+# so the minimumReleaseAge supply-chain policy only applies here if the
+# config that defines it is actually present in this build context.
+COPY pnpm-workspace.yaml ./pnpm-workspace.yaml
+# No lockfile for this manifest, and every dependency is pure JS, so there is
+# nothing to compile and nothing arch-specific about this layer.
+RUN pnpm install --prod --no-frozen-lockfile
 
 # ---- web client ---------------------------------------------------------------
 #
@@ -49,8 +57,10 @@ RUN npm install --omit=dev --no-audit --no-fund
 # already, not because native output there would be safe to cross-copy.
 FROM --platform=$BUILDPLATFORM node:24-alpine AS webclient
 
+RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
+
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # ELECTRON_SKIP_BINARY_DOWNLOAD, not --ignore-scripts: electron's own
 # node_modules/electron/install.js checks this env var and exits
 # immediately, skipping just its ~100MB platform binary download — more
@@ -58,8 +68,11 @@ COPY package.json package-lock.json ./
 # package's postinstall in this closure, including ones this stage's own
 # build might actually depend on (e.g. a native binary some devDependency
 # resolves via its own postinstall rather than an optionalDependency).
+# pnpm-workspace.yaml's own allowBuilds list is what lets electron's
+# postinstall run at all here in the first place (pnpm blocks it by
+# default) — this env var just makes that approved run a no-op.
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
-RUN npm ci --no-audit --no-fund
+RUN pnpm install --frozen-lockfile
 # src/vite.config.js's PLATFORM=web branch still unconditionally imports
 # client-desktop/aliases.js and server/vite-alias-plugin.js (→
 # server/aliases.js) at module scope, even though neither's content is used
@@ -78,7 +91,7 @@ COPY Version ./Version
 # repo-root images/ directory via a relative `../../../images/VRCX.png` —
 # also found by an actual CI build failing, not predicted.
 COPY images ./images
-# build-scripts/generate-third-party-licenses.js (npm run build:licenses,
+# build-scripts/generate-third-party-licenses.js (pnpm run build:licenses,
 # chained by prod-web below) is PLATFORM-aware as of this fork (see its own
 # top-of-file comment): under PLATFORM=web it writes to build/html-web
 # (matching vite's own outDir for this platform) and skips scanning
@@ -86,7 +99,7 @@ COPY images ./images
 # earlier version of this stage, Dotnet/** genuinely never needs to be in
 # this build context at all.
 COPY build-scripts ./build-scripts
-RUN npm run prod-web
+RUN pnpm run prod-web
 
 # ---- runtime ----------------------------------------------------------------
 FROM node:24-alpine AS runtime

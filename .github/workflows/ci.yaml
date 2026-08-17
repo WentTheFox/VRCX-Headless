@@ -33,12 +33,13 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
-          cache: npm
-      - run: npm ci
-      - run: npm run format:check
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
 
   format_c_sharp:
     name: Format C# (dotnet format)

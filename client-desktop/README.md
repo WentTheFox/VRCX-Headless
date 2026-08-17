@@ -12,7 +12,7 @@ this fork hasn't adapted.
 ## Prerequisites
 
 - .NET 10 SDK (`dotnet --version`)
-- Node ≥ 24.15, `npm ci` already run at the repo root
+- Node ≥ 24.15, `pnpm install --frozen-lockfile` already run at the repo root
 
 ## 1. Build the .NET side
 
@@ -32,10 +32,10 @@ dotnet build 'Dotnet/VRCX-Electron-arm64.csproj' -p:Configuration=Release -p:War
 ## 2. Build the Vue app and package the Electron app
 
 ```bash
-npm run prod-linux      # -> build/html (the real, unmodified Vue app, PLATFORM=linux)
-npm run build-electron  # x64: downloads a self-contained .NET runtime, then electron-builder
+pnpm run prod-linux      # -> build/html (the real, unmodified Vue app, PLATFORM=linux)
+pnpm run build-electron  # x64: downloads a self-contained .NET runtime, then electron-builder
 # or, for arm64:
-npm run build-electron-arm64
+pnpm run build-electron-arm64
 ```
 
 `build-electron`/`build-electron-arm64` also run
@@ -60,14 +60,14 @@ see `CLAUDE.md`'s "Desktop client OS support" table (§1) for exactly which
 native capabilities are and aren't OS-branched yet.
 
 Steps 1–2 above are unchanged on Windows (`dotnet build` needs no
-Windows-specific flags; `npm run prod-linux` still means "build for the
+Windows-specific flags; `pnpm run prod-linux` still means "build for the
 Electron client," not "for Linux"). Both the raw run and the packaged
 installer are verified:
 
 ```powershell
-npm run prod-linux
+pnpm run prod-linux
 & .\node_modules\.bin\electron.exe .          # raw, unpacked run
-npm run build-electron                        # packaged NSIS installer
+pnpm run build-electron                        # packaged NSIS installer
 & .\build\win-unpacked\VRCX.exe               # smoke-test the packaged app directly, same as CI does for the AppImage
 ```
 

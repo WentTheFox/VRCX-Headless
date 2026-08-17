@@ -58,27 +58,29 @@ jobs:
 
             # Compiles AppApiElectron/Discord/LogWatcher/AssetBundleManager/
             # AppApiVrElectron — the real native-capability bindings phase 5
-            # left untouched. Output goes to build/Electron, which npm run
+            # left untouched. Output goes to build/Electron, which pnpm run
             # build-electron below expects to already be there.
             - name: Build the .NET side (VRCX-Electron, x64)
               run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
+
+            - uses: pnpm/action-setup@v4
 
             - name: Node.js
               uses: actions/setup-node@v6
               with:
                   node-version: lts/*
-                  cache: npm
+                  cache: pnpm
 
-            - run: npm ci
+            - run: pnpm install --frozen-lockfile
 
             - name: Build the Vue app (PLATFORM=linux)
-              run: npm run prod-linux
+              run: pnpm run prod-linux
 
             # Downloads a self-contained .NET runtime (network access, a
             # separate step from the dotnet build above) then runs
             # electron-builder — produces build/VRCX_<version>_x64.AppImage.
             - name: Package the Electron app
-              run: npm run build-electron
+              run: pnpm run build-electron
 
             - name: Locate the built AppImage
               id: appimage

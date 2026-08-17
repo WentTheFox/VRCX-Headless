@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@tanstack/vue-query": "^5.101.4",
+        "@vue/runtime-core": "^3.5.40",
         "dayjs": "^1.11.21",
         "pinia": "^4.0.2",
         "tough-cookie": "^6.0.1",
