@@ -59,11 +59,20 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 # client-desktop/aliases.js and server/vite-alias-plugin.js (→
 # server/aliases.js) at module scope, even though neither's content is used
 # for this platform — so all four of these need to be present, not just
-# client-web/ and src/.
+# client-web/ and src/. It also unconditionally reads the repo-root
+# Version file (for the compile-time VERSION define, real for every
+# platform, not just Electron) — found by an actual CI build failing on
+# exactly this ENOENT, not predicted.
 COPY src ./src
 COPY client-web ./client-web
 COPY client-desktop ./client-desktop
 COPY server ./server
+COPY Version ./Version
+# Three onboarding/nav components (src/components/onboarding/*.vue,
+# src/components/nav-menu/NavMenu.vue) import the VRCX logo from the
+# repo-root images/ directory via a relative `../../../images/VRCX.png` —
+# also found by an actual CI build failing, not predicted.
+COPY images ./images
 # build-scripts/generate-third-party-licenses.js (npm run build:licenses,
 # chained by prod-web below) is PLATFORM-aware as of this fork (see its own
 # top-of-file comment): under PLATFORM=web it writes to build/html-web
