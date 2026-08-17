@@ -260,30 +260,37 @@ function connectAgentSocket() {
 }
 
 /**
- * A harmless RPC call: 401 means the stored token is missing or the server
- * rejected it (expected after any `serve` restart — sessions are
- * process-lifetime only, per phase 3), anything else means it's still
- * good. Same probe shape as `client-web/bootstrap.js`'s `hasValidSession()`.
+ * Rotates the stored token into a fresh one with a full new expiry
+ * (`server/src/http-server.js`'s `/api/session/refresh`,
+ * `server/src/http-auth.js`'s `SESSION_TTL_MS`) instead of just probing
+ * validity — every launch that still has a good token slides the "stay
+ * logged in" window forward rather than counting down from the original
+ * pairing. Same shape as `client-web/bootstrap.js`'s `refreshSession()`.
+ * 401 (or any other failure) means the stored token is missing, expired,
+ * or the server rejected it outright — falls through to the setup screen.
  * @returns {Promise<boolean>}
  */
-async function hasValidServerSession() {
+async function refreshServerSession() {
     if (!serverUrl || !serverToken) {
         return false;
     }
     try {
-        const { status: httpStatus } = await fetchJson(`${serverUrl}/api/rpc`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${serverToken}`
-            },
-            body: JSON.stringify({
-                target: 'config',
-                method: 'getString',
-                args: ['lastUserLoggedIn', '']
-            })
-        });
-        return httpStatus !== 401;
+        const { status: httpStatus, body } = await fetchJson(
+            `${serverUrl}/api/session/refresh`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${serverToken}`
+                },
+                body: '{}'
+            }
+        );
+        if (httpStatus !== 200 || !body?.ok || !body.token) {
+            return false;
+        }
+        completeSession(serverUrl, body.token);
+        return true;
     } catch {
         return false;
     }
@@ -692,14 +699,19 @@ function createWindow() {
 
     // Phase 5: gate on an already-connected, still-valid server session
     // before loading the real app at all — mirrors client-web/bootstrap.js's
-    // own hasValidSession() check. Sessions are process-lifetime only on the
-    // server (phase 3), so this is expected to fail and fall through to the
-    // setup screen after every `serve` restart, not just on first launch.
+    // own refreshSession() check. A stored token now survives a `serve`
+    // restart on its own (server/src/http-auth.js's signed, stateless
+    // tokens), and refreshServerSession() also slides its expiry forward on
+    // every launch — so this only falls through to the setup screen once
+    // the token is genuinely gone (never paired, explicitly logged out, or
+    // finally aged out past SESSION_TTL_MS with no launch in between).
+    // completeSession() (called inside refreshServerSession() on success)
+    // already opens the agent socket, so there's nothing left to do here
+    // beyond loading the real app.
     serverUrl = VRCXStorage.Get('VRCX_ServerUrl') || null;
     serverToken = VRCXStorage.Get('VRCX_ServerToken') || null;
-    hasValidServerSession().then((connected) => {
+    refreshServerSession().then((connected) => {
         if (connected) {
-            connectAgentSocket();
             loadRealApp();
         } else {
             loadServerSetup();
