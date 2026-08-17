@@ -95,28 +95,27 @@ function getAssetFilename({ name }) {
     return 'assets/i18n/[name][extname]';
 }
 
+/**
+ * @param ConfigEnv configEnv
+ * @returns {import('vite').UserConfig}
+ */
 export default defineConfig(({ mode }) => {
-    const { SENTRY_AUTH_TOKEN: sentryAuthToken } = loadEnv(
-        mode,
-        process.cwd(),
-        ''
-    );
+    const { SENTRY_AUTH_TOKEN: sentryAuthToken } = loadEnv(mode, process.cwd(), '');
 
     const buildAndUploadSourceMaps = !!sentryAuthToken;
 
-    const version = fs
-        .readFileSync(new URL('../Version', import.meta.url), 'utf-8')
-        .trim();
+    const version = fs.readFileSync(new URL('../Version', import.meta.url), 'utf-8').trim();
 
-    const nightly =
-        mode === 'development' || version.split('-').at(-1).length === 7;
+    const nightly = mode === 'development' || version.split('-').at(-1).length === 7;
 
     const isWeb = process.env.PLATFORM === 'web';
     // The Windows/CefSharp build (`PLATFORM=windows`) is out of scope for
-    // this fork's phase 5 — it only ships the Linux/Electron desktop build,
-    // per client-desktop/aliases.js's own doc comment.
+    // this fork — it's never built here; only the Linux/Electron desktop
+    // build is (which, despite the flag name, also runs on Windows OS —
+    // see CLAUDE.md's "Desktop client OS support" note).
     const isLinuxDesktop = process.env.PLATFORM === 'linux';
 
+    /** @type {import('vite').UserConfig} */
     return {
         base: '',
         // Found live: Vite resolves `publicDir` relative to `root` by
@@ -165,8 +164,7 @@ export default defineConfig(({ mode }) => {
                         },
                         sourcemaps: {
                             assets: './build/html/**',
-                            filesToDeleteAfterUpload:
-                                './build/html/**/*.js.map',
+                            filesToDeleteAfterUpload: './build/html/**/*.js.map',
                             ignore: []
                         }
                     })
@@ -239,10 +237,10 @@ export default defineConfig(({ mode }) => {
             reportCompressedSize: false,
             chunkSizeWarningLimit: 5000,
             sourcemap: buildAndUploadSourceMaps ? 'hidden' : false,
-            assetsInlineLimit(filePath) {
-                if (isFont(filePath)) return 0;
-                if (filePath.endsWith('.json')) return 0;
-                return 40960;
+            assetsInlineLimit(filePath, content) {
+                if (isFont(filePath)) return false;
+                if (filePath.endsWith('.json')) return false;
+                return content.length <= 40960;
             },
             rolldownOptions: {
                 preserveEntrySignatures: false,
