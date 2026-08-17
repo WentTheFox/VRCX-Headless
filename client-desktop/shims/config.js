@@ -7,12 +7,19 @@
 import { rpcCall } from './agent-rpc.js';
 
 class ClientConfigRepository {
-    #cache = new Map();
+    // Same fix as client-web/shims/config.js — see its comment for the live
+    // bug this closes (a key-only cache serving one call site's default to
+    // a different call site's request for the same key).
+    /** @type {Map<string, Map<string, any>>} */
+    #variants = new Map();
+    /** @type {Map<string, any>} */
+    #written = new Map();
 
     async init() {}
 
     async remove(key) {
-        this.#cache.delete(key);
+        this.#variants.delete(key);
+        this.#written.delete(key);
         await rpcCall('config', 'remove', [key]);
     }
 
@@ -70,9 +77,16 @@ class ClientConfigRepository {
      * @param {any} defaultValue
      */
     async #get(method, key, defaultValue) {
-        if (this.#cache.has(key)) return this.#cache.get(key);
+        if (this.#written.has(key)) return this.#written.get(key);
+        const variant = `${method}:${JSON.stringify(defaultValue)}`;
+        let variants = this.#variants.get(key);
+        if (variants?.has(variant)) return variants.get(variant);
         const value = await rpcCall('config', method, [key, defaultValue]);
-        this.#cache.set(key, value);
+        if (!variants) {
+            variants = new Map();
+            this.#variants.set(key, variants);
+        }
+        variants.set(variant, value);
         return value;
     }
 
@@ -82,7 +96,8 @@ class ClientConfigRepository {
      * @param {any} value
      */
     async #set(method, key, value) {
-        this.#cache.set(key, value);
+        this.#written.set(key, value);
+        this.#variants.delete(key);
         await rpcCall('config', method, [key, value]);
     }
 }

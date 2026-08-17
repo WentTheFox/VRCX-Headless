@@ -636,6 +636,15 @@ export function installUnhandledRejectionReporting() {
  * build nor the Electron/Linux build. `src/services/sqlite.js` branches only on
  * `LINUX`, so this selects the plain `SQLite.Execute` path; the shim in
  * ./shims/sqlite.js implements `ExecuteJson` too, so either value works.
+ *
+ * `HEADLESS` (a fork addition, not part of Vite's `define` block, so `src/**`
+ * must read it defensively — `typeof HEADLESS !== 'undefined' && HEADLESS`,
+ * never a bare reference) is `true` here and genuinely undefined everywhere
+ * else, including the browser build (`WEB`): unlike `LINUX`/`WINDOWS`, this
+ * isn't a platform identity a real client build could ever legitimately have,
+ * so a bare reference outside the server would be a bug, not a false
+ * negative. `src/stores/vrcxUpdater.js`'s one reference (§5) is what this
+ * exists for — an update-check mechanism no headless process can act on.
  */
 export function installGlobals() {
     installUnhandledRejectionReporting();
@@ -663,5 +672,8 @@ export function installGlobals() {
     }
     if (globalThis.NIGHTLY === undefined) {
         globalThis.NIGHTLY = false;
+    }
+    if (globalThis.HEADLESS === undefined) {
+        globalThis.HEADLESS = true;
     }
 }
