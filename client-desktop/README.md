@@ -63,19 +63,28 @@ server side, so this includes every restart of `serve`) opens
 See `server/README.md`'s "TOTP setup" section for the server side of this
 same flow, including how to reset it if you're locked out.
 
+## CI
+
+`.github/workflows/client-desktop.yaml` automates the sequence above on
+every push/PR touching `client-desktop/**`, `src-electron/**`, `Dotnet/**`,
+or `src/**`: builds the .NET side, the Vue app, and the AppImage, then boots
+it under `xvfb-run` (via `--appimage-extract-and-run`, since FUSE isn't
+guaranteed present) to confirm it doesn't crash on launch, and uploads the
+AppImage as a workflow artifact. Deliberately narrower than
+`.github/workflows/github_actions.yml` (upstream's own Windows/CefSharp +
+Azure-signing release pipeline, untouched): x64 only, no code signing, no
+publish step — this exists to catch build breaks early, not to ship
+releases.
+
 ## Not covered here
 
-Traced but deliberately not attempted, since this sandbox has no working
-`dotnet`/Electron toolchain to build and verify either against (confirmed:
-`dotnet` is not installed here):
-
-- **A fork-adapted CI workflow.** `.github/workflows/github_actions.yml` is
-  still upstream's own Windows/CefSharp + Azure-signing pipeline, untouched.
-  The sequence above is what a Linux-only equivalent would need to
-  automate, but writing that workflow blind, with no way to run it, isn't
-  something this fork claims as done.
 - **Shrinking the bundled `.NET`/`node-api-dotnet` footprint.** Still fully
   justified as of phase 5 — `AppApiElectron`/`Discord`/`LogWatcher`/
   `AssetBundleManager`/`AppApiVrElectron` are all real, in-process .NET
   objects the renderer calls directly; only `SQLite`/`WebApi` were dropped.
-  Reducing that footprint further needs the same real build environment.
+- **A visible Discord Rich Presence end to end.** The agent-channel
+  mechanism itself is live-verified (see `CLAUDE.md`'s phase 5 write-up) —
+  real agent connection, real `Discord.SetActive` round-trip, no errors.
+  What's unconfirmed is the actual presence display, which needs the
+  account in a live VRChat world instance, not something a build/CI pass
+  can produce on its own.
