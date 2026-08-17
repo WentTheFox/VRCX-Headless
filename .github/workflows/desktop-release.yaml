@@ -17,8 +17,9 @@
 #
 # Signing needs two SEPARATE self-signed certs (Windows Authenticode + macOS
 # codesign, both CN=WentTheFox/C=HU/ST=Pest/L=Budapest), generated once
-# locally via build-scripts/generate-self-signed-certs.sh and stored as the
-# secrets referenced below. Neither is CA-issued: this reduces some
+# locally via build-scripts/generate-self-signed-certs.sh (empty passphrase
+# -- see that script's own comments for why) and stored as the WIN_CSC_LINK/
+# CSC_LINK secrets referenced below. Neither is CA-issued: this reduces some
 # SmartScreen/Gatekeeper friction but does not eliminate it, and does not
 # satisfy Apple notarization.
 name: Desktop Client Release
@@ -142,17 +143,19 @@ jobs:
             # "not a file" once these were set as job-level env with an
             # empty-string fallback. Exporting them only when the matching
             # secret is genuinely non-empty is what actually gets "no
-            # secrets configured yet -> unsigned build" right.
+            # secrets configured yet -> unsigned build" right. No
+            # WIN_CSC_KEY_PASSWORD/CSC_KEY_PASSWORD secrets exist --
+            # build-scripts/generate-self-signed-certs.sh generates both
+            # certs with an empty passphrase, and electron-builder treats a
+            # missing password env var as empty, matching that.
             - name: Package the Electron app (${{ matrix.id }})
               run: |
                   set -euo pipefail
                   if [ "${{ matrix.os-family }}" = "windows" ] && [ -n "${{ secrets.WIN_CSC_LINK }}" ]; then
                       export WIN_CSC_LINK="${{ secrets.WIN_CSC_LINK }}"
-                      export WIN_CSC_KEY_PASSWORD="${{ secrets.WIN_CSC_KEY_PASSWORD }}"
                   fi
                   if [ "${{ matrix.os-family }}" = "macos" ] && [ -n "${{ secrets.CSC_LINK }}" ]; then
                       export CSC_LINK="${{ secrets.CSC_LINK }}"
-                      export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
                   fi
                   pnpm run ${{ matrix.electron-script }}
 
@@ -249,7 +252,6 @@ jobs:
                   set -euo pipefail
                   if [ -n "${{ secrets.CSC_LINK }}" ]; then
                       export CSC_LINK="${{ secrets.CSC_LINK }}"
-                      export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
                   fi
                   pnpm run ${{ matrix.electron-script }}
 
