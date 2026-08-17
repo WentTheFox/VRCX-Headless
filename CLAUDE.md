@@ -263,6 +263,7 @@ These break the split *without* producing a merge conflict. Check every one.
 - [ ] **New npm dependency in the server's closure?** Add to `server/package.json` *and* root, or the container fails at runtime while dev works. `node server/scripts/check-deps.js` catches version mismatches.
 - [ ] **New browser global used at module or store-setup scope?** Fails at import time in Node, not call time. See §3.7.
 - [ ] **A `database.*` method now returns a `Map`/`Set`?** `JSON.stringify` silently drops them (`{}`); `server/src/http-server.js`'s `sendJson` replacer already converts both to arrays generically, but confirm the new method is actually routed through `sendJson`.
+- [ ] **Reset `server/VERSION` to `1`.** The synced-to tag just changed the major component of the next server/Docker release version (§10's "Server/Docker versioning") — the fork's own counter restarts against the new base.
 
 ### 6.3 Verify before pushing the merge
 
@@ -425,16 +426,35 @@ The image bundles a built web client (`client-web/**`, phase 4) as a third, disc
 
 ### Server/Docker versioning
 
-Two independent version numbers, deliberately not collapsed into one counter: **`server/VERSION`** is this fork's own release counter for the server/Docker artifact (bumped whenever a server-side change is worth a numbered release — far more often than an upstream sync happens); the existing repo-root **`Version`** file is upstream's own date-based tag (`git fetch upstream --tags`, §6), already the source of truth for the Electron client's version stamp and the real VRChat user-agent string (`server/src/globals.js`'s `readVersion()` — do not repurpose that function; `readForkVersion()` is the separate one for this). Combined into one display string, `<fork>+vrcx.<upstream>` (e.g. `1.2.0+vrcx.2026.07.18`) — valid semver 2.0.0 build metadata, so the `+vrcx.…` suffix is correctly ignored by anything doing semver *ordering* while still being visible on inspection. Printed by `npm run server -- info` (`server version` line) and baked into the image as the `org.opencontainers.image.version` label (`server/Dockerfile`'s `FORK_VERSION`/`VRCX_VERSION` build `ARG`s, passed from `.github/workflows/server-docker.yaml`'s `version` step, which just reads both files — it does not enforce that `server/VERSION` was actually bumped).
+**The release version is real semver with the VRCX base as the major component**: `<vrcx-date-no-dots>.<fork-build>.0` — e.g. `20260718.1.0` for the first fork release built against VRCX 2026.07.18. The VRCX version is the version, not a footnote buried in build metadata (an earlier iteration of this scheme did exactly that, `<fork>+vrcx.<vrcx>`, and got corrected before it ever shipped for burying the one thing this was supposed to surface).
 
-**Release trigger is a git tag, deliberately** — `git tag vX.Y.Z && git push --tags` (bump `server/VERSION` to match first) is what publishes the immutable, pinned Docker tags: this reuses the workflow's existing `on.push.tags: ['v*']` trigger and `docker/metadata-action`'s `type=semver` patterns as-is, no new mechanism, and keeps the git tag itself a plain semver string (no embedded build metadata to worry about round-tripping through Docker's tag-charset restrictions, which don't allow `+`). Every ordinary push to `main` (tagged or not) still publishes/updates the floating tags below.
+Two source files, two different reasons to change:
+
+- **`server/VERSION`** — this fork's own release counter, a bare integer (`1`, `2`, …). Bumped on every server/Docker release that's worth tagging; **reset to `1` on every upstream sync** (§6), since a new VRCX base restarts the count. `server/src/globals.js`'s `readForkVersion()` reads it.
+- **`Version`** (repo root, existing, untouched) — upstream's own date tag, already the source of truth for the Electron client's version stamp and the real VRChat user-agent string (`readVersion()` — do not repurpose that function for this).
+
+`buildServerVersion(forkVersion, vrcxVersion)` (`server/src/globals.js`) combines them — strips `Version`'s dots (`2026.07.18` → `20260718`) and joins as `<that>.<fork>.0`. Safe as a bare semver major with no leading-zero problem for the foreseeable future (the leading digit is the year's own leading digit, non-zero until year 10000), and — being fixed-width `YYYYMMDD` — it also sorts correctly as a plain integer across dates, so nothing downstream needs real semver-aware comparison to get "which is newer" right. Printed by `npm run server -- info` (`server version` line, alongside the dotted `Version` for readability) and baked into the image as the `org.opencontainers.image.version` label (`server/Dockerfile`'s `SERVER_VERSION` build `ARG`, computed the same way in `.github/workflows/server-docker.yaml`'s `version` step — shell `tr -d '.'` mirroring the JS `replaceAll('.', '')`).
+
+**Release trigger is a git tag, deliberately** — `git tag v<vrcx-no-dots>.<fork>.0 && git push --tags` is what publishes the immutable, pinned Docker tags: this reuses the workflow's existing `on.push.tags: ['v*']` trigger and `docker/metadata-action`'s `type=semver` patterns as-is, no custom tag-generation logic needed since the version *is* real semver now. Every ordinary push to `main` (tagged or not) still publishes/updates the floating tags below.
 
 Resulting Docker tags on `ghcr.io/<owner>/vrcx-headless-server`:
 
 | Tag | Meaning | Updates on |
 |---|---|---|
-| `X.Y.Z` | Immutable pin to one fork release | a `vX.Y.Z` tag push only |
-| `X.Y` | Floating latest patch in that minor | a `vX.Y.Z` tag push only |
-| `vrcx-<upstream-date>` | Floating "latest fork build against this VRCX base" | every push to `main`, and any `v*` tag push |
-| `latest` | Floating absolute latest | a `vX.Y.Z` tag push only (unchanged from before this scheme) |
-| `sha-<short>` | Exact commit, always | every triggering push |
+| `20260718.1.0` (`{{version}}`) | Immutable pin to one exact fork release | a matching tag push only |
+| `20260718.1` (`{{major}}.{{minor}}`) | Floating latest patch of that fork build (`.0` today; only moves if this scheme ever grows true hotfix patches) | a matching tag push only |
+| `20260718` (`{{major}}`) | Floating "latest fork build against this VRCX base" — what a `vrcx-<date>` bespoke tag would have been, gotten for free from semver instead | any tag push sharing that major |
+| `latest` | Floating absolute latest | a tag push only |
+| `main`, `sha-<short>` | Dev builds | every push to `main` |
+
+#### Cutting a release
+
+1. `cat server/VERSION` — if this release starts a **new upstream sync** (§6), set it to `1`; otherwise bump it by one from whatever it currently is.
+2. Compute the tag: `echo "v$(cat Version | tr -d '.').$(cat server/VERSION).0"` — e.g. `v20260718.2.0`.
+3. Commit the `server/VERSION` bump (if any) on `main` first, then tag *that* commit and push both:
+   ```bash
+   git tag -a v20260718.2.0 -m "..."
+   git push origin v20260718.2.0
+   ```
+4. Watch it: `gh run list --workflow=server-docker.yaml` / `gh run watch <run-id>` — the same job that runs on every `main` push (tests, build, smoke tests) runs again for the tag push, then publishes the tags above.
+5. If a tag push fails before the publish step (nothing was pushed to GHCR under it — verify via the run log, not by assumption), it's safe to fix forward and move the tag: `git tag -d vX.Y.Z.0 && git push origin :refs/tags/vX.Y.Z.0`, fix, re-tag, re-push. Once a tag push has actually reached the publish step, treat it as immutable instead — cut a new release rather than moving it.

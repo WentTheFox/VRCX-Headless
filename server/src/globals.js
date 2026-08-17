@@ -35,9 +35,11 @@ export function readVersion() {
  * The fork's own release counter — independent of `readVersion()` above,
  * which is upstream's date-based `Version` file and feeds the real VRChat
  * user-agent string (`Dotnet/Program.cs`'s `GetVersion()` contract, not
- * something to repurpose). `server/VERSION` tracks how many times *this
- * fork* has cut a server/Docker release, since that happens far more often
- * than an upstream sync — see CLAUDE.md's "Server/Docker versioning".
+ * something to repurpose). `server/VERSION` holds a single integer: how
+ * many times *this fork* has cut a server/Docker release against the
+ * *current* upstream base — reset to `1` on every upstream sync, since
+ * that happens far less often than a fork-only release does. See
+ * CLAUDE.md's "Server/Docker versioning".
  * @returns {string} the contents of `server/VERSION`
  */
 export function readForkVersion() {
@@ -47,8 +49,28 @@ export function readForkVersion() {
             'utf8'
         ).trim();
     } catch {
-        return '0.0.0';
+        return '0';
     }
+}
+
+/**
+ * The server/Docker release version: real semver, so tooling that expects
+ * it (docker/metadata-action's `type=semver` tag patterns, Renovate,
+ * Watchtower, …) needs no special-casing, but with the VRCX base as the
+ * *major* component rather than hidden in build metadata — e.g.
+ * `20260718.1.0` for a first fork release against VRCX 2026.07.18. Safe as
+ * a bare semver major with no leading-zero problem for the foreseeable
+ * future (the leading digit is the year's own leading digit, non-zero
+ * until year 10000), and — being fixed-width `YYYYMMDD` — it also sorts
+ * correctly as a plain integer across dates without needing real semver
+ * comparison. `readVersion()`'s dots are only for display; stripped here
+ * because a semver identifier can't contain them.
+ * @param {string} forkVersion `readForkVersion()`'s output
+ * @param {string} vrcxVersion `readVersion()`'s output, e.g. `2026.07.18`
+ * @returns {string}
+ */
+export function buildServerVersion(forkVersion, vrcxVersion) {
+    return `${vrcxVersion.replaceAll('.', '')}.${forkVersion}.0`;
 }
 
 /**

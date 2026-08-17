@@ -62,15 +62,18 @@ services:
 
 ### Tags
 
-| Tag                    | What it is                                                              |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `main`                 | latest build of the default branch                                     |
-| `sha-<short>`          | a specific commit                                                      |
-| `1.2.3`, `1.2`         | a specific fork release (this fork's own counter — see CLAUDE.md's "Server/Docker versioning") |
-| `vrcx-<upstream date>` | latest fork build synced to that VRCX release, e.g. `vrcx-2026.07.18`  |
-| `latest`               | most recent release tag                                                |
+Release tags are `<vrcx-date-no-dots>.<fork-build>.0` — real semver, with the VRCX version this release is built against as the *major* number. `20260718.1.0` means: built against VRCX `2026.07.18`, the first fork release cut against that base. A later fork-only patch against the same base is `20260718.2.0`; syncing to a newer VRCX release resets the fork counter, e.g. `20260801.1.0`.
 
-`docker inspect`'s `org.opencontainers.image.version` label, and `... info`'s `server version` line, both show the two numbers combined: `<fork version>+vrcx.<upstream version>`.
+| Tag             | What it is                                                             |
+| ---------------- | ------------------------------------------------------------------------ |
+| `main`           | latest build of the default branch                                     |
+| `sha-<short>`    | a specific commit                                                      |
+| `20260718.1.0`   | one exact, immutable fork release                                      |
+| `20260718.1`     | floating: latest patch of that fork release (usually `== 20260718.1.0`) |
+| `20260718`       | floating: latest fork release built against VRCX `2026.07.18`          |
+| `latest`         | most recent release tag                                                |
+
+`docker inspect`'s `org.opencontainers.image.version` label and `... info`'s `server version` line both show the full `20260718.1.0` version (the `info` line also repeats the dotted `2026.07.18` for readability). Maintainers: see CLAUDE.md's "Server/Docker versioning" for how to cut a release.
 
 ---
 
