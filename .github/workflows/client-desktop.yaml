@@ -22,7 +22,7 @@ on:
             - 'Dotnet/**'
             - 'src/**'
             - 'package.json'
-            - 'package-lock.json'
+            - 'pnpm-lock.yaml'
             - '.github/workflows/client-desktop.yaml'
     pull_request:
         branches:
@@ -33,7 +33,7 @@ on:
             - 'Dotnet/**'
             - 'src/**'
             - 'package.json'
-            - 'package-lock.json'
+            - 'pnpm-lock.yaml'
             - '.github/workflows/client-desktop.yaml'
     workflow_dispatch:
 
@@ -42,14 +42,14 @@ jobs:
         name: Build and smoke-test (x64)
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
             - name: Setup .NET 10
-              uses: actions/setup-dotnet@v5
+              uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
               with:
                   dotnet-version: '10.0.x'
 
-            - uses: actions/cache@v5
+            - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
               with:
                   path: ~/.nuget/packages
                   key: ${{ runner.os }}-nuget-${{ hashFiles('**/Dotnet/VRCX-Electron.csproj') }}
@@ -63,10 +63,10 @@ jobs:
             - name: Build the .NET side (VRCX-Electron, x64)
               run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
 
-            - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
             - name: Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
               with:
                   node-version: lts/*
                   cache: pnpm
@@ -99,7 +99,7 @@ jobs:
             # behaviour, confirmed by actually running it) — booting it
             # first would silently upload a stale/missing path.
             - name: Upload AppImage artifact
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-AppImage-x64
                   path: ${{ steps.appimage.outputs.path }}

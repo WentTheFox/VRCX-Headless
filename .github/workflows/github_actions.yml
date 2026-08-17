@@ -18,7 +18,7 @@ jobs:
             version: ${{ steps.version.outputs.version }}
             date: ${{ steps.version.outputs.date }}
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
             - id: version
               run: |
                   export FILENAME="$(cat Version)"
@@ -33,9 +33,9 @@ jobs:
                 shell: bash
         needs: [set_version, build_node]
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
             - name: Setup .NET 10
-              uses: actions/setup-dotnet@v5
+              uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
               with:
                   dotnet-version: '10.0.x'
             - name: Set version
@@ -43,7 +43,7 @@ jobs:
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   echo "!define PRODUCT_VERSION_FROM_FILE \"${{ needs.set_version.outputs.date }}.0\"" > Installer/version_define.nsh
                   cat Version
-            - uses: actions/cache@v5
+            - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
               with:
                   path: ~/.nuget/packages
                   key: ${{ runner.os }}-nuget-${{ hashFiles('**/Dotnet/VRCX-Cef.csproj') }}
@@ -57,14 +57,14 @@ jobs:
                   echo "sign=${{ secrets.AZURE_CLIENT_ID != '' }}" >> $GITHUB_OUTPUT
             - name: Azure login
               if: steps.check_sign.outputs.sign == 'true'
-              uses: azure/login@v3
+              uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3
               with:
                   client-id: ${{ secrets.AZURE_CLIENT_ID }}
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
             - name: Sign Dotnet executables
               if: steps.check_sign.outputs.sign == 'true'
-              uses: azure/trusted-signing-action@v1
+              uses: azure/trusted-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16 # v1
               with:
                   azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -91,14 +91,14 @@ jobs:
                       ${{ github.workspace }}\build\Cef\VRCX.exe
 
             - name: Download html artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: html
                   path: build/html
             - name: Install NSIS
               run: choco install nsis -y
             - name: Create NSIS installer
-              uses: joncloud/makensis-action@v5.0
+              uses: joncloud/makensis-action@971ef20f43e4f9f3af2c7f276cb7348d033da1cd # v5.0
               with:
                   script-file: Installer/installer.nsi
                   additional-plugin-paths: Installer/Plugins
@@ -108,7 +108,7 @@ jobs:
                   echo "Setup FileName: ${file_name}"
                   mv Installer/VRCX_Setup.exe $file_name
             - name: Sign Cef setup
-              uses: azure/trusted-signing-action@v1
+              uses: azure/trusted-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16 # v1
               if: steps.check_sign.outputs.sign == 'true'
               with:
                   azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -124,12 +124,12 @@ jobs:
                       ${{ github.workspace }}\VRCX_${{ needs.set_version.outputs.version }}_Setup.exe
 
             - name: Upload Cef dotnet artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Cef-Release
                   path: build/Cef
             - name: Upload setup artifact
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Cef-Setup
                   path: VRCX_${{ needs.set_version.outputs.version }}_Setup.exe
@@ -138,16 +138,16 @@ jobs:
         runs-on: ubuntu-latest
         needs: set_version
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
             - name: Setup .NET 10
-              uses: actions/setup-dotnet@v5
+              uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
               with:
                   dotnet-version: '10.0.x'
             - name: Set version
               run: |
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   cat Version
-            - uses: actions/cache@v5
+            - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
               with:
                   path: ~/.nuget/packages
                   key: ${{ runner.os }}-nuget-${{ hashFiles('**/Dotnet/VRCX-Electron.csproj') }}-${{ hashFiles('**/Dotnet/VRCX-Electron-arm64.csproj') }}
@@ -156,7 +156,7 @@ jobs:
             - name: Build Electron x64 .NET Application
               run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
             - name: Upload Electron x64 dotnet artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-Release-Linux-x64
                   path: build/Electron
@@ -168,7 +168,7 @@ jobs:
             - name: Build Electron arm64 .NET Application
               run: dotnet build 'Dotnet/VRCX-Electron-arm64.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=arm64 -p:PlatformTarget=arm64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a arm64
             - name: Upload Electron arm64 dotnet artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-Release-Linux-arm64
                   path: build/Electron
@@ -177,16 +177,16 @@ jobs:
         runs-on: macos-latest
         needs: set_version
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
             - name: Setup .NET 10
-              uses: actions/setup-dotnet@v5
+              uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
               with:
                   dotnet-version: '10.0.x'
             - name: Set version
               run: |
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   cat Version
-            - uses: actions/cache@v5
+            - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
               with:
                   path: ~/.nuget/packages
                   key: ${{ runner.os }}-nuget-${{ hashFiles('**/Dotnet/VRCX-Electron.csproj') }}-${{ hashFiles('**/Dotnet/VRCX-Electron-arm64.csproj') }}
@@ -195,7 +195,7 @@ jobs:
             - name: Build Electron x64 .NET Application
               run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
             - name: Upload Electron x64 .NET artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-Release-macOS-x64
                   path: build/Electron
@@ -207,7 +207,7 @@ jobs:
             - name: Build Electron arm64 .NET Application
               run: dotnet build 'Dotnet/VRCX-Electron-arm64.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=arm64 -p:PlatformTarget=arm64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a arm64
             - name: Upload Electron arm64 dotnet artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-Release-macOS-arm64
                   path: build/Electron
@@ -216,14 +216,14 @@ jobs:
         runs-on: ubuntu-latest
         needs: [set_version, build_dotnet_linux]
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
             - name: Set version
               run: |
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   cat Version
-            - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
             - name: Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
               with:
                   node-version: lts/*
                   cache: pnpm
@@ -234,33 +234,33 @@ jobs:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SentryAuthToken }}
               run: pnpm run prod
             - name: Upload html artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: html
                   path: build/html
 
             - name: Download Electron x64 dotnet artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: Electron-Release-Linux-x64
                   path: build/Electron
             - name: Build x64 AppImage
               run: pnpm run build-electron
             - name: Upload Electron x64 AppImage artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-AppImage-x64
                   path: 'build/VRCX_${{ needs.set_version.outputs.version }}_x64.AppImage'
 
             - name: Download Electron arm64 dotnet artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: Electron-Release-Linux-arm64
                   path: build/Electron
             - name: Build arm64 AppImage
               run: pnpm run build-electron-arm64
             - name: Upload Electron arm64 AppImage artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-AppImage-arm64
                   path: 'build/VRCX_${{ needs.set_version.outputs.version }}_arm64.AppImage'
@@ -269,14 +269,14 @@ jobs:
         runs-on: macos-latest
         needs: [set_version, build_dotnet_macos]
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
             - name: Set version
               run: |
                   echo "${{ needs.set_version.outputs.version }}" > Version
                   cat Version
-            - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
             - name: Use Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
               with:
                   node-version: lts/*
                   cache: pnpm
@@ -286,14 +286,14 @@ jobs:
               run: pnpm run prod --arch=x64
 
             - name: Download x64 Electron dotnet artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: Electron-Release-macOS-x64
                   path: build/Electron
             - name: Build x64 macOS .dmg
               run: pnpm run build-electron
             - name: Upload x64 Electron macOS artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-MacDmg-x64
                   path: 'build/VRCX_${{ needs.set_version.outputs.version }}_x64.dmg'
@@ -306,14 +306,14 @@ jobs:
               run: pnpm run prod --arch=arm64
 
             - name: Download arm64 Electron dotnet artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: Electron-Release-macOS-arm64
                   path: build/Electron
             - name: Build arm64 macOS .dmg
               run: pnpm run build-electron-arm64
             - name: Upload arm64 Electron macOS artifacts
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: Electron-MacDmg-arm64
                   path: 'build/VRCX_${{ needs.set_version.outputs.version }}_arm64.dmg'
@@ -331,16 +331,16 @@ jobs:
             ]
         steps:
             - name: Download Cef-Setup artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: Cef-Setup
             - name: Download Cef dotnet artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: Cef-Release
                   path: build/Cef
             - name: Download html artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   name: html
                   path: build/Cef/html
@@ -353,7 +353,7 @@ jobs:
                   mv ${file_name} ../../${file_name}
                   echo "Zip FileName: ${file_name}"
             - name: Upload Zip artifact
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
               with:
                   name: VRCX-Zip
                   path: 'VRCX_${{ needs.set_version.outputs.version }}.zip'
