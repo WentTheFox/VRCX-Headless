@@ -22,6 +22,7 @@ import { watch } from 'vue';
 
 import { watchState } from '../../src/services/watchState.js';
 import { wsState } from '../../src/services/websocket.js';
+import { log } from './log.js';
 
 /**
  * @param {() => boolean} predicate
@@ -128,6 +129,107 @@ export function waitForPipelineConnected({ timeoutMs = 30_000 } = {}) {
         timeoutMs,
         'Timed out waiting for the pipeline to connect'
     );
+}
+
+const RETRY_DELAYS_MS = [10_000, 30_000, 60_000];
+const RETRY_STEADY_STATE_MS = 5 * 60_000;
+
+/**
+ * Keeps retrying `restoreSession()` in the background after `serve`'s own
+ * one-shot boot attempt didn't resolve with a logged-in user.
+ *
+ * Without this, nothing anywhere ever promotes a `serve` process from
+ * "never connected" to "connected" — verified by reading every call site
+ * of `restoreSession`/`waitForPipelineConnected`/`updateLoop()`: both live
+ * commands (`serve`, `pipeline`) call them exactly once, at boot, with no
+ * retry path. `restoreSession()`'s own 30s timeout can't distinguish
+ * "genuinely logged out" from "VRChat/the network wasn't ready yet" — and
+ * a container that restarts automatically (e.g. on every push touching
+ * its own compose/config files) can easily race a boot against a network
+ * that isn't ready yet. Previously that needed a second manual restart to
+ * recover; this self-heals instead.
+ *
+ * A no-op if there was never a saved session to restore in the first
+ * place (`lastUserLoggedIn` unset) — that's `run login` territory, not
+ * something retrying can fix, and retrying forever for an install that
+ * was simply never logged in would just be background noise.
+ *
+ * @param {ReturnType<typeof import('../../src/stores/index.js').createGlobalStores>} stores
+ * @param {import('./db.js').DatabaseHandle} handle
+ * @param {object} [options] Test seams only — `serve` never passes this.
+ *   Same "default parameter as injection point" pattern as
+ *   `src/coordinators/authAutoLoginCoordinator.js`'s own `isOnline` option;
+ *   there is no clean way to intercept a same-module function call
+ *   (`restoreSession`, `waitForPipelineConnected`) from a test otherwise —
+ *   real ESM bindings aren't mockable the way `module.exports` properties are.
+ * @param {typeof restoreSession} [options.restoreSessionFn]
+ * @param {typeof waitForPipelineConnected} [options.waitForPipelineConnectedFn]
+ * @param {number[]} [options.retryDelaysMs]
+ * @param {number} [options.steadyStateMs]
+ * @returns {Promise<() => void>} stops the retry loop — `serve` itself
+ *   never calls this (the loop is meant to run for the process's whole
+ *   lifetime), it's there so tests can clean up fake timers deterministically
+ */
+export async function scheduleSessionRestoreRetries(
+    stores,
+    handle,
+    {
+        restoreSessionFn = restoreSession,
+        waitForPipelineConnectedFn = waitForPipelineConnected,
+        retryDelaysMs = RETRY_DELAYS_MS,
+        steadyStateMs = RETRY_STEADY_STATE_MS
+    } = {}
+) {
+    const lastUser = await handle.configRepository.getString(
+        'lastUserLoggedIn',
+        null
+    );
+    if (!lastUser) {
+        return () => {};
+    }
+
+    let attempt = 0;
+    let stopped = false;
+    /** @type {NodeJS.Timeout | null} */
+    let timer = null;
+
+    async function tick() {
+        if (stopped) {
+            return;
+        }
+        attempt += 1;
+        const user = await restoreSessionFn(stores).catch(() => null);
+        if (user?.id) {
+            log.info('VRChat session restored after a retry', {
+                attempts: attempt
+            });
+            await waitForPipelineConnectedFn().catch((err) => {
+                log.warn(
+                    'Pipeline did not connect after a session-restore retry',
+                    {
+                        message: err.message
+                    }
+                );
+            });
+            stores.updateLoop.updateLoop();
+            return;
+        }
+        const delay = retryDelaysMs[attempt] ?? steadyStateMs;
+        log.debug('VRChat session restore attempt failed, retrying', {
+            attempt,
+            nextAttemptInMs: delay
+        });
+        timer = setTimeout(tick, delay);
+    }
+
+    timer = setTimeout(tick, retryDelaysMs[0]);
+
+    return () => {
+        stopped = true;
+        if (timer) {
+            clearTimeout(timer);
+        }
+    };
 }
 
 export { watchState, wsState };

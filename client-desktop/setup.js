@@ -32,16 +32,22 @@ const BUTTON_STYLE =
 const ERROR_STYLE = 'margin:0;color:#f87171;font-size:0.875rem;';
 const LINK_STYLE =
     'align-self:center;background:none;border:none;color:#8888ff;font-size:0.8125rem;cursor:pointer;padding:0;';
+const SERVER_ITEM_STYLE =
+    'display:flex;flex-direction:column;gap:0.125rem;padding:0.625rem 0.75rem;border-radius:0.25rem;border:1px solid #444;background:#1a1a1e;color:#eee;text-align:left;cursor:pointer;';
 
 /**
- * @param {string} url
+ * "Change server" everywhere routes back through the picker (or the bare
+ * URL form, if there's only ever been one server) instead of hardcoding a
+ * single previous URL — with multiple stored servers, jumping straight back
+ * to whichever one was just being set up isn't necessarily what "change"
+ * means anymore.
  */
-function appendChangeServerLink(form, url) {
+function appendChangeServerLink(form) {
     const link = document.createElement('button');
     link.type = 'button';
-    link.textContent = `Change server (${url})`;
+    link.textContent = 'Change server';
     link.style.cssText = LINK_STYLE;
-    link.addEventListener('click', () => renderUrlForm(url));
+    link.addEventListener('click', () => renderEntry());
     form.append(link);
 }
 
@@ -162,7 +168,7 @@ function renderLoginForm(url, error) {
     button.style.cssText = BUTTON_STYLE;
 
     form.append(title, input, button);
-    appendChangeServerLink(form, url);
+    appendChangeServerLink(form);
 
     if (error) {
         const errorText = document.createElement('p');
@@ -245,7 +251,7 @@ function renderSetupForm(url, secret, uri, error) {
     button.style.cssText = BUTTON_STYLE;
 
     form.append(title, instructions, qrImage, secretText, input, button);
-    appendChangeServerLink(form, url);
+    appendChangeServerLink(form);
 
     if (error) {
         const errorText = document.createElement('p');
@@ -285,7 +291,116 @@ function renderSetupForm(url, secret, uri, error) {
     root.append(wrapper);
 }
 
-window.vrcxDesktopAgent
-    .getStoredServerUrl()
-    .then((url) => renderUrlForm(url ?? undefined))
-    .catch(() => renderUrlForm());
+/**
+ * Attempts an already-known server the same way `renderUrlForm`'s submit
+ * handler does — reused so picking a saved entry and typing a brand-new URL
+ * both land on the same TOTP-setup-or-login branch.
+ * @param {string} url
+ * @param {(error: string) => void} onError
+ */
+function attemptServer(url, onError) {
+    window.vrcxDesktopAgent
+        .checkTotpSetupNeeded(url)
+        .then((result) => {
+            if (!result.ok) {
+                onError(result.error ?? 'Could not connect.');
+                return;
+            }
+            if (result.needed) {
+                renderSetupForm(url, result.secret, result.uri);
+            } else {
+                renderLoginForm(url);
+            }
+        })
+        .catch((err) => {
+            onError(err.message ?? 'Could not connect.');
+        });
+}
+
+/**
+ * Shown whenever at least one server is already known — lets a user with a
+ * VPN-gated home server or a local-test/live split pick a saved entry
+ * instead of retyping a URL that's already stored, and doubles as the
+ * post-boot-failure screen: if the default server couldn't be reached at
+ * launch, this is what `client-desktop/setup.js`'s own load-time check
+ * lands on instead of a bare, already-known-to-be-failing URL field.
+ * @param {{url: string, label: string, isDefault: boolean}[]} servers
+ * @param {string} [error]
+ */
+function renderPicker(servers, error) {
+    root.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText =
+        'display:flex;align-items:center;justify-content:center;height:100vh;';
+
+    const container = document.createElement('div');
+    container.style.cssText = FORM_STYLE;
+
+    const title = document.createElement('h1');
+    title.textContent = 'VRCX';
+    title.style.cssText = TITLE_STYLE;
+    container.append(title);
+
+    if (error) {
+        const errorText = document.createElement('p');
+        errorText.textContent = error;
+        errorText.style.cssText = ERROR_STYLE;
+        container.append(errorText);
+    }
+
+    for (const server of servers) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.style.cssText = SERVER_ITEM_STYLE;
+
+        const label = document.createElement('span');
+        label.textContent = server.isDefault
+            ? `${server.label} ★`
+            : server.label;
+        label.style.cssText = 'font-size:0.875rem;';
+
+        const url = document.createElement('span');
+        url.textContent = server.url;
+        url.style.cssText = 'font-size:0.75rem;color:#888;';
+
+        item.append(label, url);
+        item.addEventListener('click', () => {
+            item.disabled = true;
+            attemptServer(server.url, (message) => {
+                renderPicker(servers, message);
+            });
+        });
+        container.append(item);
+    }
+
+    const addLink = document.createElement('button');
+    addLink.type = 'button';
+    addLink.textContent = '+ Add a different server';
+    addLink.style.cssText = LINK_STYLE;
+    addLink.addEventListener('click', () => renderUrlForm());
+    container.append(addLink);
+
+    wrapper.append(container);
+    root.append(wrapper);
+}
+
+/**
+ * Entry point: a picker when at least one server is already known (whether
+ * this is a normal relaunch or the default server just failed to reconnect
+ * at boot), otherwise the bare URL form for a genuinely first-run install.
+ */
+function renderEntry() {
+    window.vrcxDesktopAgent
+        .listServers()
+        .then((servers) => {
+            if (servers.length > 0) {
+                renderPicker(servers);
+            } else {
+                renderUrlForm();
+            }
+        })
+        .catch(() => renderUrlForm());
+}
+
+renderEntry();

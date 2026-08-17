@@ -256,7 +256,12 @@ function renderSetupForm(secret, uri, error) {
  * @returns {Promise<boolean>}
  */
 async function login(code) {
-    const response = await fetch('/api/login', {
+    // /api/web/login, not /api/login: the cookie-only mirror never hands
+    // the raw session token back in the response body — the whole point
+    // of an HttpOnly cookie is defeated if the same response that sets it
+    // also puts the value somewhere this very fetch() call's JS can read
+    // it. See server/src/http-server.js's sendNewSession() doc comment.
+    const response = await fetch('/api/web/login', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -271,7 +276,7 @@ async function login(code) {
  * @returns {Promise<boolean>}
  */
 async function confirmSetup(secret, code) {
-    const response = await fetch('/api/totp/confirm', {
+    const response = await fetch('/api/web/totp/confirm', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -317,7 +322,10 @@ async function checkTotpSetupNeeded() {
  * @returns {Promise<boolean>}
  */
 async function refreshSession() {
-    const response = await fetch('/api/session/refresh', {
+    // /api/web/session/refresh — see login()'s comment above. This is the
+    // one both clients hit on every single launch, so it's the route
+    // where never handing the token to browser JS matters most.
+    const response = await fetch('/api/web/session/refresh', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },

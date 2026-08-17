@@ -86,6 +86,15 @@ const IMPLEMENTED = {
     async CurrentCulture() {
         return navigator.language || 'en-US';
     },
+    // Found live: Login.vue's own login-screen language auto-detect
+    // catches this (no crash, no toast — just a console error and the
+    // prompt silently never offering to switch), but it's the same real
+    // browser equivalent as CurrentCulture above, just a distinct native
+    // method (BCP-47 from a different underlying .NET API) with its own
+    // call site — not a fix for CurrentCulture, an addition alongside it.
+    async CurrentLanguage() {
+        return navigator.language || 'en-US';
+    },
     // Found live, same recurring-cycle pattern as the five above.
     // GetLaunchCommand reads a `vrcx://` deep-link argument captured at
     // native process startup — no browser equivalent, '' matches native's

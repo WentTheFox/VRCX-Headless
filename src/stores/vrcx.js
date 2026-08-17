@@ -753,6 +753,23 @@ export const useVrcxStore = defineStore('Vrcx', () => {
      *
      */
     async function checkAutoBackupRestoreVrcRegistry() {
+        // Fork addition (VRCX-Headless): the Windows registry doesn't exist
+        // in a browser tab at all — not "empty", genuinely absent — so
+        // this whole flow is meaningless for WEB, not just inapplicable.
+        // Left ungated, it fired on every mount: vrcRegistryAutoBackup/
+        // vrcRegistryAskRestore default to true, VRCX_VRChatRegistryLast-
+        // BackupDate is shared account-wide config (not per-device), so a
+        // desktop client's own routine auto-backups (every few days) kept
+        // moving that date past whatever the browser last acknowledged,
+        // re-triggering the "would you like to restore" popup on every
+        // single web session. AppApi.HasVRChatRegistryFolder() already
+        // (correctly) answers `false` for WEB, but returning `false` here
+        // is exactly what enters the "offer to restore" branch below —
+        // for a real desktop with no local registry that's the right
+        // prompt; for a browser tab that can never have one, it isn't.
+        if (WEB) {
+            return;
+        }
         if (
             !advancedSettingsStore.vrcRegistryAutoBackup ||
             !advancedSettingsStore.vrcRegistryAskRestore

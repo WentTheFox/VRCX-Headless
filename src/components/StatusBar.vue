@@ -13,8 +13,10 @@
                             mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
                             -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
                         ">
+                        <HeadlessServerStatus v-if="isLinux && visibility.headless" />
+
                         <TooltipWrapper
-                            v-if="!isLinux && visibility.proxy"
+                            v-if="!isLinux && !isWeb && visibility.proxy"
                             :content="
                                 vrcxStore.proxyServer
                                     ? `${t('status_bar.proxy')}: ${vrcxStore.proxyServer}`
@@ -34,7 +36,7 @@
                         </TooltipWrapper>
 
                         <TooltipWrapper
-                            v-if="!isMacOS && visibility.steamvr"
+                            v-if="!isMacOS && !isWeb && visibility.steamvr"
                             :content="
                                 gameStore.isSteamVRRunning
                                     ? t('status_bar.steamvr_running')
@@ -52,7 +54,7 @@
                         </TooltipWrapper>
 
                         <HoverCard
-                            v-if="!isMacOS && visibility.vrchat"
+                            v-if="!isMacOS && !isWeb && visibility.vrchat"
                             v-model:open="gameHoverOpen"
                             :open-delay="50"
                             :close-delay="50">
@@ -171,7 +173,7 @@
                         </TooltipWrapper>
 
                         <div
-                            v-if="visibility.nowPlaying && nowPlaying.url"
+                            v-if="!isWeb && visibility.nowPlaying && nowPlaying.url"
                             class="flex items-center gap-1 px-2 h-[22px] whitespace-nowrap border-r border-border min-w-0 max-w-[400px]">
                             <i v-if="!isYouTubeNowPlaying" class="ri-play-fill text-[10px] shrink-0" />
                             <i v-if="isYouTubeNowPlaying" class="ri-youtube-fill text-[#FF0000] shrink-0 text-[12px]" />
@@ -246,7 +248,7 @@
                         </template>
 
                         <TooltipWrapper
-                            v-if="visibility.zoom"
+                            v-if="!isWeb && visibility.zoom"
                             :content="t('status_bar.zoom_tooltip')"
                             side="top"
                             :disabled="zoomEditing">
@@ -290,7 +292,14 @@
 
             <ContextMenuContent>
                 <ContextMenuCheckboxItem
-                    v-if="!isMacOS"
+                    v-if="isLinux"
+                    :model-value="visibility.headless"
+                    @select.prevent
+                    @update:model-value="toggleVisibility('headless')">
+                    {{ t('status_bar.headless') }}
+                </ContextMenuCheckboxItem>
+                <ContextMenuCheckboxItem
+                    v-if="!isMacOS && !isWeb"
                     :model-value="visibility.vrchat"
                     @select.prevent
                     @update:model-value="toggleVisibility('vrchat')">
@@ -303,13 +312,14 @@
                     {{ t('status_bar.servers') }}
                 </ContextMenuCheckboxItem>
                 <ContextMenuCheckboxItem
-                    v-if="!isMacOS"
+                    v-if="!isMacOS && !isWeb"
                     :model-value="visibility.steamvr"
                     @select.prevent
                     @update:model-value="toggleVisibility('steamvr')">
                     {{ t('status_bar.steamvr') }}
                 </ContextMenuCheckboxItem>
                 <ContextMenuCheckboxItem
+                    v-if="!isWeb"
                     :model-value="visibility.proxy"
                     @select.prevent
                     @update:model-value="toggleVisibility('proxy')">
@@ -322,6 +332,7 @@
                     WebSocket
                 </ContextMenuCheckboxItem>
                 <ContextMenuCheckboxItem
+                    v-if="!isWeb"
                     :model-value="visibility.nowPlaying"
                     @select.prevent
                     @update:model-value="toggleVisibility('nowPlaying')">
@@ -334,7 +345,7 @@
                     {{ t('status_bar.app_uptime_short') }}
                 </ContextMenuCheckboxItem>
                 <ContextMenuCheckboxItem
-                    v-if="!isMacOS"
+                    v-if="!isMacOS && !isWeb"
                     :model-value="visibility.zoom"
                     @select.prevent
                     @update:model-value="toggleVisibility('zoom')">
@@ -405,6 +416,7 @@
         useVrcxStore
     } from '@/stores';
     import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+    import HeadlessServerStatus from '@/components/HeadlessServerStatus.vue';
     import { formatSeconds, timeToText } from '@/shared/utils';
     import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
     import { useIntervalFn, useNow } from '@vueuse/core';
@@ -435,6 +447,7 @@
 
     const isMacOS = computed(() => navigator.platform.includes('Mac'));
     const isLinux = computed(() => LINUX);
+    const isWeb = computed(() => WEB);
 
     const gameStore = useGameStore();
     const gameLogStore = useGameLogStore();

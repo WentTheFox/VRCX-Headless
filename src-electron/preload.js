@@ -53,7 +53,22 @@ contextBridge.exposeInMainWorld('vrcxDesktopAgent', {
         ipcRenderer.invoke('vrcx-totp-confirm', url, secret, code),
     rpc: (target, method, args) =>
         ipcRenderer.invoke('vrcx-rpc', target, method, args),
-    getStoredServerUrl: () => ipcRenderer.invoke('vrcx-get-stored-server-url')
+    // Multi-server: src/components/HeadlessServerStatus.vue's post-auth
+    // switcher panel, and client-desktop/setup.js's pre-auth picker. Adding
+    // a *new* server reuses connectToServer/confirmTotpSetup above — see
+    // src-electron/main.js's own comment on why that half needs no separate
+    // IPC channel.
+    listServers: () => ipcRenderer.invoke('vrcx-list-servers'),
+    switchServer: (url) => ipcRenderer.invoke('vrcx-switch-server', url),
+    removeServer: (url) => ipcRenderer.invoke('vrcx-remove-server', url),
+    setDefaultServer: (url) =>
+        ipcRenderer.invoke('vrcx-set-default-server', url),
+    getServerStatus: () => ipcRenderer.invoke('vrcx-get-server-status'),
+    onServerStatusChanged: (callback) =>
+        registerManagedListener(
+            'vrcx-server-status-changed',
+            (_event, status) => callback(status)
+        )
 });
 
 const validChannels = ['launch-command'];
