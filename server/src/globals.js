@@ -32,6 +32,26 @@ export function readVersion() {
 }
 
 /**
+ * The fork's own release counter — independent of `readVersion()` above,
+ * which is upstream's date-based `Version` file and feeds the real VRChat
+ * user-agent string (`Dotnet/Program.cs`'s `GetVersion()` contract, not
+ * something to repurpose). `server/VERSION` tracks how many times *this
+ * fork* has cut a server/Docker release, since that happens far more often
+ * than an upstream sync — see CLAUDE.md's "Server/Docker versioning".
+ * @returns {string} the contents of `server/VERSION`
+ */
+export function readForkVersion() {
+    try {
+        return readFileSync(
+            path.join(repoRoot, 'server', 'VERSION'),
+            'utf8'
+        ).trim();
+    } catch {
+        return '0.0.0';
+    }
+}
+
+/**
  * Reproduces `GetVersion()` in `Dotnet/Program.cs:67` — a 7-character
  * trailing segment marks a nightly build. VRChat rate-limits generic user
  * agents, so this is functional, not cosmetic. Was `server/src/vrchat.js`'s
