@@ -67,12 +67,13 @@ export async function initInteropApi(isVrOverlay = false) {
             // /api/rpc dispatcher instead. window.SQLite is deliberately
             // not installed: nothing reaches it once services/database and
             // services/config are aliased away (see the Vite alias map
-            // under PLATFORM=web). LogWatcher is stubbed (found live: an
-            // unconditional boot-time call threw a bare ReferenceError
-            // otherwise). Discord/AssetBundleManager are desktop-only
-            // capabilities with no web equivalent and, unlike LogWatcher,
-            // aren't reached from any unconditional call site — left
-            // unset on purpose rather than stubbed speculatively.
+            // under PLATFORM=web). LogWatcher/AssetBundleManager are stubbed
+            // (found live: unconditional boot-/dialog-time calls threw a
+            // bare ReferenceError otherwise — see those shims' own doc
+            // comments). Discord is a desktop-only capability with no web
+            // equivalent and, unlike the two above, isn't reached from any
+            // unconditional call site — left unset on purpose rather than
+            // stubbed speculatively.
             // Dynamic import (not a static one) so WINDOWS/Electron builds,
             // where WEB is a compile-time `false`, tree-shake this whole
             // subtree away instead of bundling client-web/** dead weight.
@@ -80,10 +81,12 @@ export async function initInteropApi(isVrOverlay = false) {
             const { appApiTarget } = await import('../../client-web/shims/app-api.js');
             const { vrcxStorageTarget } = await import('../../client-web/shims/vrcx-storage.js');
             const { logWatcherTarget } = await import('../../client-web/shims/log-watcher.js');
+            const { assetBundleManagerTarget } = await import('../../client-web/shims/asset-bundle-manager.js');
             window.WebApi = webApiTarget;
             window.AppApi = appApiTarget;
             window.VRCXStorage = vrcxStorageTarget;
             window.LogWatcher = logWatcherTarget;
+            window.AssetBundleManager = assetBundleManagerTarget;
             installUnhandledRejectionReporting();
         } else {
             // Phase 5: the desktop build stops opening VRCX.sqlite3 and
