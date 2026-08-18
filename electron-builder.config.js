@@ -76,7 +76,7 @@ module.exports = {
                 MimeType: 'x-scheme-handler/vrcx;'
             }
         },
-        maintainer: 'rs189 <35667100+rs189@users.noreply.github.com>',
+        maintainer: 'WentTheFox <mail@went.tf>',
         description: 'Friendship management tool for VRChat (VRCX-Headless fork client)',
         syncDesktopName: true
     },
