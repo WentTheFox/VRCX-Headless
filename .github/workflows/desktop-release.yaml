@@ -168,6 +168,17 @@ jobs:
                   fi
                   pnpm run ${{ matrix.electron-script }}
 
+            # Renames Windows's output to include the arch -- found live
+            # (2026-08-18): electron-builder's implicit NSIS target (no
+            # explicit `win` block in electron-builder.config.js) names
+            # every arch's installer identically ("VRCX Setup <version>.exe",
+            # no arch suffix), unlike the Linux/macOS targets which already
+            # get one from build-scripts/rename-builds.js. win-x64 and
+            # win-arm64 silently overwrote each other once merged into one
+            # flat dist/ dir in publish-release, losing one installer
+            # entirely with no error from anything until the actual release
+            # was compared against by hand. Linux/macOS filenames are left
+            # exactly as rename-builds.js already produces them.
             - name: Locate the built installer/AppImage/dmg
               id: artifact
               run: |
@@ -176,6 +187,13 @@ jobs:
                   if [ -z "$path" ]; then
                       echo "No packaged artifact found under build/ for ${{ matrix.id }}" >&2
                       exit 1
+                  fi
+                  if [ "${{ matrix.os-family }}" = "windows" ]; then
+                      dir="$(dirname "$path")"
+                      base="$(basename "$path" .exe)"
+                      renamed="$dir/${base} (${{ matrix.id }}).exe"
+                      mv "$path" "$renamed"
+                      path="$renamed"
                   fi
                   echo "path=$path" >> "$GITHUB_OUTPUT"
 
@@ -269,6 +287,12 @@ jobs:
         permissions:
             contents: write
         steps:
+            # gh release create needs a git repo context to resolve which
+            # repo it's targeting -- found live (2026-08-18): without this,
+            # it fails with "fatal: not a git repository" before creating
+            # anything, even though GH_TOKEN and the gh CLI itself are fine.
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
             - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
                   pattern: desktop-*
