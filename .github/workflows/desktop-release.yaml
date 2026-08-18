@@ -18,11 +18,14 @@
 #
 # Signing needs two SEPARATE self-signed certs (Windows Authenticode + macOS
 # codesign, both CN=WentTheFox/C=HU/ST=Pest/L=Budapest), generated once
-# locally via build-scripts/generate-self-signed-certs.sh (empty passphrase
-# -- see that script's own comments for why) and stored as the WIN_CSC_LINK/
-# CSC_LINK secrets referenced below. Neither is CA-issued: this reduces some
-# SmartScreen/Gatekeeper friction but does not eliminate it, and does not
-# satisfy Apple notarization.
+# locally via build-scripts/generate-self-signed-certs.sh and stored as
+# secrets: WIN_CSC_LINK (Windows, no password needed) and CSC_LINK +
+# CSC_KEY_PASSWORD (macOS -- unlike Windows, macOS's Keychain genuinely
+# rejects a PKCS12 with an empty password, so this one needs a real,
+# auto-generated one; see that script's own comments and build-macos's
+# packaging step for the full story). Neither cert is CA-issued: this
+# reduces some SmartScreen/Gatekeeper friction but does not eliminate it,
+# and does not satisfy Apple notarization.
 name: Desktop Client Release
 
 on:
@@ -227,24 +230,27 @@ jobs:
             - name: Build the Vue app (PLATFORM=linux, i.e. the Electron client)
               run: pnpm run prod-linux
 
-            # CSC_KEY_PASSWORD must be exported explicitly as an empty
-            # string, not left unset -- found live (2026-08-18): when
-            # electron-builder sees CSC_KEY_PASSWORD as genuinely undefined
-            # (its own log even says so: "reason=CSC_KEY_PASSWORD is not
-            # defined"), it substitutes some other placeholder value for the
-            # `security import -P` call rather than an actual empty string,
-            # which then fails "MAC verification failed" against a p12 that
-            # really was encrypted with an empty password -- reproduced
-            # identically across three independently-generated certs (two
-            # modern-format, one -legacy), ruling out a bad file. Explicitly
-            # setting it (present, empty) makes electron-builder use the
-            # real empty string instead.
+            # Unlike Windows, macOS genuinely needs a real, non-empty
+            # CSC_KEY_PASSWORD -- found live (2026-08-18) after ruling out
+            # every other explanation: electron-builder's own source
+            # (app-builder-lib's platformPackager.js) confirms it really
+            # does pass a literal empty string to the signer when the
+            # password is unset, not some other placeholder; the identical
+            # masked value in every log was just redacted display text, a
+            # red herring. The actual cause is that macOS's Keychain
+            # (`security import`) rejects a truly empty PKCS12 password
+            # outright with "MAC verification failed" -- reproduced
+            # identically across a modern-format cert, a `-legacy`-format
+            # cert, and both unset and explicit-empty-string env var forms.
+            # A real password is the only thing that worked. See
+            # build-scripts/generate-self-signed-certs.sh for how it's
+            # generated (auto-random, not user-entered).
             - name: Package the Electron app (macos-arm64)
               run: |
                   set -euo pipefail
                   if [ -n "${{ secrets.CSC_LINK }}" ]; then
                       export CSC_LINK="${{ secrets.CSC_LINK }}"
-                      export CSC_KEY_PASSWORD=""
+                      export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
                   fi
                   pnpm run build-electron-arm64
 
