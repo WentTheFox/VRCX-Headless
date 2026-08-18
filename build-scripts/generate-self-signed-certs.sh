@@ -25,6 +25,17 @@ set -euo pipefail
 # it to sign as WentTheFox, so still keep it out of git (already covered by
 # .gitignore) and don't casually copy it around.
 #
+# The macOS cert specifically is exported with `-legacy` (RC2-40-CBC/3DES +
+# SHA-1 MAC) rather than OpenSSL 3.x's modern default (AES-256-CBC +
+# SHA-256 MAC) -- found live (2026-08-17/18): macOS's `security import`
+# (what electron-builder shells out to for codesign) fails every modern-
+# format PKCS#12 with "MAC verification failed during PKCS12 import (wrong
+# password?)", reproduced identically across two independently-generated
+# certs from two different OpenSSL builds (3.5.7 and 3.0.20), so this is a
+# genuine Apple Security-framework/OpenSSL-3.x incompatibility, not a
+# one-off bad file. Windows' signtool has no such problem with the modern
+# format, so only the macOS export needs `-legacy`.
+#
 # Run this ONCE, locally, yourself -- it is never invoked by CI.
 
 SUBJECT="/CN=WentTheFox/C=HU/ST=Pest/L=Budapest"
@@ -58,7 +69,7 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days "$DAYS" -nodes \
     -addext "extendedKeyUsage=codeSigning" \
     -addext "keyUsage=digitalSignature"
 
-openssl pkcs12 -export \
+openssl pkcs12 -export -legacy \
     -inkey "$workdir/mac-key.pem" \
     -in "$workdir/mac-cert.pem" \
     -out "$MAC_P12" \
