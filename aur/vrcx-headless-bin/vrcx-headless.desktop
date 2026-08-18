@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=VRCX Headless
+Comment=Friendship management tool for VRChat (VRCX-Headless fork client)
+Exec=vrcx-headless %U
+Terminal=false
+Type=Application
+Icon=vrcx-headless
+Categories=Utility;Network;
+MimeType=x-scheme-handler/vrcx;
+StartupWMClass=VRCX

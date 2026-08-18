@@ -1,0 +1,35 @@
+# Maintainer: WentTheFox <mail@went.tf>
+#
+# Wraps the prebuilt x86_64 AppImage from this fork's own GitHub Releases
+# (.github/workflows/desktop-release.yaml) -- no local compilation, matching
+# how most Electron apps ship on AUR. AUR itself is x86_64-only (Arch proper
+# only supports that architecture); the arm64 AppImage this fork also builds
+# has no AUR equivalent to publish to.
+#
+# pkgver/sha256sums here are placeholders -- .github/workflows/aur-publish.yaml
+# rewrites both on every published release before pushing to the AUR git
+# remote. Don't hand-edit pkgver in this repo; it's not what actually ships.
+pkgname=vrcx-headless-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Friendship management tool for VRChat (VRCX-Headless fork desktop client)"
+arch=('x86_64')
+url="https://github.com/WentTheFox/VRCX-Headless"
+license=('MIT')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libnotify' 'libsecret' 'at-spi2-core')
+optdepends=('libappindicator-gtk3: tray icon support')
+provides=('vrcx-headless')
+conflicts=('vrcx-headless')
+source=("VRCX-Headless_${pkgver}_x64.AppImage::https://github.com/WentTheFox/VRCX-Headless/releases/download/v${pkgver}/VRCX-Headless_${pkgver}_x64.AppImage"
+        "vrcx-headless.desktop"
+        "vrcx-headless.png")
+sha256sums=('0000000000000000000000000000000000000000000000000000000000000'
+            'SKIP'
+            'SKIP')
+noextract=("VRCX-Headless_${pkgver}_x64.AppImage")
+
+package() {
+    install -Dm755 "VRCX-Headless_${pkgver}_x64.AppImage" "$pkgdir/usr/bin/vrcx-headless"
+    install -Dm644 "vrcx-headless.desktop" "$pkgdir/usr/share/applications/vrcx-headless.desktop"
+    install -Dm644 "vrcx-headless.png" "$pkgdir/usr/share/pixmaps/vrcx-headless.png"
+}

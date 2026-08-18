@@ -1,0 +1,108 @@
+# Fork-only workflow: pushes an updated PKGBUILD to the vrcx-headless-bin AUR
+# package (aur.archlinux.org) whenever a GitHub Release is actually
+# *published* -- not on tag push, deliberately, since desktop-release.yaml
+# (see CLAUDE.md's "Cutting a release") only creates a draft release for a
+# human to review first. AUR should only ever point at a real, permanent
+# download URL, so this waits for that same human approval rather than
+# racing ahead of it.
+#
+# Cannot go live until two things exist that only a human can create:
+#   1. An AUR account (aur.archlinux.org) with an SSH key registered to it.
+#   2. That key's PRIVATE half stored as the AUR_SSH_PRIVATE_KEY secret here.
+# The first real publish also creates the vrcx-headless-bin package on AUR --
+# pushing to a not-yet-existing package name under your own account is how
+# AUR packages get created, no separate manual bootstrap needed.
+#
+# aur/vrcx-headless-bin/PKGBUILD in this repo carries placeholder
+# pkgver/sha256sums -- this workflow rewrites both with the real release's
+# version and the real AppImage's checksum before ever pushing anything.
+name: AUR Publish
+
+on:
+    release:
+        types: [published]
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Existing published release tag to publish (e.g. v20260718.6.0) -- for testing this workflow without cutting a new release'
+                required: true
+
+jobs:
+    publish-aur:
+        name: Update vrcx-headless-bin
+        # Only ever act on this fork's own real version tags -- a release
+        # published for some other reason (there shouldn't be one, but
+        # nothing stops a human from creating one by hand) shouldn't push
+        # something to AUR with a version string that doesn't parse.
+        if: (github.event_name == 'workflow_dispatch') || (startsWith(github.event.release.tag_name, 'v') && github.event.release.prerelease == false)
+        runs-on: ubuntu-latest
+        container:
+            image: archlinux:base-devel
+        steps:
+            - name: Install git and openssh (not in the base-devel image)
+              run: pacman -Sy --noconfirm --needed git openssh
+
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+              with:
+                  path: repo
+
+            # makepkg refuses to run as root (a real Arch/AUR-tooling
+            # constraint, not something to work around) -- create an
+            # unprivileged user for the PKGBUILD/.SRCINFO steps below.
+            - name: Create unprivileged build user
+              run: |
+                  useradd -m builder
+                  chown -R builder:builder "$GITHUB_WORKSPACE"
+
+            - name: Compute version and AppImage checksum
+              id: meta
+              run: |
+                  set -euo pipefail
+                  tag="${{ github.event.inputs.tag || github.event.release.tag_name }}"
+                  version="${tag#v}"
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  url="https://github.com/${{ github.repository }}/releases/download/${tag}/VRCX-Headless_${version}_x64.AppImage"
+                  curl -sL --fail -o /tmp/appimage "$url"
+                  sha256="$(sha256sum /tmp/appimage | cut -d' ' -f1)"
+                  echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+            - name: Update PKGBUILD and regenerate .SRCINFO
+              run: |
+                  set -euo pipefail
+                  cd repo/aur/vrcx-headless-bin
+                  sed -i "s/^pkgver=.*/pkgver=${{ steps.meta.outputs.version }}/" PKGBUILD
+                  sed -i "0,/^pkgrel=.*/s//pkgrel=1/" PKGBUILD
+                  sed -i "s/^sha256sums=.*/sha256sums=('${{ steps.meta.outputs.sha256 }}'/" PKGBUILD
+                  # sha256sums is a multi-line array in the PKGBUILD (one
+                  # entry per source) -- only the first line (the AppImage's
+                  # real checksum) needs rewriting; the desktop/icon files'
+                  # 'SKIP' lines are untouched by the sed above since it only
+                  # matches the array's opening line.
+                  chown -R builder:builder .
+                  su builder -c "makepkg --printsrcinfo" > .SRCINFO
+
+            - name: Push to AUR
+              env:
+                  SSH_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+              run: |
+                  set -euo pipefail
+                  if [ -z "$SSH_KEY" ]; then
+                      echo "AUR_SSH_PRIVATE_KEY is not set -- skipping publish. Set it up per this workflow's own top comment to enable AUR publishing." >&2
+                      exit 0
+                  fi
+                  mkdir -p ~/.ssh
+                  echo "$SSH_KEY" > ~/.ssh/id_ed25519
+                  chmod 600 ~/.ssh/id_ed25519
+                  ssh-keyscan -t ed25519 aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+                  git config --global user.name "WentTheFox"
+                  git config --global user.email "mail@went.tf"
+                  git clone ssh://aur@aur.archlinux.org/vrcx-headless-bin.git /tmp/aur-repo
+                  cp repo/aur/vrcx-headless-bin/PKGBUILD repo/aur/vrcx-headless-bin/.SRCINFO repo/aur/vrcx-headless-bin/vrcx-headless.desktop repo/aur/vrcx-headless-bin/vrcx-headless.png /tmp/aur-repo/
+                  cd /tmp/aur-repo
+                  git add -A
+                  if git diff --cached --quiet; then
+                      echo "No changes to publish -- AUR package already up to date."
+                      exit 0
+                  fi
+                  git commit -m "Update to ${{ steps.meta.outputs.version }}"
+                  git push
