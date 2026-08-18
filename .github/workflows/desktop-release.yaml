@@ -145,18 +145,15 @@ jobs:
             # empty-string fallback. Exporting them only when the matching
             # secret is genuinely non-empty is what actually gets "no
             # secrets configured yet -> unsigned build" right. No
-            # WIN_CSC_KEY_PASSWORD/CSC_KEY_PASSWORD secrets exist --
-            # build-scripts/generate-self-signed-certs.sh generates both
-            # certs with an empty passphrase, and electron-builder treats a
-            # missing password env var as empty, matching that.
+            # WIN_CSC_KEY_PASSWORD secret exists -- Windows signing has been
+            # confirmed live to work with no password env var at all
+            # (unlike macOS, see build-macos's own packaging step for why
+            # that one needs an explicit empty CSC_KEY_PASSWORD instead).
             - name: Package the Electron app (${{ matrix.id }})
               run: |
                   set -euo pipefail
                   if [ "${{ matrix.os-family }}" = "windows" ] && [ -n "${{ secrets.WIN_CSC_LINK }}" ]; then
                       export WIN_CSC_LINK="${{ secrets.WIN_CSC_LINK }}"
-                  fi
-                  if [ "${{ matrix.os-family }}" = "macos" ] && [ -n "${{ secrets.CSC_LINK }}" ]; then
-                      export CSC_LINK="${{ secrets.CSC_LINK }}"
                   fi
                   pnpm run ${{ matrix.electron-script }}
 
@@ -230,11 +227,24 @@ jobs:
             - name: Build the Vue app (PLATFORM=linux, i.e. the Electron client)
               run: pnpm run prod-linux
 
+            # CSC_KEY_PASSWORD must be exported explicitly as an empty
+            # string, not left unset -- found live (2026-08-18): when
+            # electron-builder sees CSC_KEY_PASSWORD as genuinely undefined
+            # (its own log even says so: "reason=CSC_KEY_PASSWORD is not
+            # defined"), it substitutes some other placeholder value for the
+            # `security import -P` call rather than an actual empty string,
+            # which then fails "MAC verification failed" against a p12 that
+            # really was encrypted with an empty password -- reproduced
+            # identically across three independently-generated certs (two
+            # modern-format, one -legacy), ruling out a bad file. Explicitly
+            # setting it (present, empty) makes electron-builder use the
+            # real empty string instead.
             - name: Package the Electron app (macos-arm64)
               run: |
                   set -euo pipefail
                   if [ -n "${{ secrets.CSC_LINK }}" ]; then
                       export CSC_LINK="${{ secrets.CSC_LINK }}"
+                      export CSC_KEY_PASSWORD=""
                   fi
                   pnpm run build-electron-arm64
 
