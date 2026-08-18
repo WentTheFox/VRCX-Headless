@@ -10,10 +10,13 @@
  *
  * Only the trivial, genuinely web-appropriate subset is implemented for
  * real in this first slice — the ~35+ desktop-only methods actually called
- * from `src/**` (VR overlay, Discord RPC, registry, screenshots, game
- * launch, log watching, `CopyImageToClipboard(path)` — a *file path* the
- * browser has no access to) are out of scope here; expanding capability
- * coverage is explicit follow-up work, not a gap to paper over.
+ * from `src/**` (VR overlay, Discord RPC, registry, screenshots, log
+ * watching, `CopyImageToClipboard(path)` — a *file path* the browser has no
+ * access to) are out of scope here; expanding capability coverage is
+ * explicit follow-up work, not a gap to paper over. `StartGame`/
+ * `StartGameFromPath` are the one exception, given a best-effort
+ * `vrchat://` deep-link implementation below rather than left to throw —
+ * see that method's own comment.
  */
 import { toast } from 'vue-sonner';
 
@@ -126,6 +129,35 @@ const IMPLEMENTED = {
     // no-other-instances-to-notify reasoning as the already-no-op
     // IPCAnnounceStart above, not a stand-in for a missing capability.
     async SendIpc() {},
+    // Found live: the web client has no way to detect or launch a local
+    // VRChat install, but the same `vrchat://launch` deep link vrchat.com's
+    // own "Launch" button uses still works through the OS protocol handler
+    // when VRChat/Steam is installed locally — `src/stores/launch.js`'s
+    // `getLaunchUrl()` (unmodified, upstream-owned) already builds exactly
+    // that URL for every launch, platform-agnostic. `args` here is that
+    // file's own `[launchUrl, launchArguments, '--no-vr'].join(' ')`; only
+    // the URL — always the first, space-free token — is usable through a
+    // protocol handler, so custom launch arguments and forcing desktop mode
+    // are silently dropped rather than attempted (VRChat/Steam's own
+    // handler decides VR-vs-desktop on launch, same as clicking the website
+    // button does). Native `StartGame` autodetects the VRChat install to
+    // shell out to; a browser has no such capability, so this is the whole
+    // of the fallback rather than a smaller piece of a larger one.
+    async StartGame(args) {
+        const launchUrl = args?.split(' ')[0];
+        if (!launchUrl?.startsWith('vrchat://')) {
+            throw new Error('No launch URL to open');
+        }
+        window.location.href = launchUrl;
+        return true;
+    },
+    // A custom VRChat path override (native `StartGameFromPath`'s whole
+    // reason to exist) means nothing to a browser, which can't launch an
+    // arbitrary local path either way — same deep-link fallback as
+    // StartGame above, just ignoring the path.
+    async StartGameFromPath(_path, args) {
+        return IMPLEMENTED.StartGame(args);
+    },
     // Found live: called synchronously, unawaited, at the top of
     // promptTOTP()/promptEmailOTP() (src/stores/auth.js) — the *whole*
     // 2FA login flow, not just this one call. The Proxy's default fallback
