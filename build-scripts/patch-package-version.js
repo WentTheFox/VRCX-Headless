@@ -1,24 +1,24 @@
 const fs = require('fs');
 const path = require('path');
+const { getForkVersion } = require('./utils');
 
 const rootDir = path.join(__dirname, '..');
-const versionFilePath = path.resolve(rootDir, 'Version');
 const packageJsonPath = path.resolve(rootDir, 'package.json');
 
+// Uses the fork's own version (20260718.5.0-style, same scheme as the
+// Docker image tag) rather than the plain VRCX date -- this is what
+// electron-builder's implicit NSIS target stamps into the Windows
+// installer's filename/Product Version metadata (Windows has no explicit
+// `win` artifactName in electron-builder.config.js, unlike Linux/macOS
+// which get an explicit rename via build-scripts/rename-builds.js). Fixed
+// live (2026-08-18) after the first real release shipped with plain VRCX
+// dates in every filename, giving no visual distinction from a vanilla
+// VRCX download and no way to tell which fork build a user has installed.
 let version = '';
 try {
-    console.log(`Reading Version from ${versionFilePath}`);
-    version = fs.readFileSync(versionFilePath, 'utf8').trim();
-    var index = version.indexOf('T');
-    if (index > 0) {
-        // Remove time part from version
-        version = version.substring(0, index).replaceAll('-', '.');
-    }
-    if (!version || version === 'Nightly Build') {
-        version = new Date().toISOString().split('T')[0].replaceAll('-', '.');
-    }
+    version = getForkVersion();
 } catch (err) {
-    console.error('Error reading Version file:', err);
+    console.error('Error computing fork version:', err);
     process.exit(1);
 }
 

@@ -5,7 +5,7 @@
  */
 module.exports = {
     appId: 'app.vrcx',
-    productName: 'VRCX',
+    productName: 'VRCX Headless',
     icon: 'images/VRCX.png',
     files: [
         'build/html/**/*',
@@ -59,15 +59,15 @@ module.exports = {
         output: 'build'
     },
     linux: {
-        artifactName: 'VRCX_Version.${ext}',
+        artifactName: 'VRCX-Headless_Version.${ext}',
         target: ['AppImage'],
         icon: 'images/VRCX.png',
         executableName: 'VRCX',
         mimeTypes: ['x-scheme-handler/vrcx'],
         desktop: {
             entry: {
-                Name: 'VRCX',
-                Comment: 'Friendship management tool for VRChat',
+                Name: 'VRCX Headless',
+                Comment: 'Friendship management tool for VRChat (VRCX-Headless fork client)',
                 Icon: 'VRCX',
                 Terminal: 'false',
                 Type: 'Application',
@@ -77,11 +77,11 @@ module.exports = {
             }
         },
         maintainer: 'rs189 <35667100+rs189@users.noreply.github.com>',
-        description: 'Friendship management tool for VRChat',
+        description: 'Friendship management tool for VRChat (VRCX-Headless fork client)',
         syncDesktopName: true
     },
     mac: {
-        artifactName: 'VRCX_Version.${ext}',
+        artifactName: 'VRCX-Headless_Version.${ext}',
         target: ['dmg'],
         icon: 'images/VRCX.png',
         category: 'public.app-category.utilities',
