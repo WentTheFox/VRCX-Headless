@@ -7,6 +7,7 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { installFeedDedup } from './feed-dedup.js';
 import { repoRoot } from './globals.js';
 import { log } from './log.js';
 import { resolveDatabasePath } from './paths.js';
@@ -86,6 +87,7 @@ export async function openDatabase(options = {}) {
         await import('../../src/services/database/index.js');
     const { default: configRepository } =
         await import('../../src/services/config.js');
+    installFeedDedup(database, dbVars);
 
     return {
         databasePath,

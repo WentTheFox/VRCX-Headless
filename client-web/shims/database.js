@@ -46,6 +46,14 @@ import { rpcCall } from './rpc-client.js';
  * blanket "pipeline writes are client no-ops" rule would silently break
  * those. Add a name here only after confirming (like this one) that *every*
  * call site is unreachable except through pipeline processing.
+ *
+ * GPS/status/avatar/bio writes have this exact same duplicate-write problem
+ * (confirmed live, 2026-08-18) but can't be fixed here the same way: their
+ * only call site (`src/coordinators/userEventCoordinator.js`'s
+ * `runHandleUserUpdateFlow`) is reached via `applyUser` from many places,
+ * not just the pipeline handler, so an always-no-op entry here would drop
+ * real writes. Fixed server-side instead, by content rather than by caller
+ * — see `server/src/feed-dedup.js`.
  */
 const pipelineOnlyWrites = new Set(['addOnlineOfflineToDatabase']);
 
