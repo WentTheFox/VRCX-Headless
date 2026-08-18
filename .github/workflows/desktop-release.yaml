@@ -230,6 +230,24 @@ jobs:
             - name: Build the Vue app (PLATFORM=linux, i.e. the Electron client)
               run: pnpm run prod-linux
 
+            # TEMPORARY debug step -- isolates whether the secret's actual
+            # bytes are the problem, independent of electron-builder's own
+            # decode path. Remove once macOS signing is confirmed working.
+            - name: DEBUG - verify CSC_LINK/CSC_KEY_PASSWORD decode locally
+              if: env.CSC_LINK != ''
+              env:
+                  CSC_LINK: ${{ secrets.CSC_LINK }}
+                  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+              run: |
+                  set -euo pipefail
+                  echo "CSC_LINK length: ${#CSC_LINK}"
+                  echo "CSC_KEY_PASSWORD length: ${#CSC_KEY_PASSWORD}"
+                  echo -n "$CSC_LINK" | base64 -d > /tmp/debug-test.p12
+                  echo "decoded p12 size: $(wc -c < /tmp/debug-test.p12)"
+                  file /tmp/debug-test.p12
+                  openssl pkcs12 -in /tmp/debug-test.p12 -info -noout -passin "pass:$CSC_KEY_PASSWORD" && echo "LOCAL OPENSSL DECODE: SUCCESS" || echo "LOCAL OPENSSL DECODE: FAILED"
+                  rm -f /tmp/debug-test.p12
+
             # Unlike Windows, macOS genuinely needs a real, non-empty
             # CSC_KEY_PASSWORD -- found live (2026-08-18) after ruling out
             # every other explanation: electron-builder's own source
