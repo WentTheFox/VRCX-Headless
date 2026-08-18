@@ -1,5 +1,23 @@
 <div align="center">
 
+# <img src="https://raw.githubusercontent.com/vrcx-team/VRCX/master/images/VRCX.ico" width="64" height="64"> </img> VRCX-Headless
+
+[![GitHub release](https://img.shields.io/github/release/WentTheFox/VRCX-Headless.svg)](https://github.com/WentTheFox/VRCX-Headless/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/WentTheFox/VRCX-Headless/total?color=6451f1)](https://github.com/WentTheFox/VRCX-Headless/releases/latest)
+[![CI](https://github.com/WentTheFox/VRCX-Headless/actions/workflows/ci.yaml/badge.svg)](https://github.com/WentTheFox/VRCX-Headless/actions/workflows/ci.yaml)
+
+</div>
+
+**VRCX-Headless** is a fork of [VRCX](https://github.com/vrcx-team/VRCX) that splits the app into a headless server and a client. The server owns `VRCX.sqlite3` and the VRChat API connection; the client is the same Vue app VRCX has always shipped, running either in the desktop shell or a browser, so you can see the same data in sync across several devices instead of one machine holding the only copy.
+
+- **Server setup, Docker images and CLI reference → [`server/README.md`](./server/README.md)** (multi-arch, runs on a Raspberry Pi)
+- **Building and running the Electron desktop client → [`client-desktop/README.md`](./client-desktop/README.md)**
+- **Architecture, fork invariants and the upstream merge procedure → [`CLAUDE.md`](./CLAUDE.md)**
+
+Everything below is upstream VRCX's own documentation and still describes the desktop app.
+
+<div align="center">
+
 # <img src="https://raw.githubusercontent.com/vrcx-team/VRCX/master/images/VRCX.ico" width="64" height="64"> </img> VRCX
 
 [![GitHub release](https://img.shields.io/github/release/vrcx-team/VRCX.svg)](https://github.com/vrcx-team/VRCX/releases/latest)
@@ -10,18 +28,6 @@
 | **English** | [Français](./README/README.fr.md) | [日本語](./README/README.jp.md) | [简体中文](./README/README.zh_CN.md) | [Italiano](./README/README.it.md) | [Русский](./README/README.ru_RU.md) | [Español](./README/README.es.md) | [Polski](./README/README.pl.md) | [ภาษาไทย](./README/README.th.md) | [Magyar](./README/README.hu.md)
 
 VRCX is an assistant/companion application for VRChat that provides information about and helps you accomplish various things related to VRChat in a more convenient fashion than relying on the plain VRChat client (desktop or VR), or website alone. It also includes some other neat features outlined below.
-
-# About this fork
-
-<div align="left">
-
-**VRCX-Headless** splits VRCX into a headless server and a client. The server owns `VRCX.sqlite3` and the VRChat API connection; the client is this same Vue app, running either in the desktop shell or in a browser, so you can see the same data in sync on several devices.
-
-- **Server setup, Docker images and CLI reference → [`server/README.md`](./server/README.md)** (multi-arch, runs on a Raspberry Pi)
-- **Building and running the Electron desktop client → [`client-desktop/README.md`](./client-desktop/README.md)**
-- **Architecture, fork invariants and the upstream merge procedure → [`CLAUDE.md`](./CLAUDE.md)**
-
-Everything below is upstream VRCX's own documentation and still describes the desktop app.
 
 <div align="center">
 
