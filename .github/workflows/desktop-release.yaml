@@ -1,7 +1,8 @@
-# Fork-only workflow: builds and self-signs the Electron desktop client for
-# Windows and Linux (x64+arm64) and macOS (Apple Silicon only -- see the
-# build-macos job's own comment for why Intel/macos-13 was dropped), and
-# attaches the results to a DRAFT GitHub Release for the pushed tag.
+# Fork-only workflow: builds the Electron desktop client for Windows and
+# Linux (x64+arm64, self-signed on Windows) and macOS (Apple Silicon only,
+# unsigned -- see the build-macos job's own comment for why Intel/macos-13
+# was dropped, and the comment further below for why macOS is unsigned),
+# and attaches the results to a DRAFT GitHub Release for the pushed tag.
 #
 # Triggers on the same `v*` tag push server-docker.yaml already uses, so one
 # `git tag && git push` (CLAUDE.md's "Cutting a release") cuts both releases
@@ -16,16 +17,25 @@
 # before that point of no return. Switching to immediate-publish later is a
 # one-line change (drop `--draft` in the publish-release job), not a redesign.
 #
-# Signing needs two SEPARATE self-signed certs (Windows Authenticode + macOS
-# codesign, both CN=WentTheFox/C=HU/ST=Pest/L=Budapest), generated once
-# locally via build-scripts/generate-self-signed-certs.sh and stored as
-# secrets: WIN_CSC_LINK (Windows, no password needed) and CSC_LINK +
-# CSC_KEY_PASSWORD (macOS -- unlike Windows, macOS's Keychain genuinely
-# rejects a PKCS12 with an empty password, so this one needs a real,
-# auto-generated one; see that script's own comments and build-macos's
-# packaging step for the full story). Neither cert is CA-issued: this
-# reduces some SmartScreen/Gatekeeper friction but does not eliminate it,
-# and does not satisfy Apple notarization.
+# Windows signing uses a self-signed Authenticode cert (CN=WentTheFox/
+# C=HU/ST=Pest/L=Budapest, empty passphrase), generated once locally via
+# build-scripts/generate-self-signed-certs.sh and stored as the WIN_CSC_LINK
+# secret. Confirmed live: signtool.exe actually signs the real installer.
+# Not CA-issued, so it reduces some SmartScreen friction but doesn't
+# eliminate the warning.
+#
+# macOS ships UNSIGNED, deliberately -- not a gap to close later without a
+# real Apple Developer ID. Found live (2026-08-18) after a long investigation
+# (git history has the full trail): a self-signed PKCS12 CAN be imported into
+# a keychain (a real, separate OpenSSL/macOS PBE-algorithm compatibility bug
+# had to be fixed first), but electron-builder's own identity-discovery
+# preflight then refuses to use it anyway, because macOS's Security framework
+# flags any cert with no trusted CA chain as CSSMERR_TP_NOT_TRUSTED --
+# self-signed certs can never NOT have this flag. electron-builder manages
+# its signing keychain internally with no hook to mark an identity trusted
+# before that check runs. A real fix means bypassing electron-builder's
+# built-in mac signing (manual keychain trust + codesign, outside its
+# control) -- explicitly out of scope for now.
 name: Desktop Client Release
 
 on:
@@ -145,13 +155,11 @@ jobs:
             # (even to an empty string) as "sign, with this identity" --
             # found live on the first dry run, unsigned builds broke with
             # "not a file" once these were set as job-level env with an
-            # empty-string fallback. Exporting them only when the matching
-            # secret is genuinely non-empty is what actually gets "no
-            # secrets configured yet -> unsigned build" right. No
-            # WIN_CSC_KEY_PASSWORD secret exists -- Windows signing has been
-            # confirmed live to work with no password env var at all
-            # (unlike macOS, see build-macos's own packaging step for why
-            # that one needs an explicit empty CSC_KEY_PASSWORD instead).
+            # empty-string fallback. Exporting it only when the secret is
+            # genuinely non-empty is what actually gets "no secret
+            # configured yet -> unsigned build" right. No
+            # WIN_CSC_KEY_PASSWORD secret exists -- Windows signing is
+            # confirmed live to work with no password env var at all.
             - name: Package the Electron app (${{ matrix.id }})
               run: |
                   set -euo pipefail
@@ -184,11 +192,9 @@ jobs:
     # stalling on later attempts). Apple Silicon only now, deliberately --
     # Intel (macos-13) is dropped entirely rather than kept as a
     # perpetually-stuck matrix leg. Steps mirror `build` above, just for
-    # this one macOS leg. Its build-and-package mechanics (dotnet build,
-    # `pnpm run prod-linux`, electron-builder, CSC_LINK signing) were
-    # already proven to work end to end in an earlier dry run -- what's
-    # unreliable is purely GitHub's runner scheduling for this account, not
-    # the workflow logic.
+    # this one macOS leg, minus any signing (see the top-of-file comment).
+    # Build-and-package mechanics (dotnet build, `pnpm run prod-linux`,
+    # electron-builder) are confirmed working end to end.
     build-macos:
         name: Build (macos-arm64)
         runs-on: macos-latest
@@ -230,47 +236,13 @@ jobs:
             - name: Build the Vue app (PLATFORM=linux, i.e. the Electron client)
               run: pnpm run prod-linux
 
-            # TEMPORARY debug step -- isolates whether the secret's actual
-            # bytes are the problem, independent of electron-builder's own
-            # decode path. Remove once macOS signing is confirmed working.
-            - name: DEBUG - verify CSC_LINK/CSC_KEY_PASSWORD decode locally
-              if: env.CSC_LINK != ''
-              env:
-                  CSC_LINK: ${{ secrets.CSC_LINK }}
-                  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-              run: |
-                  set -euo pipefail
-                  echo "CSC_LINK length: ${#CSC_LINK}"
-                  echo "CSC_KEY_PASSWORD length: ${#CSC_KEY_PASSWORD}"
-                  echo -n "$CSC_LINK" | base64 -d > /tmp/debug-test.p12
-                  echo "decoded p12 size: $(wc -c < /tmp/debug-test.p12)"
-                  file /tmp/debug-test.p12
-                  openssl pkcs12 -in /tmp/debug-test.p12 -info -noout -passin "pass:$CSC_KEY_PASSWORD" && echo "LOCAL OPENSSL DECODE: SUCCESS" || echo "LOCAL OPENSSL DECODE: FAILED"
-                  rm -f /tmp/debug-test.p12
-
-            # Unlike Windows, macOS genuinely needs a real, non-empty
-            # CSC_KEY_PASSWORD -- found live (2026-08-18) after ruling out
-            # every other explanation: electron-builder's own source
-            # (app-builder-lib's platformPackager.js) confirms it really
-            # does pass a literal empty string to the signer when the
-            # password is unset, not some other placeholder; the identical
-            # masked value in every log was just redacted display text, a
-            # red herring. The actual cause is that macOS's Keychain
-            # (`security import`) rejects a truly empty PKCS12 password
-            # outright with "MAC verification failed" -- reproduced
-            # identically across a modern-format cert, a `-legacy`-format
-            # cert, and both unset and explicit-empty-string env var forms.
-            # A real password is the only thing that worked. See
-            # build-scripts/generate-self-signed-certs.sh for how it's
-            # generated (auto-random, not user-entered).
+            # Unsigned, deliberately -- see the top-of-file comment for why
+            # (macOS's Security framework refuses any self-signed identity
+            # regardless of keychain-import success, and electron-builder's
+            # own preflight has no override for that). No CSC_LINK/
+            # CSC_KEY_PASSWORD wiring here at all.
             - name: Package the Electron app (macos-arm64)
-              run: |
-                  set -euo pipefail
-                  if [ -n "${{ secrets.CSC_LINK }}" ]; then
-                      export CSC_LINK="${{ secrets.CSC_LINK }}"
-                      export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
-                  fi
-                  pnpm run build-electron-arm64
+              run: pnpm run build-electron-arm64
 
             - name: Locate the built dmg
               id: artifact
@@ -323,5 +295,5 @@ jobs:
                   gh release create "$tag" \
                       --draft \
                       --title "VRCX-Headless Desktop $tag" \
-                      --notes "Desktop client (Electron) build for $tag. Self-signed installers/images for Windows (x64/arm64), Linux (x64/arm64), and macOS (Apple Silicon only) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are self-signed only (not notarized) -- Gatekeeper will still show an 'unidentified developer' warning on first launch." \
+                      --notes "Desktop client (Electron) build for $tag. Self-signed installers for Windows (x64/arm64), unsigned images for Linux (x64/arm64) and macOS (Apple Silicon only) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are unsigned -- Gatekeeper will show an 'unidentified developer' warning on first launch." \
                       dist/*
