@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
     notifiedMenus: { value: [] },
     pendingVRCXUpdate: { value: false },
     pendingVRCXInstall: { value: false },
-    appVersion: { value: 'VRCX 2026.01.01' },
+    currentVersion: { value: 'VRCX 2026.01.01' },
     themeMode: { value: 'system' },
     tableDensity: { value: 'standard' },
     isDarkMode: { value: false },
@@ -101,7 +101,7 @@ vi.mock('../../../stores', () => ({
     useVRCXUpdaterStore: () => ({
         pendingVRCXUpdate: mocks.pendingVRCXUpdate,
         pendingVRCXInstall: mocks.pendingVRCXInstall,
-        appVersion: mocks.appVersion,
+        currentVersion: mocks.currentVersion,
         showVRCXUpdateDialog: (...args) => mocks.showVRCXUpdateDialog(...args),
         showChangeLogDialog: (...args) => mocks.showChangeLogDialog(...args)
     }),

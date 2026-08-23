@@ -10,7 +10,16 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-0.5 px-1 py-1 cursor-pointer" @click="checkForVRCXUpdate">
+            <div class="flex flex-col gap-0.5 px-1 py-1">
+                <div class="flex-1">
+                    <span class="block truncate font-medium text-sm leading-[18px]">{{
+                        t('view.settings.general.general.upstream_version')
+                    }}</span>
+                    <span class="block truncate text-xs text-muted-foreground" v-text="upstreamVersion"></span>
+                </div>
+            </div>
+
+            <div v-if="!noUpdater" class="flex flex-col gap-0.5 px-1 py-1 cursor-pointer" @click="checkForVRCXUpdate">
                 <div class="flex-1">
                     <span class="block truncate font-medium text-sm leading-[18px]">{{
                         t('view.settings.general.general.latest_app_version')
@@ -31,15 +40,6 @@
                         t('view.settings.general.general.repository_url')
                     }}</span>
                     <span v-once class="block truncate text-xs text-muted-foreground">{{ links.github }}</span>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-0.5 px-1 py-1 cursor-pointer" @click="openExternalLink(links.discord)">
-                <div class="flex-1">
-                    <span class="block truncate font-medium text-sm leading-[18px]">{{
-                        t('view.settings.general.general.support')
-                    }}</span>
-                    <span v-once class="block truncate text-xs text-muted-foreground">{{ links.discord }}</span>
                 </div>
             </div>
         </SettingsGroup>
@@ -96,7 +96,7 @@
             <SettingsItem
                 v-else
                 :label="t('view.settings.general.application.minimized')"
-                :description="t('view.settings.general.application.startup_linux')">
+                :description="isRealLinux ? t('view.settings.general.application.startup_linux') : undefined">
                 <Switch
                     :model-value="isStartAsMinimizedState"
                     :ariaLabel="t('view.settings.general.application.minimized')"
@@ -208,7 +208,7 @@
         promptProxySettings
     } = generalSettingsStore;
 
-    const { appVersion, autoUpdateVRCX, latestAppVersion, noUpdater } = storeToRefs(vrcxUpdaterStore);
+    const { appVersion, upstreamVersion, autoUpdateVRCX, latestAppVersion, noUpdater } = storeToRefs(vrcxUpdaterStore);
     const { setAutoUpdateVRCX, checkForVRCXUpdate, showVRCXUpdateDialog, showChangeLogDialog } = vrcxUpdaterStore;
 
     const ossDialog = ref(false);
@@ -216,6 +216,12 @@
     const isMacOS = computed(() => {
         return navigator.platform.indexOf('Mac') > -1;
     });
+    // Fork addition (VRCX-Headless): `LINUX` means "this is the Electron
+    // build," not "running on Linux" (CLAUDE.md's "Desktop client OS
+    // support") — the Electron client also runs on Windows/macOS now. The
+    // `.desktop`-file autostart hint below is a genuinely Linux-only
+    // mechanism, so it needs the real host OS, not the build flag.
+    const isRealLinux = computed(() => !isMacOS.value && navigator.platform.toLowerCase().includes('linux'));
 
     const OpenSourceSoftwareNoticeDialog = defineAsyncComponent(
         () => import('../../dialogs/OpenSourceSoftwareNoticeDialog.vue')

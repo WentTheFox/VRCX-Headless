@@ -798,10 +798,10 @@
                 "general": {
                     "header": "General",
                     "version": "Version",
+                    "upstream_version": "Based on VRCX version",
                     "latest_app_version": "Latest Version",
                     "latest_app_version_refresh": "Click to refresh",
-                    "repository_url": "Repository URL",
-                    "support": "Support"
+                    "repository_url": "Repository URL"
                 },
                 "vrcx_updater": {
                     "header": "VRCX Updater",
@@ -811,7 +811,7 @@
                     "auto_update_notify": "Notify",
                     "auto_update_download": "Auto Download",
                     "change_log": "Change Log",
-                    "updater_disabled": "Updater disabled, updates are handled by your package manager."
+                    "updater_disabled": "Automatic updates aren't available yet — check the project's GitHub releases page for new versions."
                 },
                 "application": {
                     "header": "Application",

@@ -1731,17 +1731,25 @@ function getVersion() {
     try {
         const versionFile = fs.readFileSync(path.join(rootDir, 'Version'), 'utf8').trim();
 
-        // look for trailing git hash "-22bcd96" to indicate nightly build
+        // look for trailing git hash "-22bcd96" to indicate a nightly
+        // upstream build; the displayed number itself is this fork's own
+        // release version (package.json's `version`, patched at build time
+        // by build-scripts/patch-package-version.js to the same
+        // <vrcx-date-no-dots>.<fork-build>.0 scheme as the Docker/desktop
+        // release tag — see CLAUDE.md's "Server/Docker versioning") rather
+        // than upstream's own date-only `Version` file, so this actually
+        // identifies which fork release is installed
         const version = versionFile.split('-');
-        console.log('Version:', versionFile);
+        const forkVersion = app.getVersion();
+        console.log('Version:', versionFile, 'Fork version:', forkVersion);
         if (version.length > 0 && version[version.length - 1].length == 7) {
-            return `VRCX (Linux) Nightly ${versionFile}`;
+            return `VRCX Headless Nightly ${forkVersion}`;
         } else {
-            return `VRCX (Linux) ${versionFile}`;
+            return `VRCX Headless ${forkVersion}`;
         }
     } catch (err) {
         console.error('Error reading Version:', err);
-        return 'VRCX (Linux) Nightly Build';
+        return 'VRCX Headless Nightly Build';
     }
 }
 

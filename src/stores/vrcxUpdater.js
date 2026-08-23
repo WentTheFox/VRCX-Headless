@@ -31,6 +31,14 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     const isMacOS = computed(() => navigator.platform.includes('Mac'));
 
     const appVersion = ref('');
+    // Fork addition (VRCX-Headless): `VERSION` is Vite's compile-time global
+    // (src/vite.config.js's `define` block) — upstream's own date-only
+    // `Version` file, installed the same way as a real global by
+    // server/src/globals.js for the headless server. It's always this raw
+    // upstream string regardless of platform/branding, unlike `appVersion`
+    // above (this fork's own release version) — surfaced separately in
+    // Settings as "Based on VRCX version" so the two don't get conflated.
+    const upstreamVersion = ref('');
     const autoUpdateVRCX = ref('Auto Download');
     const latestAppVersion = ref('');
     const branch = ref('Stable');
@@ -92,6 +100,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         }
 
         appVersion.value = await AppApi.GetVersion();
+        upstreamVersion.value = VERSION;
         vrcxId.value = VRCX_id;
 
         await initBranch();
@@ -117,7 +126,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         }
     }
 
-    const currentVersion = computed(() => appVersion.value.replace(' (Linux)', ''));
+    const currentVersion = computed(() => appVersion.value.replace(' Headless', ''));
 
     /**
      * @param {string} value
@@ -512,6 +521,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
 
     return {
         appVersion,
+        upstreamVersion,
         autoUpdateVRCX,
         latestAppVersion,
         branch,
