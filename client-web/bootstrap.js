@@ -130,7 +130,7 @@ function renderLoginForm(error) {
     form.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
-    title.textContent = 'VRCX';
+    title.textContent = 'VRCX Headless Web';
     title.style.cssText = TITLE_STYLE;
 
     const input = createCodeInput();
@@ -189,7 +189,7 @@ function renderSetupForm(secret, uri, error) {
     form.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
-    title.textContent = 'Set up VRCX';
+    title.textContent = 'Set up VRCX Headless Web';
     title.style.cssText = TITLE_STYLE;
 
     const instructions = document.createElement('p');
