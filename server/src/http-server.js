@@ -139,20 +139,44 @@ function readJsonBody(req) {
  * `database.*` methods) returns a real `Map`, which `JSON.stringify`
  * silently serializes to `{}` (a Map has no own enumerable properties) —
  * the client then threw `TypeError: e is not iterable` trying to loop over
- * it. `[key, value]` array-of-entries is exactly what every observed
- * caller already loops over (`for (const [k, v] of data)` reads the same
- * off a Map or its `.entries()` array), so this is a lossless, generic fix
- * for every RPC response rather than special-casing one method.
+ * it.
+ *
+ * The first fix here flattened to a bare `[key, value]` array-of-entries,
+ * which covers `for (const [k, v] of data)` but is otherwise a silent
+ * lossy conversion: any call site written against real `Map`/`Set`
+ * semantics — `.values()`, `.get()`, `.has()`, `.size` — gets an `Array`
+ * instead and misbehaves without ever throwing. Found live a second time
+ * (2026-08-23): `PreviousInstancesInfoDialog.vue`'s table view calls
+ * `database.getPlayersFromInstance()` (a `Map`) and does
+ * `Array.from(data.values())` expecting `Map#values()` (the row objects) —
+ * against the flattened array, `Array#values()` instead yields the
+ * `[key, row]` pairs themselves, so every row in the table became a
+ * 2-element array with no `created_at`/`time`/`displayName` properties of
+ * its own (date column showed `-`, time column showed the literal string
+ * `"undefined"`). The chart view calls `getPlayerDetailFromInstance()`,
+ * which returns a plain array already, so it was never affected — that
+ * split is what made this look like a chart/table-specific bug rather
+ * than a general one.
+ *
+ * Fixed properly this time: tag the substituted value with its real type
+ * so the client can reconstruct an actual `Map`/`Set` instead of merely
+ * approximating one — every `src/**` call site was written assuming real
+ * `Map`/`Set` semantics (that's what it gets in the unmodified upstream
+ * desktop build, with no RPC hop in between), so restoring the real type
+ * client-side is what actually matches that assumption, generically,
+ * instead of patching one more call site the next time this shape of bug
+ * resurfaces. See `client-web/shims/rpc-client.js` and
+ * `client-desktop/shims/agent-rpc.js` for the matching client-side revival.
  * @param {string} key
  * @param {any} value
  * @returns {any}
  */
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
-        return Array.from(value.entries());
+        return { __rpcType: 'Map', entries: Array.from(value.entries()) };
     }
     if (value instanceof Set) {
-        return Array.from(value.values());
+        return { __rpcType: 'Set', values: Array.from(value.values()) };
     }
     return value;
 }

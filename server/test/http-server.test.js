@@ -284,6 +284,81 @@ describe('/api/session/refresh', () => {
     });
 });
 
+describe('/api/rpc — Map/Set return values survive the JSON round trip', () => {
+    // Regression coverage for a real live bug (2026-08-23):
+    // PreviousInstancesInfoDialog.vue's table view calls
+    // database.getPlayersFromInstance() (a real Map) and does
+    // Array.from(data.values()) expecting Map#values() — flattening the
+    // Map to a bare [key, value][] array on the wire (the original fix for
+    // "Map serializes to {}") made Array#values() yield the [key, value]
+    // pairs themselves instead, so every row lost its own properties. This
+    // asserts the wire shape client-side revival (rpc-client.js,
+    // agent-rpc.js) depends on: a tagged {__rpcType, entries} object, not
+    // a bare array.
+    /** @type {Awaited<ReturnType<typeof startServer>>} */
+    let ctx;
+    /** @type {string} */
+    let token;
+
+    beforeAll(async () => {
+        ctx = await startServer('rpc-map-set');
+        const login = await post(ctx.origin, '/api/login', {
+            code: generateTotpCode(ctx.secret)
+        });
+        token = login.body.token;
+    });
+
+    afterAll(async () => {
+        await new Promise((resolve) => ctx.server.close(resolve));
+        ctx.handle.close();
+        rmSync(ctx.dir, { recursive: true, force: true });
+    });
+
+    it('tags a Map result with its entries, not a bare array', async () => {
+        ctx.handle.database.__testReturnsMap = async () =>
+            new Map([
+                ['alice', { displayName: 'alice', time: 42 }],
+                ['bob', { displayName: 'bob', time: 7 }]
+            ]);
+
+        const { status, body } = await post(
+            ctx.origin,
+            '/api/rpc',
+            { target: 'db', method: '__testReturnsMap', args: [] },
+            { Authorization: `Bearer ${token}` }
+        );
+
+        expect(status).toBe(200);
+        expect(body.ok).toBe(true);
+        expect(body.result.__rpcType).toBe('Map');
+        expect(body.result.entries).toEqual([
+            ['alice', { displayName: 'alice', time: 42 }],
+            ['bob', { displayName: 'bob', time: 7 }]
+        ]);
+
+        delete ctx.handle.database.__testReturnsMap;
+    });
+
+    it('tags a Set result with its values, not a bare array', async () => {
+        ctx.handle.database.__testReturnsSet = async () =>
+            new Set(['alice', 'bob']);
+
+        const { status, body } = await post(
+            ctx.origin,
+            '/api/rpc',
+            { target: 'db', method: '__testReturnsSet', args: [] },
+            { Authorization: `Bearer ${token}` }
+        );
+
+        expect(status).toBe(200);
+        expect(body.ok).toBe(true);
+        expect(body.result.__rpcType).toBe('Set');
+        expect(body.result.values).toEqual(['alice', 'bob']);
+
+        delete ctx.handle.database.__testReturnsSet;
+    });
+});
+
 describe('/api/web/* — cookie-only mirrors never expose the raw token', () => {
     /** @type {Awaited<ReturnType<typeof startServer>>} */
     let ctx;
