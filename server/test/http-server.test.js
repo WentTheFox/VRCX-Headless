@@ -385,6 +385,11 @@ describe('/api/web/* — cookie-only mirrors never expose the raw token', () => 
         expect(setCookie).toMatch(
             /^vrcx_session=.+; HttpOnly; SameSite=Strict; Path=\//
         );
+        // Without Max-Age this becomes a browser *session* cookie, deleted
+        // on browser close well before SESSION_TTL_MS's 180-day server-side
+        // expiry — found live, this silently forced re-auth far sooner than
+        // intended.
+        expect(setCookie).toMatch(/; Max-Age=15552000(;|$)/);
     });
 
     it('the cookie from /api/web/login actually authenticates /api/rpc', async () => {

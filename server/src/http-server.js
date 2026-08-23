@@ -29,6 +29,7 @@ import {
     hasServerTotp,
     readSessionToken,
     SESSION_COOKIE_NAME,
+    SESSION_TTL_MS,
     setServerTotp,
     validateSession
 } from './http-auth.js';
@@ -206,7 +207,15 @@ function sendJson(res, status, body, headers = {}) {
  * @returns {string}
  */
 function sessionCookieHeader(token, secure) {
-    return `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/${secure ? '; Secure' : ''}`;
+    // Without `Max-Age`, this is a browser *session* cookie — deleted the
+    // moment the browser process fully closes (not just the tab), which
+    // silently undercuts `SESSION_TTL_MS`'s 180-day server-side session:
+    // found live, a web client kept getting bounced back to the TOTP prompt
+    // after the browser had been closed and reopened, well within that
+    // window. `Max-Age` in seconds, matching the token's own server-side
+    // expiry exactly, so the two can't drift apart.
+    const maxAgeSeconds = Math.floor(SESSION_TTL_MS / 1000);
+    return `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSeconds}${secure ? '; Secure' : ''}`;
 }
 
 /**
