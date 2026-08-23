@@ -60,7 +60,9 @@ import { verifyTotpCode } from './totp.js';
 
 const TOTP_CONFIG_KEY = 'VRCX_ServerTotpSecret';
 const SESSION_SECRET_CONFIG_KEY = 'VRCX_ServerSessionSecret';
-const SESSION_TTL_MS = 180 * 24 * 60 * 60 * 1000; // 180 days
+// Exported so http-server.js's session cookie's Max-Age can match this
+// exactly — see that file's sessionCookieHeader() for why that matters.
+export const SESSION_TTL_MS = 180 * 24 * 60 * 60 * 1000; // 180 days
 
 /**
  * Cached per database handle so `validateSession` — called on every
