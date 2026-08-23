@@ -66,7 +66,7 @@ module.exports = {
         mimeTypes: ['x-scheme-handler/vrcx'],
         desktop: {
             entry: {
-                Name: 'VRCX Headless',
+                Name: 'VRCX Headless Desktop',
                 Comment: 'Friendship management tool for VRChat (VRCX-Headless fork client)',
                 Icon: 'VRCX',
                 Terminal: 'false',
