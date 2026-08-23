@@ -22,6 +22,40 @@
  */
 
 /**
+ * Reverses `server/src/http-server.js`'s `jsonReplacer` tagging of
+ * `Map`/`Set` return values, recursively — the desktop counterpart of
+ * `client-web/shims/rpc-client.js`'s identical function (see that file's
+ * doc comment for the live bug this fixes: a `database.*` method
+ * returning a real `Map`/`Set` otherwise comes back as a plain array a
+ * caller only coincidentally iterates correctly, e.g.
+ * `PreviousInstancesInfoDialog.vue`'s `Array.from(data.values())`).
+ * `src-electron/main.js`'s `fetchJson` already parsed the server's JSON
+ * into a plain object before this ever reaches the renderer, so this
+ * walks the already-parsed value rather than hooking `JSON.parse` itself.
+ * @param {any} value
+ * @returns {any}
+ */
+function reviveRpcValue(value) {
+    if (Array.isArray(value)) {
+        return value.map(reviveRpcValue);
+    }
+    if (value && typeof value === 'object') {
+        if (value.__rpcType === 'Map' && Array.isArray(value.entries)) {
+            return new Map(value.entries.map(([k, v]) => [k, reviveRpcValue(v)]));
+        }
+        if (value.__rpcType === 'Set' && Array.isArray(value.values)) {
+            return new Set(value.values.map(reviveRpcValue));
+        }
+        const result = {};
+        for (const key of Object.keys(value)) {
+            result[key] = reviveRpcValue(value[key]);
+        }
+        return result;
+    }
+    return value;
+}
+
+/**
  * @param {'db' | 'config' | 'webapi'} target
  * @param {string} method
  * @param {any[]} [args]
@@ -43,5 +77,5 @@ export async function rpcCall(target, method, args = []) {
     if (!body.ok) {
         throw new Error(body.error ?? 'RPC call failed');
     }
-    return body.result;
+    return reviveRpcValue(body.result);
 }
