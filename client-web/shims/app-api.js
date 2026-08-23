@@ -22,7 +22,13 @@ import { toast } from 'vue-sonner';
 
 const IMPLEMENTED = {
     async GetVersion() {
-        return VERSION;
+        // `VERSION` is Vite's compile-time global — upstream's own date-only
+        // `Version` file, with no fork branding or fork release counter.
+        // Label it here so the web client doesn't read as a plain upstream
+        // VRCX build; the raw value is still available separately as
+        // vrcxUpdaterStore's `upstreamVersion` ("Based on VRCX version" in
+        // Settings).
+        return `VRCX Headless ${VERSION}`;
     },
     async SetUserAgent() {
         // No-op: the real User-Agent is set server-side

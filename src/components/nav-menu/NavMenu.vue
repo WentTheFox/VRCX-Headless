@@ -212,7 +212,7 @@
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
     const VRCXUpdaterStore = useVRCXUpdaterStore();
-    const { pendingVRCXUpdate, pendingVRCXInstall, appVersion } = storeToRefs(VRCXUpdaterStore);
+    const { pendingVRCXUpdate, pendingVRCXInstall, currentVersion } = storeToRefs(VRCXUpdaterStore);
     const { showVRCXUpdateDialog, showChangeLogDialog } = VRCXUpdaterStore;
 
     const dashboardStore = useDashboardStore();
@@ -282,7 +282,7 @@
     const customNavDialogVisible = ref(false);
 
     const hasNotifications = computed(() => notifiedMenus.value.length > 0);
-    const version = computed(() => appVersion.value?.split('VRCX ')?.[1] || '-');
+    const version = computed(() => currentVersion.value?.split('VRCX ')?.[1] || '-');
     const vrcxLogo = new URL('../../../images/VRCX.png', import.meta.url).href;
 
     const isEntryNotified = (entry) => checkEntryNotified(entry, notifiedMenus.value);

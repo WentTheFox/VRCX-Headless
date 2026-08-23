@@ -11,7 +11,8 @@ export default defineConfig({
         NIGHTLY: JSON.stringify(false),
         WINDOWS: JSON.stringify(true),
         LINUX: JSON.stringify(false),
-        WEB: JSON.stringify(false)
+        WEB: JSON.stringify(false),
+        VERSION: JSON.stringify('2026.01.01')
     },
     test: {
         globals: true,
