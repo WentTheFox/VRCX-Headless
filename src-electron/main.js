@@ -1543,13 +1543,17 @@ async function installVRCX() {
         return;
     }
 
-    // rename AppImage to VRCX.AppImage
+    // Rename to this fork's own AppImage filename — deliberately not plain
+    // "VRCX.AppImage" (upstream's own convention here, otherwise
+    // unmodified): that's the exact filename the real desktop app installs
+    // to, so a machine with both installed would have each one silently
+    // overwrite the other's copy in ~/Applications on every launch.
     const currentName = path.basename(appImagePath);
-    const expectedName = 'VRCX.AppImage';
+    const expectedName = 'VRCX-Headless.AppImage';
     if (currentName !== expectedName) {
         const newPath = path.join(path.dirname(appImagePath), expectedName);
         try {
-            // remove existing VRCX.AppImage
+            // remove existing VRCX-Headless.AppImage
             if (fs.existsSync(newPath)) {
                 fs.unlinkSync(newPath);
             }
@@ -1564,7 +1568,7 @@ async function installVRCX() {
     }
 
     // ask to move AppImage to ~/Applications
-    const appImageHomePath = `${homePath}/Applications/VRCX.AppImage`;
+    const appImageHomePath = `${homePath}/Applications/${expectedName}`;
     if (!hasAskedToMoveAppImage && appImagePath !== appImageHomePath) {
         const result = dialog.showMessageBoxSync(mainWindow, {
             type: 'question',
@@ -1587,7 +1591,7 @@ async function installVRCX() {
                 if (!fs.existsSync(applicationsPath)) {
                     fs.mkdirSync(applicationsPath);
                 }
-                // remove existing VRCX.AppImage
+                // remove existing VRCX-Headless.AppImage
                 if (fs.existsSync(appImageHomePath)) {
                     fs.unlinkSync(appImageHomePath);
                 }
@@ -1608,12 +1612,28 @@ async function installVRCX() {
 }
 
 /**
- * Create or update VRCX desktop file.
+ * Create or update this fork's desktop file.
  *
  * If the --no-desktop flag is set this function does nothing.
  * If there is an existing .desktop file, it will be updated with the current AppImage path.
  * If there is no .desktop file, the one inside the current AppImage will be copied to applications dir and
  * updated to the path of the AppImage.
+ *
+ * Found live (2026-08-23): this used to read and write `VRCX.desktop` —
+ * the exact filename the real upstream desktop app installs to. Two
+ * bugs from that one filename: (1) it never actually matched anything
+ * real, since electron-builder's own `desktopName` (package.json) names
+ * the file bundled *inside* this fork's own AppImage `VRCX-Headless.desktop`,
+ * so the "no existing file" branch's `desktop-file-install` source path
+ * was always wrong and silently failed on every genuinely fresh install;
+ * (2) on a machine with the real desktop app also installed, whichever
+ * one launched most recently would silently overwrite the other's
+ * `~/.local/share/applications/VRCX.desktop` entry — the Name/Exec a user
+ * clicks in their app launcher would flip depending on launch order, the
+ * exact "which VRCX is this" confusion this fork's whole naming pass
+ * exists to avoid. Both are fixed by using this fork's own distinct
+ * filename throughout — it can never collide with the real app's entry,
+ * and now actually matches what's bundled.
  * @returns void
  */
 function updateDesktopFile() {
@@ -1622,8 +1642,9 @@ function updateDesktopFile() {
         return;
     }
 
+    const desktopFileName = 'VRCX-Headless.desktop';
     const applicationsDir = path.join(homePath, '.local/share/applications');
-    const existingDesktopFilePath = path.join(applicationsDir, 'VRCX.desktop');
+    const existingDesktopFilePath = path.join(applicationsDir, desktopFileName);
 
     // note that when using spawnSync you DO NOT quote any paths as they are passed directly to the process
     try {
@@ -1636,13 +1657,13 @@ function updateDesktopFile() {
             ]);
 
             if (editResult.error) {
-                console.log('Error trying to update VRCX.desktop file: ', editResult.error.message);
+                console.log(`Error trying to update ${desktopFileName} file: `, editResult.error.message);
             } else {
                 console.log(`Updated desktop file: ${existingDesktopFilePath} to exec ${appImagePath}`);
             }
         } else {
             const exeDir = path.dirname(app.getPath('exe'));
-            const packageAppImagePath = path.join(exeDir, 'VRCX.desktop');
+            const packageAppImagePath = path.join(exeDir, desktopFileName);
 
             var installResult = spawnSync('desktop-file-install', [
                 '--set-key=Exec',
@@ -1653,7 +1674,7 @@ function updateDesktopFile() {
             ]);
 
             if (installResult.error) {
-                console.log('Error trying to install VRCX.desktop file: ', installResult.error.message);
+                console.log(`Error trying to install ${desktopFileName} file: `, installResult.error.message);
             } else {
                 console.log(`Installed desktop file to: ${applicationsDir} using exec ${appImagePath}`);
             }
