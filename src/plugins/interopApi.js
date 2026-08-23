@@ -118,6 +118,7 @@ export async function initInteropApi(isVrOverlay = false) {
             // weight.
             const { webApiTarget } = await import('../../client-desktop/shims/webapi-target.js');
             const { installPipelineRelay } = await import('../../client-desktop/shims/pipeline-relay.js');
+            const { updateService } = await import('../../client-desktop/shims/update-service.js');
             installPipelineRelay();
             window.AppApi = InteropApi.AppApiElectron;
             window.WebApi = webApiTarget;
@@ -126,6 +127,11 @@ export async function initInteropApi(isVrOverlay = false) {
             window.Discord = InteropApi.Discord;
             window.AssetBundleManager = InteropApi.AssetBundleManager;
             window.AppApiVrElectron = InteropApi.AppApiVrElectron;
+            // Fork addition: the server-driven desktop updater
+            // (src/stores/vrcxUpdater.js's checkForForkUpdate) — not part of
+            // InteropApi at all, a new RPC-backed capability rather than a
+            // real .NET object, see update-service.js's own doc comment.
+            window.updateService = updateService;
             installUnhandledRejectionReporting();
         }
 

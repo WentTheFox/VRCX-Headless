@@ -263,8 +263,10 @@
     import { Input } from '@/components/ui/input';
     import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
     import { TooltipWrapper } from '@/components/ui/tooltip';
+    import { useVRCXUpdaterStore } from '@/stores';
 
     const { t } = useI18n();
+    const vrcxUpdaterStore = useVRCXUpdaterStore();
 
     // Only mounted when LINUX (see StatusBar.vue's `v-if="isLinux"`), so
     // `window.vrcxDesktopAgent` — installed by src-electron/preload.js — is
@@ -310,6 +312,29 @@
         } catch {
             // Best-effort — the trigger just keeps showing its last known state.
         }
+        maybeCheckForForkUpdate(status.value.reachable);
+    }
+
+    // Fork addition (VRCX-Headless): the server-driven desktop updater
+    // (src/stores/vrcxUpdater.js's checkForForkUpdate) is triggered from
+    // here rather than from the store itself, since "on every server
+    // connect/switch" is specifically a desktop/agent-channel concept this
+    // fork-owned component already tracks — the upstream-shared store has
+    // no notion of "which server" at all. A server *switch* already
+    // restarts the whole Electron process (`vrcx-switch-server` in
+    // src-electron/main.js), so it doesn't need its own separate trigger
+    // here; this only needs to cover "became reachable," which is exactly
+    // what both call sites below already represent (the initial snapshot
+    // in refreshStatus(), and every edge the onServerStatusChanged
+    // subscription pushes afterwards — main.js's setServerReachable()
+    // already only sends on an actual flip, not on every poll).
+    let lastCheckedReachable = null;
+    function maybeCheckForForkUpdate(reachable) {
+        if (!reachable || reachable === lastCheckedReachable) {
+            return;
+        }
+        lastCheckedReachable = reachable;
+        vrcxUpdaterStore.checkForForkUpdate();
     }
 
     /**
@@ -528,6 +553,7 @@
         refreshCaCertStatus();
         unsubscribeStatus = agent.onServerStatusChanged((next) => {
             status.value = { ...status.value, ...next };
+            maybeCheckForForkUpdate(next.reachable);
         });
     });
 

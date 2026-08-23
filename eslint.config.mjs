@@ -35,7 +35,8 @@ export default defineConfig([
                 NIGHTLY: 'readonly',
                 webApiService: 'readonly',
                 process: 'readonly',
-                AppDebug: 'readonly'
+                AppDebug: 'readonly',
+                updateService: 'readonly'
             }
         }
     },

@@ -27,13 +27,21 @@
  * client-side) actually reach VRChat: the browser never talks to
  * `api.vrchat.cloud` directly, only to this dispatcher, which runs with the
  * server's real cookie jar.
+ *
+ * A fourth target, `update`, backs the server-driven desktop updater
+ * (`server/src/update-release.js`) — a single `getUpdateInfo()` method
+ * returning this server's own fork version plus whichever GitHub release
+ * matches it, so a connected desktop client can update itself to stay in
+ * lockstep with the server it's talking to.
  */
+import { getUpdateInfo } from './update-release.js';
 
 /** @type {Record<string, (handle: import('./db.js').DatabaseHandle) => any>} */
 const targets = {
     db: (handle) => handle.database,
     config: (handle) => handle.configRepository,
-    webapi: () => globalThis.WebApi
+    webapi: () => globalThis.WebApi,
+    update: () => ({ getUpdateInfo })
 };
 
 /**
