@@ -128,6 +128,138 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
 
     const currentVersion = computed(() => appVersion.value.replace(' Headless', ''));
 
+    // Fork addition (VRCX-Headless): the server-driven desktop updater.
+    // Deliberately separate state/functions from everything above —
+    // `checkForVRCXUpdate`/`getAssetOfInterest`/`downloadVRCXUpdate`/etc.
+    // stay exactly as upstream wrote them, pointed at upstream's own
+    // `api0.vrcx.app` channel and permanently dormant behind `.no-updater`
+    // (CLAUDE.md §9). This is a wholly new, additive flow: the server and
+    // desktop client are released together under the same
+    // `<vrcx-date>.<fork-build>.0` version, so the right update target for
+    // a given install isn't "whatever's newest on GitHub" but "whatever the
+    // connected server is running" — see CLAUDE.md's desktop-updater
+    // write-up for the full design.
+    const forkUpdateStatus = ref('idle'); // 'idle' | 'checking' | 'in-sync' | 'installing' | 'mismatch-offline'
+    const forkServerVersion = ref('');
+    const forkUpdateError = ref('');
+
+    // Bare `<vrcx-date>.<fork-build>.0`, stripped of the `VRCX `/`VRCX
+    // Nightly ` prefix `currentVersion` still carries — this is what's
+    // actually compared against the server's own version.
+    const installedForkVersion = computed(() => currentVersion.value.replace(/^VRCX (Nightly )?/, ''));
+
+    /**
+     * Windows-only for now (per CLAUDE.md's "Desktop client OS support" —
+     * this is the one fork platform genuinely shipped/tested end to end).
+     * Extending to Linux later is just adding a second branch here matching
+     * upstream's own `getAssetOfInterest`'s `.AppImage` logic
+     * (`vrcxUpdater.js`'s untouched Linux branch above) — `Dotnet/Update.cs`'s
+     * AppImage in-place-swap path and everything else already works
+     * unmodified regardless of which asset URL/hash it's given.
+     * @param {Array<{name: string, digest?: string, size: number, downloadUrl: string}>} assets
+     * @param {string} archValue
+     * @returns {{ downloadUrl: string, hashString: string, size: number } | null}
+     */
+    function getForkAssetOfInterest(assets, archValue) {
+        const suffix = `win-${archValue}.exe`;
+        const asset = assets.find((a) => a.name.endsWith(suffix));
+        if (!asset) {
+            return null;
+        }
+        return {
+            downloadUrl: asset.downloadUrl,
+            hashString: asset.digest?.startsWith('sha256:') ? asset.digest.slice(7) : '',
+            size: asset.size
+        };
+    }
+
+    /**
+     * @param {{ force?: boolean }} [options]
+     */
+    async function checkForForkUpdate(options = {}) {
+        if (!LINUX || typeof updateService === 'undefined') {
+            // Web/CefSharp: no desktop install to update, or not this
+            // fork's own branded distribution (§1) — nothing to do.
+            return;
+        }
+        if (!/^\d+\.\d+\.0$/.test(installedForkVersion.value)) {
+            // A dev/unbuilt run ("VRCX Nightly Build") never matches the
+            // fork's real version scheme — same "ignore custom builds"
+            // guard upstream's own checkForVRCXUpdate applies for the same
+            // reason.
+            return;
+        }
+        forkUpdateStatus.value = 'checking';
+        let info;
+        try {
+            info = await updateService.getUpdateInfo(options);
+        } catch (err) {
+            forkUpdateStatus.value = 'mismatch-offline';
+            forkUpdateError.value = err?.message ?? String(err);
+            toast.error(t('message.vrcx_updater.fork_check_failed', { message: forkUpdateError.value }));
+            return;
+        }
+        forkServerVersion.value = info.serverVersion;
+        if (info.serverVersion === installedForkVersion.value) {
+            forkUpdateStatus.value = 'in-sync';
+            return;
+        }
+        if (info.release) {
+            await installForkUpdate(info.release);
+            return;
+        }
+        forkUpdateStatus.value = 'mismatch-offline';
+        forkUpdateError.value = '';
+        toast.error(
+            t('message.vrcx_updater.fork_mismatch', {
+                client: installedForkVersion.value,
+                server: info.serverVersion
+            })
+        );
+    }
+
+    /**
+     * @param {{ assets: Array<{name: string, digest?: string, size: number, downloadUrl: string}> }} release
+     */
+    async function installForkUpdate(release) {
+        if (updateInProgress.value) {
+            // Already busy with either update flow (upstream's own or this
+            // one) — reusing the same flag keeps the two from racing each
+            // other, even though upstream's is permanently dormant today.
+            return;
+        }
+        const asset = getForkAssetOfInterest(release.assets, arch.value);
+        if (!asset) {
+            forkUpdateStatus.value = 'mismatch-offline';
+            forkUpdateError.value = `No matching installer for win-${arch.value}`;
+            toast.error(
+                t('message.vrcx_updater.fork_mismatch', {
+                    client: installedForkVersion.value,
+                    server: forkServerVersion.value
+                })
+            );
+            return;
+        }
+        try {
+            updateInProgress.value = true;
+            forkUpdateStatus.value = 'installing';
+            await downloadFileProgress();
+            await AppApi.DownloadUpdate(asset.downloadUrl, asset.hashString, asset.size);
+            // Dotnet/Update.cs's Update.Check() only installs the downloaded
+            // update.exe on the *next* process start — restart now so
+            // "fully automatic" actually means installed, not "installed
+            // whenever the app next happens to relaunch".
+            restartVRCX(true);
+        } catch (err) {
+            forkUpdateStatus.value = 'mismatch-offline';
+            forkUpdateError.value = err?.message ?? String(err);
+            toast.error(t('message.vrcx_updater.fork_install_failed', { message: forkUpdateError.value }));
+        } finally {
+            updateInProgress.value = false;
+            updateProgress.value = 0;
+        }
+    }
+
     /**
      * @param {string} value
      */
@@ -550,6 +682,12 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         showChangeLogDialog,
         restartVRCX,
         updateProgressText,
-        cancelUpdate
+        cancelUpdate,
+
+        forkUpdateStatus,
+        forkServerVersion,
+        forkUpdateError,
+        installedForkVersion,
+        checkForForkUpdate
     };
 });

@@ -812,6 +812,16 @@
                     "change_log": "Change Log",
                     "updater_disabled": "Automatic updates aren't available yet — check the project's GitHub releases page for new versions."
                 },
+                "fork_update": {
+                    "header": "Fork Update",
+                    "status": "Status",
+                    "idle": "Not checked yet",
+                    "checking": "Checking...",
+                    "in_sync": "Up to date with the connected server",
+                    "installing": "Installing update ({progress})",
+                    "mismatch": "This client ({client}) doesn't match the connected server ({server}) and couldn't be updated automatically — this may cause issues until it's updated manually.",
+                    "retry": "Retry"
+                },
                 "application": {
                     "header": "Application",
                     "startup": "Start at Windows Startup",
@@ -2740,7 +2750,10 @@
         "vrcx_updater": {
             "failed": "Failed to check for update, {message}",
             "failed_install": "Failed to install update",
-            "checking_hash": "Checking hash..."
+            "checking_hash": "Checking hash...",
+            "fork_check_failed": "Couldn't check for a fork update: {message}",
+            "fork_mismatch": "This client ({client}) doesn't match the connected server ({server}) and couldn't be updated automatically — this may cause issues until it's updated manually.",
+            "fork_install_failed": "Fork update failed: {message} — the client version may now be mismatched with the server."
         },
         "api_handler": {
             "avatar_private_or_deleted": "Avatar is private or deleted"

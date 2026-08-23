@@ -79,6 +79,59 @@
             </div>
         </SettingsGroup>
 
+        <!--
+            Fork addition (VRCX-Headless): the server-driven desktop
+            updater (src/stores/vrcxUpdater.js's checkForForkUpdate) —
+            deliberately a separate SettingsGroup from "VRCX Updater" above
+            rather than repointing it, so that group's dormant
+            upstream-shaped flow (CLAUDE.md §9) stays untouched. Desktop
+            (Electron) only, unrelated to noUpdater/.no-updater, which only
+            gates the group above.
+        -->
+        <SettingsGroup v-if="isLinux" :title="t('view.settings.general.fork_update.header')">
+            <div class="flex flex-col gap-0.5 px-1 py-1">
+                <div class="flex-1">
+                    <span class="block truncate font-medium text-sm leading-[18px]">{{
+                        t('view.settings.general.fork_update.status')
+                    }}</span>
+                    <span v-if="forkUpdateStatus === 'in-sync'" class="block truncate text-xs text-muted-foreground">
+                        {{ t('view.settings.general.fork_update.in_sync') }}
+                    </span>
+                    <span
+                        v-else-if="forkUpdateStatus === 'checking'"
+                        class="block truncate text-xs text-muted-foreground">
+                        {{ t('view.settings.general.fork_update.checking') }}
+                    </span>
+                    <span
+                        v-else-if="forkUpdateStatus === 'installing'"
+                        class="block truncate text-xs text-muted-foreground">
+                        {{ t('view.settings.general.fork_update.installing', { progress: updateProgressText() }) }}
+                    </span>
+                    <span
+                        v-else-if="forkUpdateStatus === 'mismatch-offline'"
+                        class="block truncate text-xs text-destructive">
+                        {{
+                            t('view.settings.general.fork_update.mismatch', {
+                                client: installedForkVersion,
+                                server: forkServerVersion || '?'
+                            })
+                        }}
+                    </span>
+                    <span v-else class="block truncate text-xs text-muted-foreground">
+                        {{ t('view.settings.general.fork_update.idle') }}
+                    </span>
+                </div>
+                <Button
+                    v-if="forkUpdateStatus === 'mismatch-offline'"
+                    size="sm"
+                    variant="outline"
+                    class="w-fit"
+                    @click="checkForForkUpdate({ force: true })">
+                    {{ t('view.settings.general.fork_update.retry') }}
+                </Button>
+            </div>
+        </SettingsGroup>
+
         <SettingsGroup :title="t('view.settings.general.application.header')">
             <SettingsItem v-if="!isLinux" :label="t('view.settings.general.application.startup')">
                 <Switch
@@ -208,8 +261,24 @@
         promptProxySettings
     } = generalSettingsStore;
 
-    const { appVersion, upstreamVersion, autoUpdateVRCX, latestAppVersion, noUpdater } = storeToRefs(vrcxUpdaterStore);
-    const { setAutoUpdateVRCX, checkForVRCXUpdate, showVRCXUpdateDialog, showChangeLogDialog } = vrcxUpdaterStore;
+    const {
+        appVersion,
+        upstreamVersion,
+        autoUpdateVRCX,
+        latestAppVersion,
+        noUpdater,
+        forkUpdateStatus,
+        forkServerVersion,
+        installedForkVersion
+    } = storeToRefs(vrcxUpdaterStore);
+    const {
+        setAutoUpdateVRCX,
+        checkForVRCXUpdate,
+        showVRCXUpdateDialog,
+        showChangeLogDialog,
+        checkForForkUpdate,
+        updateProgressText
+    } = vrcxUpdaterStore;
 
     const ossDialog = ref(false);
     const isLinux = computed(() => LINUX);

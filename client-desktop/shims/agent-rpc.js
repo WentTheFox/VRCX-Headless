@@ -56,7 +56,7 @@ function reviveRpcValue(value) {
 }
 
 /**
- * @param {'db' | 'config' | 'webapi'} target
+ * @param {'db' | 'config' | 'webapi' | 'update'} target
  * @param {string} method
  * @param {any[]} [args]
  * @returns {Promise<any>}
