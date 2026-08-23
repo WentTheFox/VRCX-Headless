@@ -59,7 +59,10 @@ function dotnetSetup() {
 
     if (!isDotNetInstalled()) {
         app.whenReady().then(() => {
-            dialog.showErrorBox('VRCX', 'Please install .NET 10.0 Runtime "dotnet-runtime-10.0" to run VRCX.');
+            dialog.showErrorBox(
+                'VRCX Headless Desktop',
+                'Please install .NET 10.0 Runtime "dotnet-runtime-10.0" to run VRCX Headless Desktop.'
+            );
             app.quit();
         });
     }
@@ -215,12 +218,69 @@ let serverReachable = true;
 let serverHealthCheckTimer = null;
 
 /**
+ * Node's `fetch` (undici) collapses every network-level failure — refused
+ * connection, DNS failure, timeout, a broken TLS handshake — into the same
+ * unhelpful top-level `Error: fetch failed`, with the actual reason nested
+ * one level down in `err.cause` (a plain error, or an `AggregateError` with
+ * `.errors` when DNS resolves to multiple addresses and all of them fail).
+ * Found live (2026-08-23): a user pointing the setup screen at a port
+ * nothing was listening on saw only "fetch failed", with no way to tell a
+ * refused connection from a typo'd hostname or a firewalled port. Every
+ * `fetchJson` caller already surfaces `err.message` straight to the user
+ * (the setup screen, the "Headless" status panel's add-server form, etc.),
+ * so unwrapping the cause once here — rather than in each of the ~8 call
+ * sites — is what actually reaches them instead of a dead end.
+ * @param {unknown} err
+ * @returns {string}
+ */
+function describeFetchError(err) {
+    if (!(err instanceof Error) || err.message !== 'fetch failed' || !err.cause) {
+        return err instanceof Error ? err.message : String(err);
+    }
+    const cause = err.cause;
+    const causes = Array.isArray(cause?.errors) ? cause.errors : [cause];
+    const codes = new Set(causes.map((c) => c?.code).filter(Boolean));
+    if (codes.has('ECONNREFUSED')) {
+        return 'Connection refused — is a VRCX server actually running at that address and port?';
+    }
+    if (codes.has('ENOTFOUND') || codes.has('EAI_AGAIN')) {
+        return 'Could not resolve that hostname — check the URL for typos.';
+    }
+    if (codes.has('ETIMEDOUT') || codes.has('UND_ERR_CONNECT_TIMEOUT')) {
+        return 'Connection timed out — the address may be unreachable (wrong network or VPN?).';
+    }
+    if (codes.has('ECONNRESET')) {
+        return 'Connection was reset by the server.';
+    }
+    if (
+        codes.has('DEPTH_ZERO_SELF_SIGNED_CERT') ||
+        codes.has('SELF_SIGNED_CERT_IN_CHAIN') ||
+        codes.has('UNABLE_TO_VERIFY_LEAF_SIGNATURE')
+    ) {
+        return "The server's certificate is self-signed and not yet trusted here — import its CA certificate below.";
+    }
+    if (codes.has('CERT_HAS_EXPIRED')) {
+        return "The server's TLS certificate has expired.";
+    }
+    const detail = causes
+        .map((c) => c?.message)
+        .filter(Boolean)
+        .join('; ');
+    return detail || err.message;
+}
+
+/**
  * @param {string} url
  * @param {import('node:https').RequestOptions & { body?: string }} options
  * @returns {Promise<{ status: number, body: any }>}
  */
 async function fetchJson(url, options) {
-    const response = await fetch(url, options);
+    let response;
+    try {
+        response = await fetch(url, options);
+    } catch (err) {
+        throw new Error(describeFetchError(err), { cause: err });
+    }
     let body = null;
     try {
         body = await response.json();
@@ -921,7 +981,9 @@ ipcMain.handle('dialog:openDirectory', async () => {
  * `NODE_EXTRA_CA_CERTS` and set it in their shell/system environment
  * themselves — Node's `fetch`/`ws` TLS stack only trusts its own bundled CA
  * bundle, not the Windows/macOS/Linux trust store, so a cert that a browser
- * happily accepts still fails here with a bare "fetch failed". Takes effect
+ * happily accepts still fails here (`describeFetchError` above turns it into
+ * "self-signed and not yet trusted here" instead of a bare "fetch failed").
+ * Takes effect
  * on the next app start (see the self-relaunch gate above `getVRCXPath()`'s
  * definition uses), which the caller is expected to trigger via the existing
  * `app:restart` handler.
@@ -1006,6 +1068,56 @@ ipcMain.handle('notification:showNotification', (_event, title, body, icon) => {
 });
 
 /**
+ * `app.exit()` is documented as immediate and synchronous, but found live
+ * (2026-08-23): after `vrcx-switch-server` triggered a restart, the old
+ * window and tray icon were left sitting there unresponsive and no new
+ * window ever appeared — `app.relaunch()`'s own relauncher helper process
+ * (visible in `ps` as `--type=relauncher`) blocks waiting for this
+ * process's pid to actually die, and on this Linux session it never did.
+ *
+ * The first fix here was a `setTimeout(() => process.exit(code), 3000)` on
+ * this same process's event loop — live-verified useless (2026-08-23,
+ * second pass): over a minute passed with the process still alive and the
+ * timer never fired. That makes sense in hindsight: if `app.exit()`'s
+ * native shutdown path (GPU process teardown, tray/DBus cleanup) blocks
+ * the main thread *synchronously* in C++, the single-threaded JS event
+ * loop that would run the timer callback is blocked right along with it —
+ * no amount of elapsed wall-clock time makes a timer fire on a thread
+ * that never returns to libuv. A signal delivered by a genuinely separate
+ * OS process has no such problem: `SIGKILL` is handled by the kernel and
+ * terminates the target regardless of what it's doing, blocked native
+ * call included. `detached: true` + `unref()` means this watchdog outlives
+ * nothing if we exit cleanly first — it's a no-op in the overwhelming
+ * common case, only ever actually killing anything when `app.exit()`
+ * itself has failed to. No exit-code parameter: `SIGKILL` has no concept
+ * of one, the process just stops.
+ *
+ * Live-verified working (2026-08-23, third pass, real hardware — a
+ * sandboxed/CI-only repro couldn't have caught the previous two false
+ * fixes, both of which only ever ran against a stale cached AppImage
+ * extraction and were never actually exercised): the watchdog now spawns
+ * immediately, the process dies ~3s later exactly on schedule, and the
+ * waiting relauncher proceeds. One residual rough edge, not yet fully
+ * chased down: on this same hardware, the relauncher's follow-up launch
+ * has been observed to crash immediately (a native crash, no window)
+ * often enough to be a real pattern rather than one-off noise — plausibly
+ * some GPU/shared-memory/DBus resource the killed process held not being
+ * released instantly enough for the new one to acquire cleanly. Net
+ * effect either way is strictly better than before: the app is never
+ * permanently and silently stuck again (the old process actually exits,
+ * the tray icon actually goes away), worst case is "manually reopen it"
+ * instead of "kill three processes by hand from a terminal."
+ */
+function scheduleForceExitFallback() {
+    const pid = process.pid;
+    const watchdog = spawn('sh', ['-c', `sleep 3; kill -9 ${pid} 2>/dev/null`], {
+        detached: true,
+        stdio: 'ignore'
+    });
+    watchdog.unref();
+}
+
+/**
  * Extracted so `vrcx-switch-server` (below) can trigger the exact same
  * clean relaunch the renderer's own "restart VRCX" action already uses —
  * switching servers needs every Pinia store to start fresh against the
@@ -1014,6 +1126,16 @@ ipcMain.handle('notification:showNotification', (_event, title, body, icon) => {
  */
 function restartApp() {
     if (process.platform === 'linux') {
+        // Scheduled first, before anything else in this branch — found live
+        // (2026-08-23, second pass): the watchdog spawned *after*
+        // destroyTray() never actually appeared in the process tree at all,
+        // meaning destroyTray() (this Linux session's tray icon talks to a
+        // StatusNotifierItem over DBus, and DBus was already observed
+        // flaking elsewhere in this same session) hung synchronously before
+        // ever reaching the line that schedules the watchdog. Scheduling it
+        // first means it exists no matter what hangs afterward — relaunch,
+        // tray teardown, or exit itself.
+        scheduleForceExitFallback();
         const options = {
             execPath: process.execPath,
             args: process.argv.slice(1)
@@ -1093,6 +1215,7 @@ function tryRelaunchWithArgs(args) {
 
     child.unref();
 
+    scheduleForceExitFallback();
     destroyTray();
     app.exit(0);
 }
@@ -1144,10 +1267,18 @@ function createWindow() {
         icon: path.join(rootDir, 'images/VRCX.png'),
         autoHideMenuBar: true,
         titleBarStyle: 'hiddenInset',
+        title: 'VRCX Headless Desktop',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')
         }
     });
+    // The real app's own build/html/index.html (upstream, untouched) still
+    // titles itself plain "VRCX" — Electron otherwise follows the loaded
+    // page's <title> on every navigation, which would silently revert the
+    // distinguishing name above the moment the real app finishes loading.
+    // Pinning it here, rather than editing that upstream file, keeps this
+    // purely a fork-side concern.
+    mainWindow.on('page-title-updated', (titleEvent) => titleEvent.preventDefault());
     applyWindowState();
 
     // Phase 5: gate on an already-connected, still-valid server session
@@ -1373,7 +1504,7 @@ function createTray() {
             }
         },
         {
-            label: 'Quit VRCX',
+            label: 'Quit VRCX Headless Desktop',
             type: 'normal',
             click: function () {
                 appIsQuitting = true;
@@ -1381,7 +1512,7 @@ function createTray() {
             }
         }
     ]);
-    tray.setToolTip('VRCX');
+    tray.setToolTip('VRCX Headless Desktop');
     tray.setContextMenu(contextMenu);
 
     tray.on('click', () => {
@@ -1427,7 +1558,7 @@ async function installVRCX() {
             appImagePath = newPath;
         } catch (err) {
             console.error(`Error renaming AppImage ${newPath}`, err);
-            dialog.showErrorBox('VRCX', `Failed to rename AppImage ${newPath}`);
+            dialog.showErrorBox('VRCX Headless Desktop', `Failed to rename AppImage ${newPath}`);
             return;
         }
     }
@@ -1437,9 +1568,9 @@ async function installVRCX() {
     if (!hasAskedToMoveAppImage && appImagePath !== appImageHomePath) {
         const result = dialog.showMessageBoxSync(mainWindow, {
             type: 'question',
-            title: 'VRCX',
-            message: 'Do you want to install VRCX?',
-            detail: 'VRCX will be moved to your ~/Applications folder.',
+            title: 'VRCX Headless Desktop',
+            message: 'Do you want to install VRCX Headless Desktop?',
+            detail: 'VRCX Headless Desktop will be moved to your ~/Applications folder.',
             buttons: ['No', 'Yes']
         });
         if (result === 0) {
@@ -1466,7 +1597,7 @@ async function installVRCX() {
                 await updateDesktopFile();
             } catch (err) {
                 console.error(`Error moving AppImage ${appImageHomePath}`, err);
-                dialog.showErrorBox('VRCX', `Failed to move AppImage ${appImageHomePath}`);
+                dialog.showErrorBox('VRCX Headless Desktop', `Failed to move AppImage ${appImageHomePath}`);
                 return;
             }
         }
@@ -1529,7 +1660,7 @@ function updateDesktopFile() {
         }
     } catch (err) {
         console.error('Error creating desktop file:', err);
-        dialog.showErrorBox('VRCX', 'Failed to create desktop entry.');
+        dialog.showErrorBox('VRCX Headless Desktop', 'Failed to create desktop entry.');
         return;
     }
 }
@@ -1642,7 +1773,7 @@ function tryCopyFromWinePrefix() {
         }
     } catch (err) {
         console.error('Error copying from wine prefix:', err);
-        dialog.showErrorBox('VRCX', 'Failed to copy database from wine prefix.');
+        dialog.showErrorBox('VRCX Headless Desktop', 'Failed to copy database from wine prefix.');
     }
 }
 
@@ -1713,6 +1844,7 @@ app.on('before-quit', function () {
 
     // Mark it as a quitting state to make macOS Dock's "Quit" action take effect.
     appIsQuitting = true;
+    scheduleForceExitFallback();
     disposeOverlay();
     destroyTray();
 

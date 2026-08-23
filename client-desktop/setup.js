@@ -72,9 +72,11 @@ function createCodeInput() {
  * Appends the "trust a self-signed CA certificate" control used by both
  * `renderUrlForm` and `renderPicker` — a self-signed server cert that's
  * merely OS-trusted (e.g. imported into the Windows certificate store)
- * still fails here with a bare "fetch failed", because the connection
- * attempts run in Electron's main process (plain Node), whose `fetch`/`ws`
- * TLS stack only trusts its own bundled CA bundle, not the OS trust store.
+ * still fails here (surfaced as "self-signed and not yet trusted here" —
+ * see `describeFetchError` in `src-electron/main.js`), because the
+ * connection attempts run in Electron's main process (plain Node), whose
+ * `fetch`/`ws` TLS stack only trusts its own bundled CA bundle, not the OS
+ * trust store.
  * Importing here writes the cert to disk via `vrcx-import-ca-cert`
  * (`src-electron/main.js`) and requires a restart to take effect — Node
  * only reads `NODE_EXTRA_CA_CERTS` once, at process bootstrap.
@@ -158,7 +160,7 @@ function renderUrlForm(url, error) {
     form.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
-    title.textContent = 'VRCX';
+    title.textContent = 'VRCX Headless Desktop';
     title.style.cssText = TITLE_STYLE;
 
     const urlInput = document.createElement('input');
@@ -234,7 +236,7 @@ function renderLoginForm(url, error) {
     form.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
-    title.textContent = 'VRCX';
+    title.textContent = 'VRCX Headless Desktop';
     title.style.cssText = TITLE_STYLE;
 
     const input = createCodeInput();
@@ -298,7 +300,7 @@ function renderSetupForm(url, secret, uri, error) {
     form.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
-    title.textContent = 'Set up VRCX';
+    title.textContent = 'Set up VRCX Headless Desktop';
     title.style.cssText = TITLE_STYLE;
 
     const instructions = document.createElement('p');
@@ -415,7 +417,7 @@ function renderPicker(servers, error) {
     container.style.cssText = FORM_STYLE;
 
     const title = document.createElement('h1');
-    title.textContent = 'VRCX';
+    title.textContent = 'VRCX Headless Desktop';
     title.style.cssText = TITLE_STYLE;
     container.append(title);
 
