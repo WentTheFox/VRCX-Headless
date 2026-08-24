@@ -1109,6 +1109,20 @@ ipcMain.handle('notification:showNotification', (_event, title, body, icon) => {
  * instead of "kill three processes by hand from a terminal."
  */
 function scheduleForceExitFallback() {
+    if (process.platform !== 'linux') {
+        // The DBus/tray-teardown hang this works around (see this
+        // function's own doc comment above) is Linux-specific, and the
+        // watchdog itself spawns `sh`, which doesn't exist on Windows.
+        // Found live (2026-08-24, Windows): the `before-quit` handler below
+        // calls this unconditionally on every platform, unlike its other
+        // two call sites (both already gated on `process.platform ===
+        // 'linux'` at their own call site) — a plain restart on Windows
+        // threw "spawn sh ENOENT" as an uncaught main-process exception
+        // right after a successful update download. Guarding here, once,
+        // makes every call site safe regardless of whether it remembers to
+        // check the platform itself.
+        return;
+    }
     const pid = process.pid;
     const watchdog = spawn('sh', ['-c', `sleep 3; kill -9 ${pid} 2>/dev/null`], {
         detached: true,
