@@ -1,7 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 using NLog;
 
 namespace VRCX
@@ -85,8 +87,47 @@ namespace VRCX
             }
         }
 
+        /// <summary>
+        /// Was a permanent no-op here, unlike the CefSharp/Windows client's own implementation —
+        /// correct on Linux, where autostart is a manual "--startup" arg on the .desktop file
+        /// (see the Settings page's own startup_linux hint), but this Electron client also runs on
+        /// native Windows now, and the Settings toggle silently persisted its config bool there
+        /// without ever touching the Run key, so "start with Windows" never actually did anything.
+        /// </summary>
         public override void SetStartup(bool enabled)
         {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return;
+
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+                if (key == null)
+                {
+                    logger.Warn("Failed to open startup registry key");
+                    return;
+                }
+
+                if (enabled)
+                {
+                    var path = Environment.ProcessPath;
+                    if (path == null)
+                    {
+                        logger.Warn("Failed to determine process path for startup registration");
+                        return;
+                    }
+
+                    key.SetValue("VRCX", $"\"{path}\" --startup");
+                }
+                else
+                {
+                    key.DeleteValue("VRCX", false);
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Warn(e, "Failed to set startup");
+            }
         }
 
         public override void CopyImageToClipboard(string path)
