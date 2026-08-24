@@ -75,6 +75,12 @@ Release tags are `<vrcx-date-no-dots>.<fork-build>.0` — real semver, with the 
 
 `docker inspect`'s `org.opencontainers.image.version` label and `... info`'s `server version` line both show the full `20260718.1.0` version (the `info` line also repeats the dotted `2026.07.18` for readability). Maintainers: see CLAUDE.md's "Server/Docker versioning" for how to cut a release.
 
+### Desktop client auto-updates
+
+The Windows desktop client updates itself automatically, but only in response to *this server's* version — not GitHub in general. On every connect (and every server switch), it asks the connected server what version it's running and, if that doesn't match its own, downloads and installs the matching release for you, no confirmation needed.
+
+That means **the server never updates itself** — updating it is always a manual step, same as any other container here: bump the image tag (`docker compose pull` + recreate, e.g. via `docker compose up -d` or your own restart tooling) to whichever floating tag you track (`20260718`, `20260718.1`, or a pinned `20260718.1.0`). Once the container comes back up on the new version, any desktop client connected to it will catch up on its own the next time it reconnects. A client with no server connection, or connected to a server that hasn't been updated yet, just stays on whatever it's already running.
+
 ---
 
 ## Running from a checkout
