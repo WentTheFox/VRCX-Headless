@@ -1235,6 +1235,90 @@ function tryRelaunchWithArgs(args) {
 }
 
 /**
+ * Fork addition: the server-driven desktop updater's real entry point.
+ * Runs once, at `app.whenReady()`, *before* `createWindow()` — before any
+ * window exists, before `refreshServerSession()`/auth, before the real app
+ * or even `client-desktop/setup.html` loads. Originally this lived entirely
+ * post-auth in the renderer (`src/stores/vrcxUpdater.js`'s
+ * `checkForForkUpdate`, triggered by `src/components/HeadlessServerStatus.vue`
+ * on every server-reachable edge) — found live: that meant an update could
+ * force-close and relaunch the whole app while someone was mid-session
+ * actually using it. Moving the check here instead means the common cases
+ * (a fresh launch, or a server switch — `vrcx-switch-server` below already
+ * restarts the whole process, so it re-enters this same code path) never
+ * show a loaded app before updating at all; the one case this no longer
+ * catches is "the connected server was updated while I stayed open,
+ * without ever restarting" — accepted as a gap rather than reintroducing
+ * the mid-session interrupt. `checkForForkUpdate` stays in the renderer
+ * store as a manual "Retry" action in Settings for exactly that gap.
+ *
+ * Talks to `GET /api/update-info` directly (`server/src/http-server.js`,
+ * deliberately unauthenticated — see that route's own comment) rather than
+ * the authenticated `/api/rpc` `update` target `client-desktop/shims/
+ * update-service.js` uses, since there's no session (and, this early, not
+ * even a renderer to hold `window.vrcxDesktopAgent`) to authenticate with
+ * yet. Calls `AppApiElectron.DownloadUpdate` the same way
+ * `interopApi.getDotNetObject('ProgramElectron')` is already called
+ * directly from this file — no window/IPC round-trip needed for a native
+ * call the main process can just make itself.
+ */
+async function checkAndInstallForkUpdate() {
+    loadServers();
+    const defaultServer = getDefaultServer();
+    if (!defaultServer?.url) {
+        return;
+    }
+    let info;
+    try {
+        // A short, explicit timeout — this runs before any window exists,
+        // so a hung network request here would hang the whole app's
+        // startup, not just fail one check. 5s is generous for a same-
+        // network health check but short enough that a genuinely
+        // unreachable server doesn't noticeably delay opening the app.
+        const { status, body } = await fetchJson(`${defaultServer.url}/api/update-info`, {
+            signal: AbortSignal.timeout(5000)
+        });
+        if (status !== 200 || !body?.serverVersion) {
+            return;
+        }
+        info = body;
+    } catch (err) {
+        console.log('Fork update check failed:', err?.message ?? err);
+        return;
+    }
+    const installedVersion = app.getVersion();
+    if (info.serverVersion === installedVersion || !info.release) {
+        return;
+    }
+    // Windows only for now — see getForkAssetOfInterest's own doc comment
+    // in src/stores/vrcxUpdater.js, the renderer-side equivalent of this
+    // same asset-selection logic (duplicated rather than shared: that file
+    // is an ESM module in the upstream-shared src/** store graph, this one
+    // is plain CommonJS with no module-system bridge worth building for
+    // ten lines of pure logic).
+    const suffix = `win-${process.arch}.exe`;
+    const asset = info.release.assets?.find((a) => a.name?.endsWith(suffix));
+    if (!asset) {
+        return;
+    }
+    console.log(`Fork update available: ${installedVersion} -> ${info.serverVersion}, downloading...`);
+    try {
+        const hashString = asset.digest?.startsWith('sha256:') ? asset.digest.slice(7) : '';
+        await interopApi.getDotNetObject('AppApiElectron').DownloadUpdate(asset.downloadUrl, hashString, asset.size);
+    } catch (err) {
+        console.log('Fork update download failed:', err?.message ?? err);
+        return;
+    }
+    // Dotnet/Update.cs's Update.Check(), called at the very top of the
+    // *next* ProgramElectron.Init(), silently installs this just-downloaded
+    // update.exe before this function (or anything else in this file) ever
+    // runs again — no need to trigger the install ourselves here, only the
+    // relaunch that lets the next boot find it.
+    app.relaunch();
+    app.exit(0);
+}
+
+/**
  * Loads the real, unmodified upstream app — same debug/hot-reload branch as
  * before phase 5, just factored out so both the initial boot path and a
  * successful `vrcx-connect-server` call (from the setup screen) can reach
@@ -1845,7 +1929,8 @@ function applyWindowState() {
     }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    await checkAndInstallForkUpdate();
     createWindow();
     createTray();
     installVRCX();

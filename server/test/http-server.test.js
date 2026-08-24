@@ -548,3 +548,30 @@ describe('Secure cookie flag — trustProxy', () => {
         expect(setCookie).not.toMatch(/; Secure/);
     });
 });
+
+describe('/api/update-info', () => {
+    /** @type {Awaited<ReturnType<typeof startServer>>} */
+    let ctx;
+
+    beforeAll(async () => {
+        ctx = await startServer('update-info');
+    });
+
+    afterAll(async () => {
+        await new Promise((resolve) => ctx.server.close(resolve));
+        ctx.handle.close();
+        rmSync(ctx.dir, { recursive: true, force: true });
+    });
+
+    it('answers with no auth required at all — the desktop client needs this before it has (or attempts) a session', async () => {
+        const response = await fetch(`${ctx.origin}/api/update-info`);
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(typeof body.serverVersion).toBe('string');
+        // No GitHub access in this test environment — getUpdateInfo()
+        // itself already turns that into `release: null`, not a throw, so
+        // this endpoint still answers 200 rather than 500ing on a client
+        // that hasn't even connected the network cable yet.
+        expect(body).toHaveProperty('release');
+    });
+});
