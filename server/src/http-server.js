@@ -38,6 +38,7 @@ import { pipelineRelay } from './pipeline-relay.js';
 import { repoRoot } from './globals.js';
 import { dispatchRpc } from './rpc.js';
 import { checkForUpdateSafe } from './update-check.js';
+import { getUpdateInfo } from './update-release.js';
 import {
     generateTotpSecret,
     totpProvisioningUri,
@@ -583,6 +584,18 @@ async function handleRequest(handle, req, res, secure) {
         }
         const result = await checkForUpdateSafe();
         sendJson(res, 200, { ok: true, result });
+        return;
+    }
+
+    // Deliberately unauthenticated, unlike /api/rpc's `update` target — the
+    // desktop client's main process (src-electron/main.js) needs this
+    // *before* it has (or even attempts) a session, so it can update itself
+    // to match this server before ever loading the real app or prompting
+    // for auth. Nothing sensitive here: just this server's own version and
+    // GitHub's already-public release metadata for that exact tag.
+    if (req.method === 'GET' && url.pathname === '/api/update-info') {
+        const result = await getUpdateInfo();
+        sendJson(res, 200, result);
         return;
     }
 
