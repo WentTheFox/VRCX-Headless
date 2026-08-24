@@ -1376,27 +1376,47 @@ async function checkAndInstallForkUpdate() {
     // First fix attempt — spawn the installer ourselves and await its own
     // 'exit' event before exiting — traded that bug for a different one,
     // found live immediately after: the installer's own "VRCX Headless is
-    // running, press OK to close it" check raced our *own* teardown. We'd
-    // started the installer (still running at that point) while our own
-    // process, main window, and any lingering handles hadn't necessarily
-    // finished dying yet even after `app.exit()` — a blocking prompt, not
-    // an auto-close, so "fully automatic" silently stalled on it.
+    // running, press OK to close it" check raced our *own* teardown, since
+    // we'd started it while our own process (spawned before `app.exit()`,
+    // not after) hadn't necessarily finished dying yet — a blocking prompt,
+    // not an auto-close, so "fully automatic" silently stalled on it.
+    // Second fix attempt — hand the whole wait-then-install-then-relaunch
+    // chain to a detached `cmd.exe` (`timeout /t 3 && "installer" &&
+    // "app"`) so none of it runs from inside the exiting process — got
+    // further (the installer visibly ran this time) but still never came
+    // back, root-caused by inspecting `apply-update.log` (below) after the
+    // fact: `&&` only proceeds on exit code 0, and this NSIS one-click
+    // installer doesn't reliably return one even on a genuinely successful
+    // install, so the chain silently stopped right before the relaunch
+    // step, indistinguishable from the app just failing to reopen.
     //
-    // Fixed by not running any of this from inside the process that's
-    // about to exit at all: hand the whole wait-then-install-then-relaunch
-    // chain to a detached `cmd.exe`, which only starts once this process
-    // (and everything downstream of `app.exit()`) is unambiguously gone.
-    // `cmd.exe`, not `sh` — this is the one asset-suffix branch that only
-    // ever matches on Windows in the first place (`getForkAssetOfInterest`'s
-    // equivalent above). A bare `"exe"` invocation from `cmd.exe` blocks
-    // until that process exits, the same way `start /wait` would, so `&&`
-    // chaining the installer and the relaunch gets "wait for install to
-    // finish, then open the app" for free with no extra flag needed.
+    // Fixed by not gating on exit codes at all — a generated `.bat` (not
+    // an inline `cmd /c` one-liner, both for readability and so `%errorlevel%`
+    // has somewhere sane to land) runs the wait, the installer, and the
+    // relaunch unconditionally in sequence, logging a timestamped line
+    // after each step to `apply-update.log` in this same directory — so
+    // if this *still* doesn't come back next time, the answer is a `type`
+    // away instead of another guess-and-release cycle. `start "" "<app>"`
+    // for the final step specifically so the batch script (and therefore
+    // this whole detached process) doesn't sit there waiting for the
+    // newly-relaunched app to exit before it's allowed to finish.
     const updateExePath = path.join(getVRCXPath(), 'update.exe');
     const execPathBeforeUpdate = process.execPath;
+    const batchPath = path.join(getVRCXPath(), 'apply-update.bat');
+    const logPath = path.join(getVRCXPath(), 'apply-update.log');
+    const batchLines = [
+        '@echo off',
+        `echo [%date% %time%] scheduled, waiting for old process to exit > "${logPath}"`,
+        'timeout /t 3 /nobreak >nul',
+        `echo [%date% %time%] running installer >> "${logPath}"`,
+        `"${updateExePath}"`,
+        `echo [%date% %time%] installer exit code %errorlevel% >> "${logPath}"`,
+        `start "" "${execPathBeforeUpdate}"`,
+        `echo [%date% %time%] relaunch issued >> "${logPath}"`
+    ];
+    fs.writeFileSync(batchPath, batchLines.join('\r\n'));
     console.log('Fork update downloaded, scheduling install + relaunch...');
-    const command = `timeout /t 3 /nobreak >nul && "${updateExePath}" && "${execPathBeforeUpdate}"`;
-    const launcher = spawn('cmd.exe', ['/c', command], {
+    const launcher = spawn('cmd.exe', ['/c', batchPath], {
         detached: true,
         stdio: 'ignore'
     });
