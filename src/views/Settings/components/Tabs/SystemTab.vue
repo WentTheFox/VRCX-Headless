@@ -122,12 +122,16 @@
                     </span>
                 </div>
                 <Button
-                    v-if="forkUpdateStatus === 'mismatch-offline'"
+                    v-if="forkUpdateStatus !== 'checking' && forkUpdateStatus !== 'installing'"
                     size="sm"
                     variant="outline"
                     class="w-fit"
                     @click="checkForForkUpdate({ force: true })">
-                    {{ t('view.settings.general.fork_update.retry') }}
+                    {{
+                        forkUpdateStatus === 'mismatch-offline'
+                            ? t('view.settings.general.fork_update.retry')
+                            : t('view.settings.general.fork_update.check_now')
+                    }}
                 </Button>
             </div>
         </SettingsGroup>

@@ -1306,10 +1306,37 @@ function closeSplash() {
  * directly from this file — no window/IPC round-trip needed for a native
  * call the main process can just make itself.
  */
+/**
+ * `console.log` goes nowhere visible in a packaged app (no attached
+ * console) — found live (2026-08-24) after multiple silent failures in
+ * `checkAndInstallForkUpdate()` left nothing to inspect afterward beyond
+ * NLog's own `.NET`-side lines, which stop the moment control returns to
+ * JS. Appends a timestamped line to `fork-update.log` (`getVRCXPath()`)
+ * instead, mirroring `apply-update.log`'s own reasoning.
+ * @param {string} text
+ */
+function logFork(text) {
+    try {
+        fs.appendFileSync(path.join(getVRCXPath(), 'fork-update.log'), `[${new Date().toISOString()}] ${text}\n`);
+    } catch {
+        // Best-effort diagnostic logging only.
+    }
+}
+
 async function checkAndInstallForkUpdate() {
+    try {
+        await checkAndInstallForkUpdateInner();
+    } catch (err) {
+        logFork(`Uncaught error: ${err?.stack ?? err?.message ?? err}`);
+    }
+}
+
+async function checkAndInstallForkUpdateInner() {
+    logFork('checkAndInstallForkUpdate starting');
     loadServers();
     const defaultServer = getDefaultServer();
     if (!defaultServer?.url) {
+        logFork('No default server configured, skipping');
         return;
     }
     updateSplashStatus('Checking for updates…');
@@ -1324,14 +1351,18 @@ async function checkAndInstallForkUpdate() {
             signal: AbortSignal.timeout(5000)
         });
         if (status !== 200 || !body?.serverVersion) {
+            logFork(`Unexpected /api/update-info response: status=${status} body=${JSON.stringify(body)}`);
             return;
         }
         info = body;
     } catch (err) {
-        console.log('Fork update check failed:', err?.message ?? err);
+        logFork(`Fork update check failed: ${err?.message ?? err}`);
         return;
     }
     const installedVersion = app.getVersion();
+    logFork(
+        `Installed version ${installedVersion}, server version ${info.serverVersion}, release ${info.release ? info.release.tag : 'none'}`
+    );
     if (info.serverVersion === installedVersion || !info.release) {
         return;
     }
@@ -1344,9 +1375,10 @@ async function checkAndInstallForkUpdate() {
     const suffix = `win-${process.arch}.exe`;
     const asset = info.release.assets?.find((a) => a.name?.endsWith(suffix));
     if (!asset) {
+        logFork(`No asset matching suffix ${suffix} in release ${info.release.tag}`);
         return;
     }
-    console.log(`Fork update available: ${installedVersion} -> ${info.serverVersion}, downloading...`);
+    logFork(`Fork update available: ${installedVersion} -> ${info.serverVersion}, downloading ${asset.name}`);
     updateSplashStatus(`Downloading update ${info.serverVersion}…`);
     const appApi = interopApi.getDotNetObject('AppApiElectron');
     const progressTimer = setInterval(async () => {
@@ -1362,11 +1394,12 @@ async function checkAndInstallForkUpdate() {
         const hashString = asset.digest?.startsWith('sha256:') ? asset.digest.slice(7) : '';
         await appApi.DownloadUpdate(asset.downloadUrl, hashString, asset.size);
     } catch (err) {
-        console.log('Fork update download failed:', err?.message ?? err);
+        logFork(`Fork update download failed: ${err?.message ?? err}`);
         return;
     } finally {
         clearInterval(progressTimer);
     }
+    logFork('Download + hash check complete');
     updateSplashStatus('Installing update…');
     // Found live (2026-08-24): letting `app.relaunch()` hand off to
     // Dotnet/Update.cs's Update.Check() (which installs the just-downloaded
@@ -1415,15 +1448,17 @@ async function checkAndInstallForkUpdate() {
         `echo [%date% %time%] relaunch issued >> "${logPath}"`
     ];
     fs.writeFileSync(batchPath, batchLines.join('\r\n'));
-    console.log('Fork update downloaded, scheduling install + relaunch...');
+    logFork(`Wrote ${batchPath}, spawning cmd.exe`);
     const launcher = spawn('cmd.exe', ['/c', batchPath], {
         detached: true,
         stdio: 'ignore'
     });
+    logFork(`cmd.exe spawn returned, pid=${launcher.pid}`);
     // Fire-and-forget from here — an unhandled 'error' on this emitter
     // would otherwise crash the process we're about to exit anyway.
-    launcher.on('error', () => {});
+    launcher.on('error', (err) => logFork(`cmd.exe spawn error: ${err?.message ?? err}`));
     launcher.unref();
+    logFork('Exiting now');
     app.exit(0);
 }
 
