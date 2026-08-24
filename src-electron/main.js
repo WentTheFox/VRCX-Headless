@@ -1372,36 +1372,38 @@ async function checkAndInstallForkUpdate() {
     // Dotnet/Update.cs's Update.Check() (which installs the just-downloaded
     // update.exe at the top of the *next* ProgramElectron.Init(), then
     // relies on the NSIS one-click installer's own "run after finish" step
-    // to bring the app back) doesn't reliably relaunch the app afterward —
-    // reproduced independently of this code path too (running the pending
-    // installer by hand also left the app closed once it finished), so
-    // this isn't a race with our own exit, it's the installer's own
-    // auto-launch step not firing. Don't depend on it: run the installer
-    // ourselves, wait for it to actually finish, then launch the
-    // (in-place-upgraded, same-path) exe explicitly.
+    // to bring the app back) doesn't reliably relaunch the app afterward.
+    // First fix attempt — spawn the installer ourselves and await its own
+    // 'exit' event before exiting — traded that bug for a different one,
+    // found live immediately after: the installer's own "VRCX Headless is
+    // running, press OK to close it" check raced our *own* teardown. We'd
+    // started the installer (still running at that point) while our own
+    // process, main window, and any lingering handles hadn't necessarily
+    // finished dying yet even after `app.exit()` — a blocking prompt, not
+    // an auto-close, so "fully automatic" silently stalled on it.
+    //
+    // Fixed by not running any of this from inside the process that's
+    // about to exit at all: hand the whole wait-then-install-then-relaunch
+    // chain to a detached `cmd.exe`, which only starts once this process
+    // (and everything downstream of `app.exit()`) is unambiguously gone.
+    // `cmd.exe`, not `sh` — this is the one asset-suffix branch that only
+    // ever matches on Windows in the first place (`getForkAssetOfInterest`'s
+    // equivalent above). A bare `"exe"` invocation from `cmd.exe` blocks
+    // until that process exits, the same way `start /wait` would, so `&&`
+    // chaining the installer and the relaunch gets "wait for install to
+    // finish, then open the app" for free with no extra flag needed.
     const updateExePath = path.join(getVRCXPath(), 'update.exe');
     const execPathBeforeUpdate = process.execPath;
-    console.log('Fork update downloaded, running installer...');
-    await new Promise((resolve) => {
-        const installer = spawn(updateExePath, [], {
-            detached: true,
-            stdio: 'ignore'
-        });
-        installer.on('exit', resolve);
-        installer.on('error', (err) => {
-            console.log('Fork update installer failed to start:', err?.message ?? err);
-            resolve();
-        });
-    });
-    console.log('Fork update installer finished, relaunching...');
-    const relaunched = spawn(execPathBeforeUpdate, [], {
+    console.log('Fork update downloaded, scheduling install + relaunch...');
+    const command = `timeout /t 3 /nobreak >nul && "${updateExePath}" && "${execPathBeforeUpdate}"`;
+    const launcher = spawn('cmd.exe', ['/c', command], {
         detached: true,
         stdio: 'ignore'
     });
     // Fire-and-forget from here — an unhandled 'error' on this emitter
     // would otherwise crash the process we're about to exit anyway.
-    relaunched.on('error', () => {});
-    relaunched.unref();
+    launcher.on('error', () => {});
+    launcher.unref();
     app.exit(0);
 }
 
