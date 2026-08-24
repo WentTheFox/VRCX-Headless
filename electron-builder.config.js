@@ -12,6 +12,8 @@ module.exports = {
         'src-electron/*',
         'client-desktop/setup.html',
         'client-desktop/setup.js',
+        'client-desktop/splash.html',
+        'client-desktop/splash.js',
         'node_modules/qrcode-generator/dist/qrcode.js',
         'images/VRCX.png',
         'images/VRCX.ico',

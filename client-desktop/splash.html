@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>VRCX Headless Desktop</title>
+        <style>
+            /* Only ever shown for the few seconds checkAndInstallForkUpdate()
+               (src-electron/main.js) takes to run, before any real UI (or
+               even client-desktop/setup.html) exists — no theme system to
+               hook into yet, so this is deliberately standalone, matching
+               setup.html's own approach. */
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+            }
+            body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
+                background: #1a1a1e;
+                color: #eee;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                -webkit-app-region: drag;
+                user-select: none;
+            }
+            img {
+                width: 48px;
+                height: 48px;
+            }
+            #status {
+                font-size: 0.8rem;
+                color: #aaa;
+            }
+        </style>
+    </head>
+    <body>
+        <img src="../images/VRCX.png" alt="" />
+        <div id="status">Starting…</div>
+        <script type="module" src="./splash.js"></script>
+    </body>
+</html>

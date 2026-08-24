@@ -1234,6 +1234,50 @@ function tryRelaunchWithArgs(args) {
     app.exit(0);
 }
 
+let splashWindow = null;
+
+/**
+ * Fork addition: a minimal window shown only while `checkAndInstallForkUpdate()`
+ * runs, before the real window/tray exist. Found live: without any visible
+ * feedback, the extra few seconds a version check (and, when an update is
+ * found, a real download) adds to startup looked exactly like the app
+ * failing to open at all — nothing on screen, nothing in the taskbar to
+ * reassure anyone it's doing something. No Vite build needed, same
+ * reasoning as `client-desktop/setup.html`.
+ */
+function showSplash() {
+    splashWindow = new BrowserWindow({
+        width: 320,
+        height: 180,
+        frame: false,
+        resizable: false,
+        center: true,
+        alwaysOnTop: true,
+        backgroundColor: '#1a1a1e',
+        icon: path.join(rootDir, 'images/VRCX.png'),
+        webPreferences: {
+            preload: path.join(__dirname, 'splash-preload.js')
+        }
+    });
+    splashWindow.loadFile(path.join(rootDir, 'client-desktop/splash.html'));
+}
+
+/**
+ * @param {string} text
+ */
+function updateSplashStatus(text) {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.webContents.send('splash-status', text);
+    }
+}
+
+function closeSplash() {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close();
+    }
+    splashWindow = null;
+}
+
 /**
  * Fork addition: the server-driven desktop updater's real entry point.
  * Runs once, at `app.whenReady()`, *before* `createWindow()` — before any
@@ -1268,6 +1312,7 @@ async function checkAndInstallForkUpdate() {
     if (!defaultServer?.url) {
         return;
     }
+    updateSplashStatus('Checking for updates…');
     let info;
     try {
         // A short, explicit timeout — this runs before any window exists,
@@ -1302,19 +1347,61 @@ async function checkAndInstallForkUpdate() {
         return;
     }
     console.log(`Fork update available: ${installedVersion} -> ${info.serverVersion}, downloading...`);
+    updateSplashStatus(`Downloading update ${info.serverVersion}…`);
+    const appApi = interopApi.getDotNetObject('AppApiElectron');
+    const progressTimer = setInterval(async () => {
+        try {
+            const progress = await appApi.CheckUpdateProgress();
+            updateSplashStatus(`Downloading update ${info.serverVersion}… ${progress}%`);
+        } catch {
+            // Best-effort UI polish only — a failed progress read doesn't
+            // affect the actual download awaited below.
+        }
+    }, 300);
     try {
         const hashString = asset.digest?.startsWith('sha256:') ? asset.digest.slice(7) : '';
-        await interopApi.getDotNetObject('AppApiElectron').DownloadUpdate(asset.downloadUrl, hashString, asset.size);
+        await appApi.DownloadUpdate(asset.downloadUrl, hashString, asset.size);
     } catch (err) {
         console.log('Fork update download failed:', err?.message ?? err);
         return;
+    } finally {
+        clearInterval(progressTimer);
     }
-    // Dotnet/Update.cs's Update.Check(), called at the very top of the
-    // *next* ProgramElectron.Init(), silently installs this just-downloaded
-    // update.exe before this function (or anything else in this file) ever
-    // runs again — no need to trigger the install ourselves here, only the
-    // relaunch that lets the next boot find it.
-    app.relaunch();
+    updateSplashStatus('Installing update…');
+    // Found live (2026-08-24): letting `app.relaunch()` hand off to
+    // Dotnet/Update.cs's Update.Check() (which installs the just-downloaded
+    // update.exe at the top of the *next* ProgramElectron.Init(), then
+    // relies on the NSIS one-click installer's own "run after finish" step
+    // to bring the app back) doesn't reliably relaunch the app afterward —
+    // reproduced independently of this code path too (running the pending
+    // installer by hand also left the app closed once it finished), so
+    // this isn't a race with our own exit, it's the installer's own
+    // auto-launch step not firing. Don't depend on it: run the installer
+    // ourselves, wait for it to actually finish, then launch the
+    // (in-place-upgraded, same-path) exe explicitly.
+    const updateExePath = path.join(getVRCXPath(), 'update.exe');
+    const execPathBeforeUpdate = process.execPath;
+    console.log('Fork update downloaded, running installer...');
+    await new Promise((resolve) => {
+        const installer = spawn(updateExePath, [], {
+            detached: true,
+            stdio: 'ignore'
+        });
+        installer.on('exit', resolve);
+        installer.on('error', (err) => {
+            console.log('Fork update installer failed to start:', err?.message ?? err);
+            resolve();
+        });
+    });
+    console.log('Fork update installer finished, relaunching...');
+    const relaunched = spawn(execPathBeforeUpdate, [], {
+        detached: true,
+        stdio: 'ignore'
+    });
+    // Fire-and-forget from here — an unhandled 'error' on this emitter
+    // would otherwise crash the process we're about to exit anyway.
+    relaunched.on('error', () => {});
+    relaunched.unref();
     app.exit(0);
 }
 
@@ -1930,7 +2017,9 @@ function applyWindowState() {
 }
 
 app.whenReady().then(async () => {
+    showSplash();
     await checkAndInstallForkUpdate();
+    closeSplash();
     createWindow();
     createTray();
     installVRCX();
