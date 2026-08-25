@@ -373,6 +373,6 @@ jobs:
                   } > release-notes.md
                   gh release create "$tag" \
                       --draft \
-                      --title "VRCX-Headless Desktop $tag" \
+                      --title "$tag" \
                       --notes-file release-notes.md \
                       dist/*
