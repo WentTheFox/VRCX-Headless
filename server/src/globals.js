@@ -649,13 +649,23 @@ export function installUnhandledRejectionReporting() {
 }
 
 /**
- * Define `LINUX` / `WINDOWS` / `VERSION` / `NIGHTLY` as real globals so that
- * `src/**` — which references them as bare identifiers — can run under Node.
+ * Define `LINUX` / `WINDOWS` / `WEB` / `VERSION` / `NIGHTLY` as real globals
+ * so that `src/**` — which references them as bare identifiers — can run
+ * under Node.
  *
- * Both platform flags are false on the server: it is neither the CEF/Windows
- * build nor the Electron/Linux build. `src/services/sqlite.js` branches only on
- * `LINUX`, so this selects the plain `SQLite.Execute` path; the shim in
- * ./shims/sqlite.js implements `ExecuteJson` too, so either value works.
+ * All three platform flags are false on the server: it is neither the
+ * CEF/Windows build, the Electron/Linux build, nor the browser build.
+ * `src/services/sqlite.js` branches only on `LINUX`, so this selects the
+ * plain `SQLite.Execute` path; the shim in ./shims/sqlite.js implements
+ * `ExecuteJson` too, so either value works. `WEB` was missing here entirely
+ * until found live (2026-08-25): `src/stores/settings/general.js`'s
+ * `initGeneralSettings()` reads it as a bare `if (!WEB)` guard around
+ * `AppApi.SetStartup(...)` (CLAUDE.md's patch-inventory entry for that
+ * file), and a bare reference to an undefined global throws a
+ * `ReferenceError` rather than evaluating falsy — caught by
+ * `installUnhandledRejectionReporting()` below so it didn't crash the
+ * server, but it did mean that guard's `AppApi.SetStartup` call was never
+ * actually reached on the server.
  *
  * `HEADLESS` (a fork addition, not part of Vite's `define` block, so `src/**`
  * must read it defensively — `typeof HEADLESS !== 'undefined' && HEADLESS`,
@@ -686,6 +696,9 @@ export function installGlobals() {
     }
     if (globalThis.WINDOWS === undefined) {
         globalThis.WINDOWS = false;
+    }
+    if (globalThis.WEB === undefined) {
+        globalThis.WEB = false;
     }
     if (globalThis.VERSION === undefined) {
         globalThis.VERSION = readVersion();
