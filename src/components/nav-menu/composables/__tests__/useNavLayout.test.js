@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 const mocks = vi.hoisted(() => ({
     setString: vi.fn(() => Promise.resolve()),
@@ -18,9 +19,21 @@ vi.mock('../../navMenuUtils', () => ({
     sanitizeLayout: (layout) => layout
 }));
 
+// useNavLayout() reads only `notificationLayout` off this store -- mocked
+// directly rather than pulling in the real store's own dependency chain
+// (game/photon/user/... stores), which this composable-level test was never
+// set up to exercise.
+vi.mock('../../../../stores/settings/notifications', () => ({
+    useNotificationsSettingsStore: () => ({ notificationLayout: 'toast' })
+}));
+
 import { useNavLayout } from '../useNavLayout';
 
 describe('useNavLayout', () => {
+    beforeEach(() => {
+        setActivePinia(createPinia());
+    });
+
     const createDeps = () => {
         const push = vi.fn();
         const router = {
