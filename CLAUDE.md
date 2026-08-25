@@ -307,7 +307,7 @@ These break the split *without* producing a merge conflict. Check every one.
 - [ ] **New npm dependency in the server's closure?** Add to `server/package.json` *and* root, or the container fails at runtime while dev works. `node server/scripts/check-deps.js` catches version mismatches.
 - [ ] **New browser global used at module or store-setup scope?** Fails at import time in Node, not call time. See §3.7.
 - [ ] **A `database.*` method now returns a `Map`/`Set`?** `JSON.stringify` silently drops them (`{}`); `server/src/http-server.js`'s `sendJson` replacer already converts both to arrays generically, but confirm the new method is actually routed through `sendJson`.
-- [ ] **Reset `server/VERSION` to `1.0`.** The synced-to tag just changed the major component of the next server/Docker release version (§10's "Server/Docker versioning") — the fork's own MINOR.PATCH counter restarts against the new base.
+- [ ] **Reset `server/VERSION` to `1.0` — but only if `Version` (the repo-root file) actually changed.** The reset exists because the synced-to tag changes the *major* component of the next server/Docker release version (§10's "Server/Docker versioning"), restarting the fork's own MINOR.PATCH counter against the new base. Syncing to `master` HEAD (§6, "syncing to master HEAD instead") without a new dated upstream tag leaves `Version` unchanged — found live (2026-08-25): resetting to `1.0` in that case would tag a `v<same-major>.1.0` that's *already been used* by a much earlier release under the same base, since the major component didn't actually move. When `Version` didn't change, keep bumping the existing MINOR/PATCH counter instead, per the ordinary "Cutting a release" rule below.
 
 ### 6.3 Verify before pushing the merge
 
