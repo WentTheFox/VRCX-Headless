@@ -292,6 +292,11 @@ jobs:
             # it fails with "fatal: not a git repository" before creating
             # anything, even though GH_TOKEN and the gh CLI itself are fine.
             - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+              with:
+                  # Full history + tags, not the default shallow single commit --
+                  # the changelog step below walks `git log prevTag..tag`, which
+                  # needs every commit and tag in between to exist locally.
+                  fetch-depth: 0
 
             - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
               with:
@@ -301,6 +306,49 @@ jobs:
 
             - name: List collected assets
               run: ls -la dist
+
+            # Real per-release changelog instead of the old static boilerplate
+            # every release used to carry verbatim (useless for "what actually
+            # changed"). Walks commits between this tag and the previous tag of
+            # the same VRCX-base major (v<vrcx-base>.*.0) -- not just "the
+            # previous tag overall", since that could be a much older VRCX
+            # release tag (`v2026.07.18`) or another major's fork build after a
+            # future upstream sync, either of which would pull in a huge,
+            # irrelevant commit range. Falls back to the repo's first commit
+            # when this is the major's first release (no prior tag to diff
+            # against).
+            - name: Build changelog
+              run: |
+                  set -euo pipefail
+                  tag="${GITHUB_REF_NAME}"
+                  major="${tag%%.*}"  # e.g. "v20260718" from "v20260718.20.0"
+                  # Ascending version sort, then take the entry right before
+                  # this tag -- NOT "sort descending and skip the tag itself",
+                  # which would happily hand back a *newer* tag if this script
+                  # ever runs for something other than the just-pushed latest
+                  # (e.g. a manual backfill over old releases).
+                  mapfile -t tags < <(git tag -l "${major}.*.0" --sort=v:refname)
+                  prev_tag=""
+                  for i in "${!tags[@]}"; do
+                      if [ "${tags[$i]}" = "$tag" ]; then
+                          [ "$i" -gt 0 ] && prev_tag="${tags[$((i - 1))]}"
+                          break
+                      fi
+                  done
+                  if [ -n "$prev_tag" ]; then
+                      range="${prev_tag}..${tag}"
+                      echo "Diffing $range (previous release: $prev_tag)"
+                  else
+                      range="$(git rev-list --max-parents=0 HEAD)..${tag}"
+                      echo "No previous $major release tag found, diffing from repo root: $range"
+                  fi
+                  {
+                      echo "## Changes"
+                      echo
+                      git log "$range" --no-merges --pretty=format:'- %s (%h)'
+                      echo
+                  } > changelog.md
+                  cat changelog.md
 
             # Draft, not published -- see the top-of-file comment and
             # CLAUDE.md's "Cutting a release" section: this repo has
@@ -316,8 +364,15 @@ jobs:
               run: |
                   set -euo pipefail
                   tag="${GITHUB_REF_NAME}"
+                  {
+                      cat changelog.md
+                      echo
+                      echo "## Platform notes"
+                      echo
+                      echo "Desktop client (Electron) build for $tag. Self-signed installers for Windows (x64/arm64), unsigned images for Linux (x64/arm64) and macOS (Apple Silicon only) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are unsigned -- Gatekeeper will show an 'unidentified developer' warning on first launch."
+                  } > release-notes.md
                   gh release create "$tag" \
                       --draft \
                       --title "VRCX-Headless Desktop $tag" \
-                      --notes "Desktop client (Electron) build for $tag. Self-signed installers for Windows (x64/arm64), unsigned images for Linux (x64/arm64) and macOS (Apple Silicon only) -- see CLAUDE.md's \"Desktop client OS support\" table for what's actually verified per platform. Windows builds require a system-wide .NET 10 runtime install. macOS builds are unsigned -- Gatekeeper will show an 'unidentified developer' warning on first launch." \
+                      --notes-file release-notes.md \
                       dist/*
