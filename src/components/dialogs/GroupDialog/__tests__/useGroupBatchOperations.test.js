@@ -9,24 +9,28 @@ import { useGroupBatchOperations } from '../useGroupBatchOperations';
  *
  * @param overrides
  */
-function createDeps(overrides = {}) {
+function createDeps({ selectedUsersArray, ...overrides } = {}) {
     return {
-        selectedUsersArray: ref([
-            {
-                userId: 'usr_1',
-                displayName: 'Alice',
-                roleIds: ['role_1'],
-                managerNotes: ''
-            },
-            {
-                userId: 'usr_2',
-                displayName: 'Bob',
-                roleIds: ['role_1'],
-                managerNotes: ''
-            }
-        ]),
         currentUser: ref({ id: 'usr_self' }),
-        groupMemberModeration: ref({ id: 'grp_test' }),
+        // runBatchOperation() reads selectedUsersArray off
+        // groupMemberModeration.value now, not a separate top-level dep.
+        groupMemberModeration: ref({
+            id: 'grp_test',
+            selectedUsersArray: selectedUsersArray?.value ?? [
+                {
+                    userId: 'usr_1',
+                    displayName: 'Alice',
+                    roleIds: ['role_1'],
+                    managerNotes: ''
+                },
+                {
+                    userId: 'usr_2',
+                    displayName: 'Bob',
+                    roleIds: ['role_1'],
+                    managerNotes: ''
+                }
+            ]
+        }),
         deselectedUsers: vi.fn(),
         groupRequest: {
             banGroupMember: vi.fn().mockResolvedValue(undefined),
