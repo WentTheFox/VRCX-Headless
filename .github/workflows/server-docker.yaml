@@ -172,7 +172,27 @@ jobs:
                   fi
 
                   docker stop vrcx-smoke-serve >/dev/null
-                  docker volume rm vrcx-smoke-data >/dev/null
+                  # `--rm`'s auto-removal of the stopped container (and so
+                  # its volume attachment) happens asynchronously just after
+                  # `docker stop` returns, not synchronously with it -- found
+                  # live: `docker volume rm` immediately after `docker stop`
+                  # intermittently raced it with "volume is in use", even
+                  # though every functional check above had already passed.
+                  # A short retry absorbs that race without masking a real
+                  # failure (a volume still in use after 10s of retrying is
+                  # not this race).
+                  removed=false
+                  for _ in $(seq 1 10); do
+                      if docker volume rm vrcx-smoke-data >/dev/null 2>&1; then
+                          removed=true
+                          break
+                      fi
+                      sleep 1
+                  done
+                  if [ "$removed" != true ]; then
+                      echo "vrcx-smoke-data volume still in use after retrying" >&2
+                      exit 1
+                  fi
 
             - name: Log in to GHCR
               if: github.event_name != 'pull_request'
