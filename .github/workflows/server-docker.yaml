@@ -60,22 +60,24 @@ jobs:
 
             # See CLAUDE.md's "Server/Docker versioning": the release
             # version is real semver with the VRCX base as the *major*
-            # component — <vrcx-date-no-dots>.<fork-build>.0, e.g.
+            # component — <vrcx-date-no-dots>.<minor>.<patch>, e.g.
             # 20260718.1.0 — computed here the same way
             # server/src/globals.js's buildServerVersion() does. `fork`
-            # (server/VERSION) is this fork's own release counter, reset to
-            # 1 on each upstream sync; `vrcx` (the repo-root Version file)
-            # is upstream's own date-based tag. A tag push
-            # (`git tag v<vrcx-no-dots>.<fork>.0`) is what's expected to
-            # have bumped server/VERSION to match — this step doesn't
-            # enforce that, it just reads whatever's currently committed.
+            # (server/VERSION) already holds the `<minor>.<patch>` pair —
+            # MINOR bumps on a change that needs this server redeployed,
+            # PATCH on a client-only one that doesn't, both reset to `1.0`
+            # on each upstream sync; `vrcx` (the repo-root Version file) is
+            # upstream's own date-based tag. A tag push
+            # (`git tag v<vrcx-no-dots>.<fork>`) is what's expected to have
+            # bumped server/VERSION to match — this step doesn't enforce
+            # that, it just reads whatever's currently committed.
             - id: version
               run: |
                   vrcx=$(cat Version)
                   fork=$(cat server/VERSION)
                   echo "vrcx=$vrcx" >> "$GITHUB_OUTPUT"
                   echo "fork=$fork" >> "$GITHUB_OUTPUT"
-                  echo "server_version=$(echo "$vrcx" | tr -d '.').$fork.0" >> "$GITHUB_OUTPUT"
+                  echo "server_version=$(echo "$vrcx" | tr -d '.').$fork" >> "$GITHUB_OUTPUT"
 
             - id: meta
               uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0

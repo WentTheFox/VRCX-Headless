@@ -4,9 +4,13 @@ const path = require('path');
 /**
  * The fork's own release version -- same scheme as the Docker image tag
  * (server/src/globals.js's buildServerVersion): <vrcx-date-no-dots>.
- * <fork-build>.0, e.g. 20260718.5.0. Duplicated here rather than imported
- * across the ESM/CJS boundary for two lines of string-joining -- these
- * build scripts are plain CommonJS with no module-resolution hooks.
+ * <minor>.<patch>, e.g. 20260718.5.2 -- server/VERSION already holds the
+ * `<minor>.<patch>` pair (MINOR for a server-requiring change, PATCH for a
+ * client-only one, see CLAUDE.md's "Server/Docker versioning"), so this
+ * just strips the dots out of the VRCX date and joins the two. Duplicated
+ * here rather than imported across the ESM/CJS boundary for two lines of
+ * string-joining -- these build scripts are plain CommonJS with no
+ * module-resolution hooks.
  */
 function getForkVersion() {
     const rootDir = path.join(__dirname, '..');
@@ -16,7 +20,7 @@ function getForkVersion() {
     const forkVersion = fs
         .readFileSync(path.join(rootDir, 'server', 'VERSION'), 'utf8')
         .trim();
-    return `${vrcxVersion.replaceAll('.', '')}.${forkVersion}.0`;
+    return `${vrcxVersion.replaceAll('.', '')}.${forkVersion}`;
 }
 
 function getArchAndPlatform() {

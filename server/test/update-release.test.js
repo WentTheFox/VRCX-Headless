@@ -15,9 +15,10 @@ vi.mock('node:https', () => ({
 
 vi.mock('../src/globals.js', () => ({
     readVersion: () => '2026.07.18',
-    readForkVersion: () => '11',
+    readForkVersion: () => '11.0',
+    readForkMinorVersion: (forkVersion) => forkVersion.split('.')[0],
     buildServerVersion: (forkVersion, vrcxVersion) =>
-        `${vrcxVersion.replaceAll('.', '')}.${forkVersion}.0`
+        `${vrcxVersion.replaceAll('.', '')}.${forkVersion}`
 }));
 
 import https from 'node:https';
@@ -50,32 +51,34 @@ beforeEach(() => {
 });
 
 describe('getUpdateInfo', () => {
-    it('returns the matching release when a tag exists for this server version', async () => {
+    it('returns the matching release when a tag exists for this server MINOR', async () => {
         mockGithubResponses({
-            '/repos/WentTheFox/VRCX-Headless/releases/tags/v20260718.11.0': {
-                tag_name: 'v20260718.11.0',
-                html_url:
-                    'https://github.com/WentTheFox/VRCX-Headless/releases/tag/v20260718.11.0',
-                published_at: '2026-08-23T21:00:00Z',
-                assets: [
-                    {
-                        name: 'VRCX.Headless.Setup.20260718.11.0.win-x64.exe',
-                        content_type: 'application/octet-stream',
-                        size: 1234,
-                        digest: 'sha256:abcdef',
-                        state: 'uploaded',
-                        browser_download_url:
-                            'https://github.com/WentTheFox/VRCX-Headless/releases/download/v20260718.11.0/VRCX.Headless.Setup.20260718.11.0.win-x64.exe'
-                    },
-                    {
-                        name: 'not-yet-uploaded.exe',
-                        content_type: 'application/octet-stream',
-                        size: 1,
-                        state: 'starter',
-                        browser_download_url: 'https://example.invalid/x'
-                    }
-                ]
-            }
+            '/repos/WentTheFox/VRCX-Headless/releases': [
+                {
+                    tag_name: 'v20260718.11.0',
+                    html_url:
+                        'https://github.com/WentTheFox/VRCX-Headless/releases/tag/v20260718.11.0',
+                    published_at: '2026-08-23T21:00:00Z',
+                    assets: [
+                        {
+                            name: 'VRCX.Headless.Setup.20260718.11.0.win-x64.exe',
+                            content_type: 'application/octet-stream',
+                            size: 1234,
+                            digest: 'sha256:abcdef',
+                            state: 'uploaded',
+                            browser_download_url:
+                                'https://github.com/WentTheFox/VRCX-Headless/releases/download/v20260718.11.0/VRCX.Headless.Setup.20260718.11.0.win-x64.exe'
+                        },
+                        {
+                            name: 'not-yet-uploaded.exe',
+                            content_type: 'application/octet-stream',
+                            size: 1,
+                            state: 'starter',
+                            browser_download_url: 'https://example.invalid/x'
+                        }
+                    ]
+                }
+            ]
         });
 
         const result = await getUpdateInfo({ force: true });
@@ -95,8 +98,51 @@ describe('getUpdateInfo', () => {
         });
     });
 
-    it('reports no release when the tag has not been published yet (draft, or not tagged at all)', async () => {
-        mockGithubResponses({});
+    it('offers the newest PATCH under this server\'s MINOR even though the server itself is still on an older PATCH', async () => {
+        // The running server reports 20260718.11.0 (mocked readForkVersion
+        // above), but two client-only releases have shipped since without
+        // anyone needing to redeploy the server — the client should be
+        // offered the newest one, .2, not an exact match of .0.
+        mockGithubResponses({
+            '/repos/WentTheFox/VRCX-Headless/releases': [
+                {
+                    tag_name: 'v20260718.11.2',
+                    html_url: 'https://example.invalid/2',
+                    published_at: '2026-08-25T00:00:00Z',
+                    assets: []
+                },
+                {
+                    tag_name: 'v20260718.11.1',
+                    html_url: 'https://example.invalid/1',
+                    published_at: '2026-08-24T00:00:00Z',
+                    assets: []
+                },
+                {
+                    tag_name: 'v20260718.11.0',
+                    html_url: 'https://example.invalid/0',
+                    published_at: '2026-08-23T00:00:00Z',
+                    assets: []
+                },
+                {
+                    // a different MINOR (server change) must never be picked
+                    tag_name: 'v20260718.12.0',
+                    html_url: 'https://example.invalid/12',
+                    published_at: '2026-08-26T00:00:00Z',
+                    assets: []
+                }
+            ]
+        });
+
+        const result = await getUpdateInfo({ force: true });
+
+        expect(result.serverVersion).toBe('20260718.11.0');
+        expect(result.release.tag).toBe('v20260718.11.2');
+    });
+
+    it('reports no release when nothing has been published yet for this MINOR', async () => {
+        mockGithubResponses({
+            '/repos/WentTheFox/VRCX-Headless/releases': []
+        });
 
         const result = await getUpdateInfo({ force: true });
 
@@ -106,12 +152,14 @@ describe('getUpdateInfo', () => {
 
     it('caches the result and does not re-fetch within the TTL', async () => {
         mockGithubResponses({
-            '/repos/WentTheFox/VRCX-Headless/releases/tags/v20260718.11.0': {
-                tag_name: 'v20260718.11.0',
-                html_url: 'https://example.invalid',
-                published_at: '2026-08-23T21:00:00Z',
-                assets: []
-            }
+            '/repos/WentTheFox/VRCX-Headless/releases': [
+                {
+                    tag_name: 'v20260718.11.0',
+                    html_url: 'https://example.invalid',
+                    published_at: '2026-08-23T21:00:00Z',
+                    assets: []
+                }
+            ]
         });
 
         await getUpdateInfo({ force: true });

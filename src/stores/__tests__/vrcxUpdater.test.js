@@ -122,11 +122,15 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
         delete window.electron;
     });
 
-    test('reports in-sync when the server version matches the installed version', async () => {
+    test('reports in-sync when the offered release matches the installed version', async () => {
+        // The offered release, not the server's own reported version, is
+        // what determines in-sync now — a client-only PATCH release never
+        // needs the server redeployed, so the two can legitimately differ
+        // (see the "offers a newer PATCH" test below).
         const store = useVRCXUpdaterStore();
         globalThis.updateService.getUpdateInfo.mockResolvedValue({
             serverVersion: '20260718.11.0',
-            release: null
+            release: { tag: 'v20260718.11.0', assets: [] }
         });
 
         await store.checkForForkUpdate();
@@ -140,6 +144,7 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
         globalThis.updateService.getUpdateInfo.mockResolvedValue({
             serverVersion: '20260718.12.0',
             release: {
+                tag: 'v20260718.12.0',
                 assets: [
                     {
                         name: 'VRCX.Headless.Setup.20260718.12.0.win-x64.exe',
@@ -152,6 +157,37 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
                         digest: 'sha256:def456',
                         size: 99,
                         downloadUrl: 'https://example.invalid/win-arm64.exe'
+                    }
+                ]
+            }
+        });
+
+        await store.checkForForkUpdate();
+
+        expect(globalThis.AppApi.DownloadUpdate).toHaveBeenCalledWith(
+            'https://example.invalid/win-x64.exe',
+            'abc123',
+            42
+        );
+        expect(window.electron.restartApp).toHaveBeenCalled();
+    });
+
+    test('installs a newer PATCH release even though the server itself still reports an older PATCH', async () => {
+        // update-release.js offers the highest PATCH published under the
+        // server's own MINOR, not an exact match of what the server
+        // currently reports — a PATCH-only release is client-only by
+        // definition and never requires the server to be redeployed.
+        const store = useVRCXUpdaterStore();
+        globalThis.updateService.getUpdateInfo.mockResolvedValue({
+            serverVersion: '20260718.11.0',
+            release: {
+                tag: 'v20260718.11.2',
+                assets: [
+                    {
+                        name: 'VRCX.Headless.Setup.20260718.11.2.win-x64.exe',
+                        digest: 'sha256:abc123',
+                        size: 42,
+                        downloadUrl: 'https://example.invalid/win-x64.exe'
                     }
                 ]
             }
