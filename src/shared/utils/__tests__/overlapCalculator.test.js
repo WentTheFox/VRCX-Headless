@@ -108,7 +108,9 @@ describe('buildSessionsFromGamelog', () => {
         expect(result).toEqual([
             {
                 start: ts('2025-01-06T10:00:00Z'),
-                end: ts('2025-01-06T12:00:00Z')
+                end: ts('2025-01-06T12:00:00Z'),
+                isOpenTail: false,
+                sourceRevision: ''
             }
         ]);
     });
@@ -368,8 +370,8 @@ describe('aggregateSessionsToGrid', () => {
         ];
         const result = aggregateSessionsToGrid(sessions);
         const total = result.grid.flat().reduce((a, b) => a + b, 0);
-        expect(total).toBe(3);
-        expect(result.maxVal).toBe(1);
+        expect(total).toBe(3 * 60);
+        expect(result.maxVal).toBe(60);
     });
 
     test('stacks multiple sessions on same hour', () => {
@@ -385,7 +387,7 @@ describe('aggregateSessionsToGrid', () => {
             } // Same weekday, 1 week later
         ];
         const result = aggregateSessionsToGrid(sessions);
-        expect(result.maxVal).toBe(2);
+        expect(result.maxVal).toBe(2 * 60);
     });
 });
 
@@ -401,7 +403,7 @@ describe('findBestOverlapTime', () => {
         const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
         grid[1][14] = 5; // Monday 14:00
         const result = findBestOverlapTime(grid, dayLabels);
-        expect(result).toBe('Mon, 14:00');
+        expect(result).toBe('Mon, 14:00-15:00');
     });
 
     test('returns time range for adjacent high hours', () => {
