@@ -35,12 +35,16 @@ export function readVersion() {
  * The fork's own release counter — independent of `readVersion()` above,
  * which is upstream's date-based `Version` file and feeds the real VRChat
  * user-agent string (`Dotnet/Program.cs`'s `GetVersion()` contract, not
- * something to repurpose). `server/VERSION` holds a single integer: how
- * many times *this fork* has cut a server/Docker release against the
- * *current* upstream base — reset to `1` on every upstream sync, since
- * that happens far less often than a fork-only release does. See
- * CLAUDE.md's "Server/Docker versioning".
- * @returns {string} the contents of `server/VERSION`
+ * something to repurpose). `server/VERSION` holds `<minor>.<patch>`: MINOR
+ * bumps on any change that needs the server container itself
+ * redeployed/restarted to take effect (server/**, the shared src/services
+ * data layer, DB schema); PATCH bumps on a client-only change (desktop/web
+ * UI, Electron main process, Dotnet/AppApi/Electron) that needs no server
+ * change at all — reset to `0` on every MINOR bump. The whole counter
+ * resets to `1.0` on every upstream sync, since that happens far less often
+ * than either kind of fork-only release does. See CLAUDE.md's "Server/
+ * Docker versioning".
+ * @returns {string} the contents of `server/VERSION`, e.g. `20.3`
  */
 export function readForkVersion() {
     try {
@@ -49,8 +53,22 @@ export function readForkVersion() {
             'utf8'
         ).trim();
     } catch {
-        return '0';
+        return '0.0';
     }
+}
+
+/**
+ * Just the MINOR component of `readForkVersion()`'s output — what a desktop
+ * client's update check groups releases by (CLAUDE.md: "the server should
+ * tell clients to auto-update to PATCH versions under its MINOR version as
+ * well") since a PATCH-only release never requires this server to actually
+ * be redeployed, so the running server's own PATCH can legitimately lag
+ * behind the newest one published for its MINOR.
+ * @param {string} forkVersion `readForkVersion()`'s output, e.g. `20.3`
+ * @returns {string} e.g. `20`
+ */
+export function readForkMinorVersion(forkVersion) {
+    return forkVersion.split('.')[0];
 }
 
 /**
@@ -64,13 +82,15 @@ export function readForkVersion() {
  * until year 10000), and — being fixed-width `YYYYMMDD` — it also sorts
  * correctly as a plain integer across dates without needing real semver
  * comparison. `readVersion()`'s dots are only for display; stripped here
- * because a semver identifier can't contain them.
- * @param {string} forkVersion `readForkVersion()`'s output
+ * because a semver identifier can't contain them. `forkVersion` already
+ * carries both the MINOR and PATCH components (`readForkVersion()`'s
+ * `<minor>.<patch>` shape), so this just joins the two halves.
+ * @param {string} forkVersion `readForkVersion()`'s output, e.g. `20.3`
  * @param {string} vrcxVersion `readVersion()`'s output, e.g. `2026.07.18`
  * @returns {string}
  */
 export function buildServerVersion(forkVersion, vrcxVersion) {
-    return `${vrcxVersion.replaceAll('.', '')}.${forkVersion}.0`;
+    return `${vrcxVersion.replaceAll('.', '')}.${forkVersion}`;
 }
 
 /**

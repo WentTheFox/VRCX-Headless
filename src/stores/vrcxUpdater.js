@@ -143,9 +143,9 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     const forkServerVersion = ref('');
     const forkUpdateError = ref('');
 
-    // Bare `<vrcx-date>.<fork-build>.0`, stripped of the `VRCX `/`VRCX
+    // Bare `<vrcx-date>.<minor>.<patch>`, stripped of the `VRCX `/`VRCX
     // Nightly ` prefix `currentVersion` still carries — this is what's
-    // actually compared against the server's own version.
+    // actually compared against the target release version below.
     const installedForkVersion = computed(() => currentVersion.value.replace(/^VRCX (Nightly )?/, ''));
 
     /**
@@ -182,7 +182,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
             // fork's own branded distribution (§1) — nothing to do.
             return;
         }
-        if (!/^\d+\.\d+\.0$/.test(installedForkVersion.value)) {
+        if (!/^\d+\.\d+\.\d+$/.test(installedForkVersion.value)) {
             // A dev/unbuilt run ("VRCX Nightly Build") never matches the
             // fork's real version scheme — same "ignore custom builds"
             // guard upstream's own checkForVRCXUpdate applies for the same
@@ -200,22 +200,31 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
             return;
         }
         forkServerVersion.value = info.serverVersion;
-        if (info.serverVersion === installedForkVersion.value) {
+        if (!info.release) {
+            // Nothing published yet under the server's own MINOR — can't
+            // tell whether the client is actually up to date, so report the
+            // uncertainty rather than silently doing nothing.
+            forkUpdateStatus.value = 'mismatch-offline';
+            forkUpdateError.value = '';
+            toast.error(
+                t('message.vrcx_updater.fork_mismatch', {
+                    client: installedForkVersion.value,
+                    server: info.serverVersion
+                })
+            );
+            return;
+        }
+        // Compared against the release actually offered, not
+        // `info.serverVersion` directly — a client-only PATCH release never
+        // needs the server redeployed (CLAUDE.md's "Server/Docker
+        // versioning"), so the server can legitimately still be reporting
+        // an older PATCH than the newest one published under its own MINOR.
+        const targetVersion = info.release.tag.replace(/^v/, '');
+        if (targetVersion === installedForkVersion.value) {
             forkUpdateStatus.value = 'in-sync';
             return;
         }
-        if (info.release) {
-            await installForkUpdate(info.release);
-            return;
-        }
-        forkUpdateStatus.value = 'mismatch-offline';
-        forkUpdateError.value = '';
-        toast.error(
-            t('message.vrcx_updater.fork_mismatch', {
-                client: installedForkVersion.value,
-                server: info.serverVersion
-            })
-        );
+        await installForkUpdate(info.release);
     }
 
     /**

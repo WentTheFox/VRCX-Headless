@@ -310,24 +310,26 @@ jobs:
             # Real per-release changelog instead of the old static boilerplate
             # every release used to carry verbatim (useless for "what actually
             # changed"). Walks commits between this tag and the previous tag of
-            # the same VRCX-base major (v<vrcx-base>.*.0) -- not just "the
+            # the same VRCX-base major (v<vrcx-base>.*) -- not just "the
             # previous tag overall", since that could be a much older VRCX
             # release tag (`v2026.07.18`) or another major's fork build after a
             # future upstream sync, either of which would pull in a huge,
             # irrelevant commit range. Falls back to the repo's first commit
             # when this is the major's first release (no prior tag to diff
-            # against).
+            # against). Matches every MINOR.PATCH under this major, not just
+            # `.0` -- patch-only (client-only) releases are real tags now too,
+            # per CLAUDE.md's "Server/Docker versioning".
             - name: Build changelog
               run: |
                   set -euo pipefail
                   tag="${GITHUB_REF_NAME}"
-                  major="${tag%%.*}"  # e.g. "v20260718" from "v20260718.20.0"
+                  major="${tag%%.*}"  # e.g. "v20260718" from "v20260718.20.1"
                   # Ascending version sort, then take the entry right before
                   # this tag -- NOT "sort descending and skip the tag itself",
                   # which would happily hand back a *newer* tag if this script
                   # ever runs for something other than the just-pushed latest
                   # (e.g. a manual backfill over old releases).
-                  mapfile -t tags < <(git tag -l "${major}.*.0" --sort=v:refname)
+                  mapfile -t tags < <(git tag -l "${major}.*" --sort=v:refname)
                   prev_tag=""
                   for i in "${!tags[@]}"; do
                       if [ "${tags[$i]}" = "$tag" ]; then

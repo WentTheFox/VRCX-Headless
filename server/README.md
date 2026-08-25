@@ -62,14 +62,14 @@ services:
 
 ### Tags
 
-Release tags are `<vrcx-date-no-dots>.<fork-build>.0` — real semver, with the VRCX version this release is built against as the *major* number. `20260718.1.0` means: built against VRCX `2026.07.18`, the first fork release cut against that base. A later fork-only patch against the same base is `20260718.2.0`; syncing to a newer VRCX release resets the fork counter, e.g. `20260801.1.0`.
+Release tags are `<vrcx-date-no-dots>.<minor>.<patch>` — real semver, with the VRCX version this release is built against as the *major* number. MINOR bumps on a change that needs this server container itself redeployed/restarted to take effect (server code, the shared data layer, DB schema); PATCH bumps on a client-only change (desktop/web UI) that doesn't, and resets to `0` whenever MINOR bumps. `20260718.1.0` means: built against VRCX `2026.07.18`, the first server-requiring fork release cut against that base. A later client-only release against the same MINOR is `20260718.1.1`; a later server-requiring release is `20260718.2.0`; syncing to a newer VRCX release resets both counters, e.g. `20260801.1.0`.
 
 | Tag             | What it is                                                             |
 | ---------------- | ------------------------------------------------------------------------ |
 | `main`           | latest build of the default branch                                     |
 | `sha-<short>`    | a specific commit                                                      |
 | `20260718.1.0`   | one exact, immutable fork release                                      |
-| `20260718.1`     | floating: latest patch of that fork release (usually `== 20260718.1.0`) |
+| `20260718.1`     | floating: latest PATCH under that MINOR — this one *does* move on a client-only release, since the server code behind it hasn't changed |
 | `20260718`       | floating: latest fork release built against VRCX `2026.07.18`          |
 | `latest`         | most recent release tag                                                |
 
@@ -77,9 +77,11 @@ Release tags are `<vrcx-date-no-dots>.<fork-build>.0` — real semver, with the 
 
 ### Desktop client auto-updates
 
-The Windows desktop client updates itself automatically, but only in response to *this server's* version — not GitHub in general. On every connect (and every server switch), it asks the connected server what version it's running and, if that doesn't match its own, downloads and installs the matching release for you, no confirmation needed.
+The Windows desktop client updates itself automatically, but only in response to *this server's* version — not GitHub in general. On every connect (and every server switch), it asks the connected server what version it's running and, if a newer release is available **under that server's own MINOR version**, downloads and installs it for you, no confirmation needed.
 
-That means **the server never updates itself** — updating it is always a manual step, same as any other container here: bump the image tag (`docker compose pull` + recreate, e.g. via `docker compose up -d` or your own restart tooling) to whichever floating tag you track (`20260718`, `20260718.1`, or a pinned `20260718.1.0`). Once the container comes back up on the new version, any desktop client connected to it will catch up on its own the next time it reconnects. A client with no server connection, or connected to a server that hasn't been updated yet, just stays on whatever it's already running.
+"Under that server's own MINOR" matters because PATCH releases are client-only by definition — the server never needed a code change or a redeploy to produce one, so the running server's own PATCH can genuinely lag behind the newest one published. The client isn't held back by that: it's offered the newest PATCH under the server's MINOR even if the server itself is still reporting an older PATCH. A MINOR mismatch is different — that always means the server container itself was rebuilt, and is still the trigger for the client to move onto a whole new release line.
+
+That means **the server never updates itself** — updating it (i.e. bumping MINOR) is always a manual step, same as any other container here: bump the image tag (`docker compose pull` + recreate, e.g. via `docker compose up -d` or your own restart tooling) to whichever floating tag you track (`20260718`, `20260718.1`, or a pinned `20260718.1.0`). Once the container comes back up on the new version, any desktop client connected to it will catch up on its own the next time it reconnects. A client with no server connection, or connected to a server whose MINOR hasn't changed, just picks up newer PATCH releases on its own without anyone touching the server at all.
 
 ---
 
