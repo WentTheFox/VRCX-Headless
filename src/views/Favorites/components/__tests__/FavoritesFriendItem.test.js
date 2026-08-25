@@ -42,6 +42,15 @@ vi.mock('vue-sonner', () => ({
     }
 }));
 
+// UserContextMenu.vue (rendered by FavoritesFriendItem.vue) reads this
+// directly, not through the mocked stores barrel below -- real
+// isActionRecent() needs an active Pinia via useGeneralSettingsStore(),
+// which this test never sets up.
+vi.mock('../../../../composables/useRecentActions', () => ({
+    isActionRecent: () => false,
+    recordRecentAction: () => {}
+}));
+
 vi.mock('../../../../stores', () => ({
     useFavoriteStore: () => ({
         showFavoriteDialog: (...args) => mocks.showFavoriteDialog(...args)
@@ -170,11 +179,10 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     }
 }));
 
-vi.mock('lucide-vue-next', () => ({
-    MoreHorizontal: { template: '<i />' },
-    Trash2: { template: '<i />' },
-    User: { template: '<i />' }
-}));
+vi.mock('lucide-vue-next', async (importOriginal) => {
+    const actual = await importOriginal();
+    return Object.fromEntries(Object.keys(actual).map((name) => [name, { template: '<i />' }]));
+});
 
 import FavoritesFriendItem from '../FavoritesFriendItem.vue';
 

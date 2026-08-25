@@ -8,6 +8,8 @@
 
 import { ref } from 'vue';
 
+import { config } from '@vue/test-utils';
+
 import { i18n } from './src/plugins/i18n';
 
 import en from './src/localization/en.json';
@@ -106,3 +108,33 @@ vi.mock('./src/plugins/router', () => ({
 }));
 
 i18n.global.setLocaleMessage('en', en);
+
+// A handful of tests wholesale-mock 'lucide-vue-next' with a hand-picked
+// subset of icon names, matching whatever the component under test used to
+// import; whenever a merge adds one more icon import to a shared component
+// (e.g. UserContextMenu.vue's ExternalLink), any test with its own local
+// mock crashes with "no export defined" the moment that component renders
+// -- even if the new icon has nothing to do with what the test cares about.
+// A test file's own local `vi.mock('lucide-vue-next', ...)` still wins over
+// this (Vitest resolves the later-registered one), so this only helps tests
+// that never touched the module at all.
+vi.mock('lucide-vue-next', async (importOriginal) => {
+    // Vitest validates a mocked module's exports by real ownership
+    // (`hasOwnProperty`), so a bare Proxy get-trap doesn't satisfy it --
+    // materialize a real stub for every icon the package actually exports.
+    const actual = await importOriginal();
+    return Object.fromEntries(Object.keys(actual).map((name) => [name, { template: '<i />' }]));
+});
+
+// IconFrame.vue (avatar cosmetic frame overlay) is a new widely-used shared
+// component -- it reads useAppearanceSettingsStore().displayVRCProfileCosmetics
+// and useUserStore().cachedIconFrames, which most existing tests never had
+// reason to mock since it didn't exist before. A global name-based stub
+// (matching Vue Test Utils' own `config.global.stubs` mechanism) keeps every
+// *other* test's list/avatar rendering from crashing on those store reads.
+// A test that specifically needs to assert on IconFrame's own rendering can
+// still override this per-mount via that call's own `global.stubs`.
+config.global.stubs = {
+    ...config.global.stubs,
+    IconFrame: true
+};
