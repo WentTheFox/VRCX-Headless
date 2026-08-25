@@ -1,4 +1,4 @@
-import { moveGroupInOrder, normalizeGroupOrder } from '../groupOrderUtils';
+import { moveGroupInOrder, normalizeGroupOrder } from '../groupOrder';
 
 describe('groupOrderUtils', () => {
     describe('normalizeGroupOrder', () => {
