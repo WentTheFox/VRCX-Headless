@@ -103,6 +103,15 @@ export const useGeneralSettingsStore = defineStore('GeneralSettings', () => {
         ]);
 
         isStartAtWindowsStartup.value = isStartAtWindowsStartupConfig;
+        if (!WEB) {
+            // Reconcile the OS-level registration to the stored setting on every
+            // launch, not just on toggle. Without this, a setting saved as `true`
+            // from before AppApiElectron.SetStartup actually did anything (or from
+            // any other run where the native write silently failed) never gets
+            // retried — the toggle shows "on" forever but the Run key is never
+            // written unless the user manually flips it off and back on.
+            AppApi.SetStartup(isStartAtWindowsStartup.value);
+        }
         isStartAsMinimizedState.value = isStartAsMinimizedStateConfig === 'true';
 
         if (isCloseToTrayConfigBoolConfig) {
