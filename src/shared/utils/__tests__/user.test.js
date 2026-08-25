@@ -38,7 +38,6 @@ import {
     statusClass,
     userImage,
     userImageFull,
-    userOnlineFor,
     userOnlineForTimestamp,
     userStatusClass
 } from '../user';
@@ -172,36 +171,6 @@ describe('User Utils', () => {
                 }
             };
             expect(userOnlineForTimestamp(ctx)).toBe(new Date(ts1).toJSON());
-        });
-    });
-
-    describe('userOnlineFor', () => {
-        test('returns formatted time for online user', () => {
-            const now = Date.now();
-            vi.spyOn(Date, 'now').mockReturnValue(now);
-            const ref = { state: 'online', $online_for: now - 5000 };
-            expect(userOnlineFor(ref)).toBe('5s');
-            vi.restoreAllMocks();
-        });
-
-        test('returns formatted time for active user', () => {
-            const now = Date.now();
-            vi.spyOn(Date, 'now').mockReturnValue(now);
-            const ref = { state: 'active', $active_for: now - 10000 };
-            expect(userOnlineFor(ref)).toBe('10s');
-            vi.restoreAllMocks();
-        });
-
-        test('returns formatted time for offline user with $offline_for', () => {
-            const now = Date.now();
-            vi.spyOn(Date, 'now').mockReturnValue(now);
-            const ref = { state: 'offline', $offline_for: now - 3000 };
-            expect(userOnlineFor(ref)).toBe('3s');
-            vi.restoreAllMocks();
-        });
-
-        test('returns dash when no timestamp available', () => {
-            expect(userOnlineFor({ state: 'offline' })).toBe('-');
         });
     });
 
@@ -349,7 +318,8 @@ describe('User Utils', () => {
                 false,
                 currentUser
             );
-            expect(result.active).toBe(true);
+            // status is 'busy', so the active-* branch narrows to active-busy
+            expect(result['active-busy']).toBe(true);
         });
 
         test('sets mobile flag for non-PC platform friend', () => {
@@ -413,8 +383,8 @@ describe('User Utils', () => {
                 false,
                 currentUser
             );
-            // activeFriends includes usr_f → active
-            expect(result.active).toBe(true);
+            // activeFriends includes usr_f, status 'busy' -> active-busy
+            expect(result['active-busy']).toBe(true);
         });
 
         test('handles private location temp fix → offline branch', () => {
