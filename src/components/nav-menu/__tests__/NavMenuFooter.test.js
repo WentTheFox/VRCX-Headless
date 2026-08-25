@@ -7,6 +7,10 @@ vi.mock('vue-i18n', () => ({
     })
 }));
 
+vi.mock('vue-router', () => ({
+    useRouter: () => ({ currentRoute: { value: { name: null } } })
+}));
+
 vi.mock('lucide-vue-next', () => ({
     Heart: { template: '<i />' }
 }));
@@ -65,14 +69,17 @@ const baseProps = {
 };
 
 describe('NavMenuFooter', () => {
-    it('renders version and emits toggle-theme click', async () => {
+    it('renders version and emits theme-select on theme checkbox click', async () => {
         const wrapper = mount(NavMenuFooter, { props: baseProps });
 
         expect(wrapper.text()).toContain('2026.01.01');
 
-        const buttons = wrapper.findAll('[data-testid="sidebar-menu-btn"]');
-        await buttons[1].trigger('click');
+        // Theme switching moved from a standalone toggle button to a
+        // checkbox-item submenu inside the "Manage" dropdown (one item per
+        // entry in `themes`) -- baseProps has one theme, 'system'.
+        const themeCheckbox = wrapper.find('[data-testid="dd-check"]');
+        await themeCheckbox.trigger('click');
 
-        expect(wrapper.emitted('toggle-theme')).toHaveLength(1);
+        expect(wrapper.emitted('theme-select')).toEqual([['system']]);
     });
 });
