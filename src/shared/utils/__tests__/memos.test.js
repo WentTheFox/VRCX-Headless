@@ -21,6 +21,10 @@ vi.mock('../../../stores', () => ({
         friends: mocks.friends
     }),
     useUserStore: () => ({
+        // saveUserMemo only pushes the memo into userDialog when the dialog
+        // is currently showing the same user -- every test in this file
+        // saves against 'usr_1', so the dialog stub matches that id.
+        userDialog: { id: 'usr_1' },
         setUserDialogMemo: (...args) => mocks.setUserDialogMemo(...args)
     })
 }));

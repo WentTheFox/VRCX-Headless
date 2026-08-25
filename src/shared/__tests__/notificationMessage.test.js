@@ -109,7 +109,7 @@ describe('getNotificationMessage', () => {
         const result = getNotificationMessage({ type: 'requestInvite', senderUsername: 'Bob' }, ' hey');
         expect(result).toEqual({
             title: 'Bob',
-            body: 'has requested an invite hey'
+            body: 'has requested an invite  hey'
         });
     });
 
@@ -218,7 +218,7 @@ describe('getNotificationMessage', () => {
         const result = getNotificationMessage({ type: 'inviteResponse', senderUsername: 'Bob' }, ' (accepted)');
         expect(result).toEqual({
             title: 'Bob',
-            body: 'has responded to your invite (accepted)'
+            body: 'has responded to your invite  (accepted)'
         });
     });
 
@@ -226,7 +226,7 @@ describe('getNotificationMessage', () => {
         const result = getNotificationMessage({ type: 'requestInviteResponse', senderUsername: 'Bob' }, ' (declined)');
         expect(result).toEqual({
             title: 'Bob',
-            body: 'has responded to your invite request (declined)'
+            body: 'has responded to your invite request  (declined)'
         });
     });
 
@@ -242,7 +242,7 @@ describe('getNotificationMessage', () => {
         const result = getNotificationMessage({ type: 'TrustLevel', displayName: 'Dave', trustLevel: 'Known' }, '');
         expect(result).toEqual({
             title: 'Dave',
-            body: 'trust level is now Known'
+            body: 'Trust level is now Known'
         });
     });
 
@@ -256,7 +256,7 @@ describe('getNotificationMessage', () => {
 
     test('ChatBoxMessage', () => {
         const result = getNotificationMessage({ type: 'ChatBoxMessage', displayName: 'Bob', text: 'hello!' }, '');
-        expect(result).toEqual({ title: 'Bob', body: 'said hello!' });
+        expect(result).toEqual({ title: 'Bob', body: 'said: hello!' });
     });
 
     test('Blocked', () => {
