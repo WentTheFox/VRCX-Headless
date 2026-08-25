@@ -210,10 +210,7 @@ export const useAppearanceSettingsStore = defineStore(
                 configRepository.getBool('VRCX_sameInstanceAboveFavorites', false),
                 configRepository.getBool('VRCX_sidebarDivideByFriendGroup', true),
                 configRepository.getString('VRCX_sidebarFavoriteGroups', '[]'),
-                configRepository.getString(
-                    'VRCX_sidebarFavoriteGroupOrder',
-                    '[]'
-                ),
+                configRepository.getString('VRCX_sidebarFavoriteGroupOrder', '[]'),
                 configRepository.getBool('VRCX_sidebarCosmetics', false),
                 configRepository.getBool('VRCX_hideUserNotes', false),
                 configRepository.getBool('VRCX_hideUserMemos', false),
@@ -291,18 +288,11 @@ export const useAppearanceSettingsStore = defineStore(
             trustColor.value = { ...TRUST_COLOR_DEFAULTS };
             navWidth.value = clampInt(navWidthConfig, 64, 480);
             isSidebarGroupByInstance.value = isSidebarGroupByInstanceConfig;
-            isHideFriendsInSameInstance.value =
-                isHideFriendsInSameInstanceConfig;
-            isSameInstanceAboveFavorites.value =
-                isSameInstanceAboveFavoritesConfig;
-            isSidebarDivideByFriendGroup.value =
-                isSidebarDivideByFriendGroupConfig;
-            sidebarFavoriteGroups.value = JSON.parse(
-                sidebarFavoriteGroupsConfig
-            );
-            sidebarFavoriteGroupOrder.value = JSON.parse(
-                sidebarFavoriteGroupOrderConfig
-            );
+            isHideFriendsInSameInstance.value = isHideFriendsInSameInstanceConfig;
+            isSameInstanceAboveFavorites.value = isSameInstanceAboveFavoritesConfig;
+            isSidebarDivideByFriendGroup.value = isSidebarDivideByFriendGroupConfig;
+            sidebarFavoriteGroups.value = JSON.parse(sidebarFavoriteGroupsConfig);
+            sidebarFavoriteGroupOrder.value = JSON.parse(sidebarFavoriteGroupOrderConfig);
             sidebarCosmetics.value = sidebarCosmeticsConfig;
             hideUserNotes.value = hideUserNotesConfig;
             hideUserMemos.value = hideUserMemosConfig;

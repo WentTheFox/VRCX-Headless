@@ -170,11 +170,8 @@ export const useNotificationStore = defineStore('Notification', () => {
         }
         if (ref.senderUserId !== userStore.currentUser.id) {
             const isExcludedType =
-                ref.type === 'friendRequest' ||
-                ref.type === 'ignoredFriendRequest' ||
-                ref.type.includes('.');
-            const isNotificationInitReady =
-                !notificationInitStatus.value || !isNotificationsLoading.value;
+                ref.type === 'friendRequest' || ref.type === 'ignoredFriendRequest' || ref.type.includes('.');
+            const isNotificationInitReady = !notificationInitStatus.value || !isNotificationsLoading.value;
             const matchesNotificationTypeFilter =
                 notificationTable.value.filters[0].value.length === 0 ||
                 notificationTable.value.filters[0].value.includes(ref.type);
@@ -183,10 +180,7 @@ export const useNotificationStore = defineStore('Notification', () => {
                 database.addNotificationToDatabase(ref);
             }
             if (isNotificationInitReady) {
-                if (
-                    ref.details?.worldId &&
-                    !instanceStore.cachedInstances.has(ref.details.worldId)
-                ) {
+                if (ref.details?.worldId && !instanceStore.cachedInstances.has(ref.details.worldId)) {
                     // get instance name for invite
                     const L = parseLocation(ref.details.worldId);
                     if (L.isRealInstance) {
@@ -560,8 +554,7 @@ export const useNotificationStore = defineStore('Notification', () => {
             return;
         }
 
-        const isNotificationInitReady =
-            !notificationInitStatus.value || !isNotificationsLoading.value;
+        const isNotificationInitReady = !notificationInitStatus.value || !isNotificationsLoading.value;
         const matchesNotificationTypeFilter =
             notificationTable.value.filters[0].value.length === 0 ||
             notificationTable.value.filters[0].value.includes(ref.type);

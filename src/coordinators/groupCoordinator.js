@@ -724,11 +724,7 @@ export async function updateInGameGroupOrder() {
  * @returns {boolean}
  */
 export function isSoleGroupOwner(group, userId) {
-    return (
-        group?.ownerId === userId &&
-        typeof group.memberCount === 'number' &&
-        group.memberCount <= 1
-    );
+    return group?.ownerId === userId && typeof group.memberCount === 'number' && group.memberCount <= 1;
 }
 
 /**
@@ -738,26 +734,19 @@ export function isSoleGroupOwner(group, userId) {
 export function leaveGroup(groupId) {
     const groupStore = useGroupStore();
     const userStore = useUserStore();
-    const group =
-        groupStore.cachedGroups.get(groupId) ?? groupStore.currentUserGroups.get(groupId);
-    const deleteOwnedGroup = isSoleGroupOwner(
-        group,
-        userStore.currentUser.id
-    );
+    const group = groupStore.cachedGroups.get(groupId) ?? groupStore.currentUserGroups.get(groupId);
+    const deleteOwnedGroup = isSoleGroupOwner(group, userStore.currentUser.id);
     const request = deleteOwnedGroup
         ? groupRequest.deleteGroup({
               groupId,
               hardDelete: false
           })
         : groupRequest.leaveGroup({
-            groupId
-        });
+              groupId
+          });
     return request.then((args) => {
         const groupId = args.params.groupId;
-        if (
-            groupStore.groupDialog.visible &&
-            groupStore.groupDialog.id === groupId
-        ) {
+        if (groupStore.groupDialog.visible && groupStore.groupDialog.id === groupId) {
             if (deleteOwnedGroup) {
                 groupStore.groupDialog.visible = false;
             } else {
@@ -790,18 +779,11 @@ export function leaveGroupPrompt(groupId) {
     const modalStore = useModalStore();
     const groupStore = useGroupStore();
     const userStore = useUserStore();
-    const group =
-        groupStore.currentUserGroups.get(groupId) ??
-        groupStore.cachedGroups.get(groupId);
-    const deleteOwnedGroup = isSoleGroupOwner(
-        group,
-        userStore.currentUser.id
-    );
+    const group = groupStore.currentUserGroups.get(groupId) ?? groupStore.cachedGroups.get(groupId);
+    const deleteOwnedGroup = isSoleGroupOwner(group, userStore.currentUser.id);
     modalStore
         .confirm({
-            description: deleteOwnedGroup
-                ? t('confirm.delete_group', { name: group.name })
-                : t('confirm.leave_group'),
+            description: deleteOwnedGroup ? t('confirm.delete_group', { name: group.name }) : t('confirm.leave_group'),
             title: t('confirm.title'),
             destructive: true
         })

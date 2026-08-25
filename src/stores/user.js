@@ -311,7 +311,7 @@ export const useUserStore = defineStore('User', () => {
         backgroundGradientTop: '',
         nameplateEffect: '',
         profileEffect: '',
-        iconFrame: '',
+        iconFrame: ''
     });
 
     const currentTravelers = reactive(new Map());
