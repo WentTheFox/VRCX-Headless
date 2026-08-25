@@ -19,7 +19,10 @@
                 </div>
             </div>
 
-            <div v-if="!noUpdater" class="flex flex-col gap-0.5 px-1 py-1 cursor-pointer" @click="checkForVRCXUpdate">
+            <div
+                v-if="!noUpdater && !isWeb"
+                class="flex flex-col gap-0.5 px-1 py-1 cursor-pointer"
+                @click="checkForVRCXUpdate">
                 <div class="flex-1">
                     <span class="block truncate font-medium text-sm leading-[18px]">{{
                         t('view.settings.general.general.latest_app_version')
@@ -44,7 +47,7 @@
             </div>
         </SettingsGroup>
 
-        <SettingsGroup :title="t('view.settings.general.vrcx_updater.header')">
+        <SettingsGroup v-if="!isWeb" :title="t('view.settings.general.vrcx_updater.header')">
             <div class="flex gap-2">
                 <Button size="sm" variant="outline" @click="showChangeLogDialog">{{
                     t('view.settings.general.vrcx_updater.change_log')
@@ -137,7 +140,7 @@
         </SettingsGroup>
 
         <SettingsGroup :title="t('view.settings.general.application.header')">
-            <SettingsItem v-if="!isLinux" :label="t('view.settings.general.application.startup')">
+            <SettingsItem v-if="!isLinux && !isWeb" :label="t('view.settings.general.application.startup')">
                 <Switch
                     :model-value="isStartAtWindowsStartup"
                     :ariaLabel="t('view.settings.general.application.startup')"
@@ -286,6 +289,13 @@
 
     const ossDialog = ref(false);
     const isLinux = computed(() => LINUX);
+    // Fork addition (VRCX-Headless): a browser tab has no install flow to
+    // act on (no `AppApi.DownloadUpdate`/`AppApi.SetStartup` equivalent,
+    // `client-web/shims/app-api.js` throws/toasts for both) — prunes the
+    // "VRCX Updater" section and "Start with Windows" toggle, same `isWeb`
+    // pattern StatusBar.vue already uses for its own web-inapplicable
+    // indicators.
+    const isWeb = computed(() => WEB);
     const isMacOS = computed(() => {
         return navigator.platform.indexOf('Mac') > -1;
     });
