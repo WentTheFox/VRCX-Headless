@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
     friendsListSearch: null,
     getAllUserStats: vi.fn(),
     getAllUserMutualCount: vi.fn(),
+    getAllUserMutualOptedOut: vi.fn().mockResolvedValue(undefined),
+    fetchMutualGraph: vi.fn().mockResolvedValue(undefined),
     confirmDeleteFriend: vi.fn(),
     handleFriendDelete: vi.fn(),
     showUserDialog: vi.fn(),
@@ -70,7 +72,12 @@ vi.mock('../../../stores', () => ({
         friends: mocks.friends,
         allFavoriteFriendIds: mocks.allFavoriteFriendIds,
         getAllUserStats: mocks.getAllUserStats,
-        getAllUserMutualCount: mocks.getAllUserMutualCount
+        getAllUserMutualCount: mocks.getAllUserMutualCount,
+        getAllUserMutualOptedOut: mocks.getAllUserMutualOptedOut
+    }),
+    useChartsStore: () => ({
+        mutualGraphStatus: { isFetching: false },
+        fetchMutualGraph: mocks.fetchMutualGraph
     }),
     useModalStore: () => ({
         confirm: (...args) => mocks.modalConfirm(...args),
@@ -380,12 +387,14 @@ describe('FriendList.vue', () => {
         expect(mocks.getAllUserMutualCount).toHaveBeenCalledTimes(2);
     });
 
-    test('opens charts tab from toolbar button', async () => {
+    test('loads mutual friends from toolbar button', async () => {
         const wrapper = mount(FriendList);
 
         await clickButtonByText(wrapper, 'view.friend_list.load_mutual_friends');
 
-        expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'charts' });
+        expect(mocks.fetchMutualGraph).toHaveBeenCalled();
+        expect(mocks.getAllUserMutualCount).toHaveBeenCalled();
+        expect(mocks.getAllUserMutualOptedOut).toHaveBeenCalled();
     });
 
     test('loads missing user profiles and shows completion toast', async () => {
