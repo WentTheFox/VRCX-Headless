@@ -149,6 +149,31 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     const installedForkVersion = computed(() => currentVersion.value.replace(/^VRCX (Nightly )?/, ''));
 
     /**
+     * `Dotnet/Update.cs`'s `DownloadUpdate` treats a missing/empty hash as
+     * "skip the check" and downloads anyway — reasonable for upstream's own
+     * permanently-dormant flow, not acceptable for something that installs
+     * with no confirmation click. Rather than silently falling back to "no
+     * hash" whenever `digest` isn't in the expected shape, this throws —
+     * GitHub could in principle change its digest algorithm (or stop
+     * populating it) at some point, and a silent fallback would then look
+     * *exactly* like "nothing to update," forever, with no signal anything
+     * had changed. A thrown error surfaces through `installForkUpdate`'s own
+     * try/catch instead, as a specific, readable failure.
+     * @param {string | undefined} digest GitHub's `asset.digest`, expected `sha256:<64 lowercase hex chars>`
+     * @param {string} assetName only used to make the thrown message useful
+     * @returns {string} the bare hex hash
+     */
+    function parseSha256Digest(digest, assetName) {
+        const match = /^sha256:([0-9a-f]{64})$/i.exec(digest ?? '');
+        if (!match) {
+            throw new Error(
+                `Release asset ${assetName} has no verifiable sha256 digest (got ${JSON.stringify(digest ?? null)}) — GitHub's digest format may have changed`
+            );
+        }
+        return match[1];
+    }
+
+    /**
      * `LINUX` (this store's build flag) only means "this is the Electron
      * build" (CLAUDE.md's "Desktop client OS support"), not the actual host
      * OS — the Electron client also runs on Windows now. `navigator.platform`
@@ -164,6 +189,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
      * @param {Array<{name: string, digest?: string, size: number, downloadUrl: string}>} assets
      * @param {string} archValue
      * @returns {{ downloadUrl: string, hashString: string, size: number } | null}
+     * @throws when a matching asset exists but `parseSha256Digest` rejects its digest
      */
     function getForkAssetOfInterest(assets, archValue) {
         const isRealLinux = navigator.platform.toLowerCase().includes('linux');
@@ -174,7 +200,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         }
         return {
             downloadUrl: asset.downloadUrl,
-            hashString: asset.digest?.startsWith('sha256:') ? asset.digest.slice(7) : '',
+            hashString: parseSha256Digest(asset.digest, asset.name),
             size: asset.size
         };
     }
@@ -243,24 +269,30 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
             // other, even though upstream's is permanently dormant today.
             return;
         }
-        const asset = getForkAssetOfInterest(release.assets, arch.value);
-        if (!asset) {
-            const isRealLinux = navigator.platform.toLowerCase().includes('linux');
-            forkUpdateStatus.value = 'mismatch-offline';
-            forkUpdateError.value = isRealLinux
-                ? `No matching installer for ${arch.value}.AppImage`
-                : `No matching installer for win-${arch.value}`;
-            toast.error(
-                t('message.vrcx_updater.fork_mismatch', {
-                    client: installedForkVersion.value,
-                    server: forkServerVersion.value
-                })
-            );
-            return;
-        }
         try {
             updateInProgress.value = true;
             forkUpdateStatus.value = 'installing';
+            // Inside the try, not before it: getForkAssetOfInterest throws
+            // when a matching asset's digest can't be verified (see its own
+            // doc comment) — that's a real failure, not the same "nothing
+            // for my platform" case the `!asset` branch below handles, and
+            // should surface through the same error path as a download or
+            // install failure rather than getting its own copy of it.
+            const asset = getForkAssetOfInterest(release.assets, arch.value);
+            if (!asset) {
+                const isRealLinux = navigator.platform.toLowerCase().includes('linux');
+                forkUpdateStatus.value = 'mismatch-offline';
+                forkUpdateError.value = isRealLinux
+                    ? `No matching installer for ${arch.value}.AppImage`
+                    : `No matching installer for win-${arch.value}`;
+                toast.error(
+                    t('message.vrcx_updater.fork_mismatch', {
+                        client: installedForkVersion.value,
+                        server: forkServerVersion.value
+                    })
+                );
+                return;
+            }
             await downloadFileProgress();
             await AppApi.DownloadUpdate(asset.downloadUrl, asset.hashString, asset.size);
             // Windows: Dotnet/Update.cs's Update.Check() only installs the

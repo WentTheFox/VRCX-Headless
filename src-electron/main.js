@@ -1333,6 +1333,34 @@ function logFork(text) {
 }
 
 /**
+ * `Dotnet/Update.cs`'s `DownloadUpdate` treats a missing/empty hash as
+ * "skip the check" and downloads anyway — reasonable for upstream's own
+ * permanently-dormant flow, not acceptable for something that installs
+ * with no confirmation click. Rather than silently falling back to "no
+ * hash" whenever `digest` isn't in the expected shape, this throws — GitHub
+ * could in principle change its digest algorithm (or stop populating it) at
+ * some point, and a silent fallback would then look *exactly* like
+ * "nothing to update," forever, with no signal anything had changed. Same
+ * helper (independently, since this is plain CommonJS with no shared
+ * module boundary with the Vue store) as `src/stores/vrcxUpdater.js`'s own
+ * `parseSha256Digest` — the thrown error surfaces through the existing
+ * `catch` around `DownloadUpdate` below as a specific, readable
+ * `logFork()` line instead of a silent skip.
+ * @param {string | undefined} digest GitHub's `asset.digest`, expected `sha256:<64 lowercase hex chars>`
+ * @param {string} assetName only used to make the thrown message useful
+ * @returns {string} the bare hex hash
+ */
+function parseSha256Digest(digest, assetName) {
+    const match = /^sha256:([0-9a-f]{64})$/i.exec(digest ?? '');
+    if (!match) {
+        throw new Error(
+            `Release asset ${assetName} has no verifiable sha256 digest (got ${JSON.stringify(digest ?? null)}) — GitHub's digest format may have changed`
+        );
+    }
+    return match[1];
+}
+
+/**
  * @returns {Promise<boolean>} true when an update was applied and this
  *   process has already called `app.exit()` to relaunch — found live
  *   (2026-08-28, Linux): `app.exit()` does not actually halt execution of
@@ -1440,7 +1468,7 @@ async function checkAndInstallForkUpdateInner() {
         }
     }, 300);
     try {
-        const hashString = asset.digest?.startsWith('sha256:') ? asset.digest.slice(7) : '';
+        const hashString = parseSha256Digest(asset.digest, asset.name);
         await appApi.DownloadUpdate(asset.downloadUrl, hashString, asset.size);
     } catch (err) {
         logFork(`Fork update download failed: ${err?.message ?? err}`);

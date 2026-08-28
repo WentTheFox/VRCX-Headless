@@ -148,13 +148,13 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
                 assets: [
                     {
                         name: 'VRCX.Headless.Setup.20260718.12.0.win-x64.exe',
-                        digest: 'sha256:abc123',
+                        digest: `sha256:${'1'.repeat(64)}`,
                         size: 42,
                         downloadUrl: 'https://example.invalid/win-x64.exe'
                     },
                     {
                         name: 'VRCX.Headless.Setup.20260718.12.0.win-arm64.exe',
-                        digest: 'sha256:def456',
+                        digest: `sha256:${'2'.repeat(64)}`,
                         size: 99,
                         downloadUrl: 'https://example.invalid/win-arm64.exe'
                     }
@@ -166,7 +166,7 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
 
         expect(globalThis.AppApi.DownloadUpdate).toHaveBeenCalledWith(
             'https://example.invalid/win-x64.exe',
-            'abc123',
+            '1'.repeat(64),
             42
         );
         expect(window.electron.restartApp).toHaveBeenCalled();
@@ -185,7 +185,7 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
                 assets: [
                     {
                         name: 'VRCX.Headless.Setup.20260718.11.2.win-x64.exe',
-                        digest: 'sha256:abc123',
+                        digest: `sha256:${'3'.repeat(64)}`,
                         size: 42,
                         downloadUrl: 'https://example.invalid/win-x64.exe'
                     }
@@ -197,7 +197,7 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
 
         expect(globalThis.AppApi.DownloadUpdate).toHaveBeenCalledWith(
             'https://example.invalid/win-x64.exe',
-            'abc123',
+            '3'.repeat(64),
             42
         );
         expect(window.electron.restartApp).toHaveBeenCalled();
@@ -214,6 +214,35 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
 
         expect(store.forkUpdateStatus).toBe('mismatch-offline');
         expect(globalThis.AppApi.DownloadUpdate).not.toHaveBeenCalled();
+        expect(mocks.toast.error).toHaveBeenCalled();
+    });
+
+    test('refuses to install when a matching asset has no verifiable sha256 digest', async () => {
+        // Guards against GitHub ever changing its digest algorithm (or
+        // dropping it) — should surface as a loud failure, never a silent
+        // "nothing to install" that looks identical to being up to date.
+        const store = useVRCXUpdaterStore();
+        globalThis.updateService.getUpdateInfo.mockResolvedValue({
+            serverVersion: '20260718.12.0',
+            release: {
+                tag: 'v20260718.12.0',
+                assets: [
+                    {
+                        name: 'VRCX.Headless.Setup.20260718.12.0.win-x64.exe',
+                        digest: 'sha512:not-actually-sha256',
+                        size: 42,
+                        downloadUrl: 'https://example.invalid/win-x64.exe'
+                    }
+                ]
+            }
+        });
+
+        await store.checkForForkUpdate();
+
+        expect(globalThis.AppApi.DownloadUpdate).not.toHaveBeenCalled();
+        expect(window.electron.restartApp).not.toHaveBeenCalled();
+        expect(store.forkUpdateStatus).toBe('mismatch-offline');
+        expect(store.forkUpdateError).toContain('no verifiable sha256 digest');
         expect(mocks.toast.error).toHaveBeenCalled();
     });
 
