@@ -2049,20 +2049,56 @@ function updateDesktopFile() {
     const applicationsDir = path.join(homePath, '.local/share/applications');
     const existingDesktopFilePath = path.join(applicationsDir, desktopFileName);
 
+    // Found live (2026-08-28): a plain double-click launch (going through
+    // this Exec= line, with no argv of its own to add flags to) crashed
+    // outright — a real SIGTRAP/coredump, not a graceful failure — on a
+    // Wayland+Vulkan session, matching the exact native-ozone-platform
+    // incompatibility `tryRelaunchWithArgs()` above already exists to work
+    // around. That function can't reliably win this race: Chromium's own
+    // ozone-platform selection happens natively, early enough that it can
+    // beat our JS relaunch decision depending on system timing — reproduced
+    // live as intermittent (some launches crashed, some didn't, all from
+    // the exact same binary and Exec= line). The only actually reliable fix
+    // is for the very first exec to already carry the flag, so there's
+    // nothing left to race. `tryRelaunchWithArgs()` stays as a fallback for
+    // launches that don't go through this Exec= line at all (a terminal,
+    // a file manager, `--startup`, etc).
+    const ozoneSuffix = x11 ? '' : ' --ozone-platform-hint=auto';
+    // Found live the same day, on a machine with a custom CA cert imported
+    // (`customCaCertPath`'s own doc comment above): even with that
+    // self-relaunch's `env: process.env` fix, the *packaged* AppImage build
+    // still hit the exact same "no window, nothing logged" failure the fix
+    // was meant to solve — reproducible every time on that machine, despite
+    // the identical code path working fine in an unpackaged dev run. The
+    // packaged-vs-dev discrepancy itself wasn't root-caused (FUSE mounting,
+    // `AppRun`'s own script logic, and sandbox/namespace probing were all
+    // individually verified fine), so rather than leave every custom-CA-cert
+    // user depending on a relaunch path proven flaky in exactly this
+    // configuration, this Exec= line bakes the env var in directly via the
+    // `env` command — a standard, well-supported Exec= pattern — so that
+    // relaunch never needs to fire for a desktop-icon launch at all. Purely
+    // additive: `customCaCertPath`'s own self-relaunch stays as the fallback
+    // for a launch that doesn't go through this Exec= line (a terminal, a
+    // file manager, `--startup`), and this line self-heals on the very next
+    // launch after any `vrcx-import-ca-cert`/`vrcx-remove-ca-cert` call,
+    // since `updateDesktopFile()` runs unconditionally on every startup.
+    const caCertPrefix = fs.existsSync(customCaCertPath) ? `env NODE_EXTRA_CA_CERTS=${customCaCertPath} ` : '';
+    const execValue = `${caCertPrefix}${appImagePath}${ozoneSuffix}`;
+
     // note that when using spawnSync you DO NOT quote any paths as they are passed directly to the process
     try {
         // Create/update the desktop file when needed
         if (fs.existsSync(existingDesktopFilePath)) {
             var editResult = spawnSync('desktop-file-edit', [
                 '--set-key=Exec',
-                `--set-value=${appImagePath}`,
+                `--set-value=${execValue}`,
                 existingDesktopFilePath
             ]);
 
             if (editResult.error) {
                 console.log(`Error trying to update ${desktopFileName} file: `, editResult.error.message);
             } else {
-                console.log(`Updated desktop file: ${existingDesktopFilePath} to exec ${appImagePath}`);
+                console.log(`Updated desktop file: ${existingDesktopFilePath} to exec ${execValue}`);
             }
         } else {
             const exeDir = path.dirname(app.getPath('exe'));
@@ -2070,7 +2106,7 @@ function updateDesktopFile() {
 
             var installResult = spawnSync('desktop-file-install', [
                 '--set-key=Exec',
-                `--set-value=${appImagePath}`,
+                `--set-value=${execValue}`,
                 `--dir=${applicationsDir}`,
                 '--rebuild-mime-info-cache',
                 packageAppImagePath
@@ -2079,7 +2115,7 @@ function updateDesktopFile() {
             if (installResult.error) {
                 console.log(`Error trying to install ${desktopFileName} file: `, installResult.error.message);
             } else {
-                console.log(`Installed desktop file to: ${applicationsDir} using exec ${appImagePath}`);
+                console.log(`Installed desktop file to: ${applicationsDir} using exec ${execValue}`);
             }
         }
     } catch (err) {

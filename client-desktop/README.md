@@ -110,6 +110,21 @@ longer than its 180-day window.
 See `server/README.md`'s "TOTP setup" section for the server side of this
 same flow, including how to reset it if you're locked out.
 
+## Troubleshooting (Linux)
+
+**The app crashes immediately, or the taskbar icon appears and disappears with no window ever showing up.** Two distinct, confirmed causes:
+
+- **A GPU/Vulkan driver crash.** Some Linux graphics stacks crash Chromium's GPU process outright — under Wayland this shows as `'--ozone-platform=wayland' is not compatible with Vulkan` followed by repeated `GPU process launch failed` and a fatal `GPU process isn't usable. Goodbye.`; under X11 (e.g. after adding `--x11`) it can instead show as `GPU process exited unexpectedly` with a SIGSEGV. Run the AppImage from a terminal to see which one you're hitting. The fix is `--disable-gpu`, added either to the launch command directly or to your `.desktop` file's `Exec=` line (see below) — this forces software rendering and reliably avoids both crash modes. It's **not** applied by default: it's a driver-specific problem this fork has no way to detect, and forcing it on everyone would cost every working-GPU user their hardware acceleration for nothing.
+- **A stale FUSE mount from a previous instance that was force-killed.** If a running instance is ever terminated with `kill -9` instead of a normal quit, the AppImage's FUSE mount can be left in a broken "Transport endpoint is not connected" state — every later launch (including a plain double-click) then fails silently, with nothing in any log. Check with `mount | grep AppImage`; a stale entry shows up there even though nothing is actually running. `fusermount -u <mount path>` (or `umount -l` as a fallback if that reports "not mounted") clears it — a normal, ungraceful `kill` (`SIGTERM`, not `-9`) doesn't have this problem, since the AppImage runtime gets a chance to unmount on its way out.
+
+**A custom CA cert is imported (`vrcx-import-ca-cert`, for a self-signed `serve` instance) and the app intermittently produces no window and no logs at all on launch.** The self-relaunch that sets `NODE_EXTRA_CA_CERTS` for the imported cert (`customCaCertPath`'s own doc comment in `src-electron/main.js`) is known to be unreliable specifically in a *packaged* AppImage build — confirmed reproducible every time on at least one real machine, despite the identical code working fine in an unpackaged dev run; the packaged-vs-dev discrepancy itself hasn't been root-caused. A fresh install's `.desktop` file (or one refreshed by a later app launch, since this runs on every startup) now bakes the env var directly into `Exec=` instead, so that relaunch never has to fire for a desktop-icon launch — the self-relaunch itself is left in place as a fallback for any other launch path (a terminal, a file manager, `--startup`). An install whose `.desktop` file predates this fix can apply it by hand:
+
+```
+Exec=env NODE_EXTRA_CA_CERTS=<path-to-custom-ca.pem> <path-to-AppImage> --ozone-platform-hint=auto
+```
+
+(`custom-ca.pem` lives at `~/.config/VRCX/custom-ca.pem`; the `.desktop` file itself is normally at `~/.local/share/applications/VRCX-Headless.desktop`.) Combine with `--disable-gpu` too if you're also hitting the GPU crash above.
+
 ## CI
 
 `.github/workflows/client-desktop.yaml` automates the sequence above on
