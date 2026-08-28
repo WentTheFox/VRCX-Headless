@@ -149,19 +149,25 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     const installedForkVersion = computed(() => currentVersion.value.replace(/^VRCX (Nightly )?/, ''));
 
     /**
-     * Windows-only for now (per CLAUDE.md's "Desktop client OS support" —
-     * this is the one fork platform genuinely shipped/tested end to end).
-     * Extending to Linux later is just adding a second branch here matching
-     * upstream's own `getAssetOfInterest`'s `.AppImage` logic
-     * (`vrcxUpdater.js`'s untouched Linux branch above) — `Dotnet/Update.cs`'s
-     * AppImage in-place-swap path and everything else already works
-     * unmodified regardless of which asset URL/hash it's given.
+     * `LINUX` (this store's build flag) only means "this is the Electron
+     * build" (CLAUDE.md's "Desktop client OS support"), not the actual host
+     * OS — the Electron client also runs on Windows now. `navigator.platform`
+     * is the same real-host-OS check `SystemTab.vue`'s `isRealLinux` already
+     * uses for the same reason. The Linux suffix matches upstream's own
+     * `getAssetOfInterest`'s `.AppImage` logic (this file's untouched
+     * upstream branch above) — `Dotnet/Update.cs`'s AppImage in-place-swap
+     * path and `installForkUpdate`'s `restartVRCX` call below already work
+     * unmodified regardless of which asset URL/hash they're given, since
+     * `Update.Init(appImagePath)` is already wired up by `installVRCX()`
+     * (src-electron/main.js) by the time this can ever run — this function
+     * only had the wrong suffix to search for.
      * @param {Array<{name: string, digest?: string, size: number, downloadUrl: string}>} assets
      * @param {string} archValue
      * @returns {{ downloadUrl: string, hashString: string, size: number } | null}
      */
     function getForkAssetOfInterest(assets, archValue) {
-        const suffix = `win-${archValue}.exe`;
+        const isRealLinux = navigator.platform.toLowerCase().includes('linux');
+        const suffix = isRealLinux ? `${archValue}.AppImage` : `win-${archValue}.exe`;
         const asset = assets.find((a) => a.name.endsWith(suffix));
         if (!asset) {
             return null;
@@ -239,8 +245,11 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         }
         const asset = getForkAssetOfInterest(release.assets, arch.value);
         if (!asset) {
+            const isRealLinux = navigator.platform.toLowerCase().includes('linux');
             forkUpdateStatus.value = 'mismatch-offline';
-            forkUpdateError.value = `No matching installer for win-${arch.value}`;
+            forkUpdateError.value = isRealLinux
+                ? `No matching installer for ${arch.value}.AppImage`
+                : `No matching installer for win-${arch.value}`;
             toast.error(
                 t('message.vrcx_updater.fork_mismatch', {
                     client: installedForkVersion.value,
@@ -254,10 +263,13 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
             forkUpdateStatus.value = 'installing';
             await downloadFileProgress();
             await AppApi.DownloadUpdate(asset.downloadUrl, asset.hashString, asset.size);
-            // Dotnet/Update.cs's Update.Check() only installs the downloaded
-            // update.exe on the *next* process start — restart now so
-            // "fully automatic" actually means installed, not "installed
-            // whenever the app next happens to relaunch".
+            // Windows: Dotnet/Update.cs's Update.Check() only installs the
+            // downloaded update.exe on the *next* process start. Linux: the
+            // AppImage was already swapped in place synchronously by the
+            // DownloadUpdate call above. Either way, nothing is actually
+            // running the new version yet — restart now so "fully automatic"
+            // actually means installed, not "installed whenever the app next
+            // happens to relaunch".
             restartVRCX(true);
         } catch (err) {
             forkUpdateStatus.value = 'mismatch-offline';

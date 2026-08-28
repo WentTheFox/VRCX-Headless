@@ -105,6 +105,15 @@ const noDesktop = args.includes('--no-desktop');
 const startup = args.includes('--startup');
 const debug = args.includes('--hot-reload');
 const noUpdater = args.includes('--no-updater') || fs.existsSync(path.join(rootDir, '.no-updater'));
+// Set on the relaunch spawned by checkAndInstallForkUpdateInner()'s Linux
+// branch (below) — lets installVRCX() know this launch is a direct
+// continuation of an unattended background update, not a user
+// double-clicking the AppImage, so it can skip its own "install to
+// ~/Applications?" prompt for this one run. The fork-updater's whole design
+// principle is "no confirmation click, ever" (CLAUDE.md §9) — a blocking
+// dialog immediately after a silent update violates that regardless of how
+// reasonable the question is on a genuine first run.
+const postUpdate = args.includes('--post-update');
 if (app.isPackaged && process.defaultApp && process.platform !== 'win32') {
     if (process.argv.length >= 2) {
         app.setAsDefaultProtocolClient(VRCX_URI_PREFIX, process.execPath, [path.resolve(process.argv[1])]);
@@ -1323,11 +1332,25 @@ function logFork(text) {
     }
 }
 
+/**
+ * @returns {Promise<boolean>} true when an update was applied and this
+ *   process has already called `app.exit()` to relaunch — found live
+ *   (2026-08-28, Linux): `app.exit()` does not actually halt execution of
+ *   the calling `app.whenReady().then(async () => {...})` chain — it
+ *   schedules the process teardown, but the `await
+ *   checkAndInstallForkUpdate()` line's continuation still ran
+ *   `createWindow()`/`createTray()`/`installVRCX()` before that teardown
+ *   completed, spinning up a full GPU-accelerated window (and the exact
+ *   Wayland/DBus teardown hang `scheduleForceExitFallback()` exists for)
+ *   for a process that was already on its way out. The caller checks this
+ *   return value and skips the rest of startup entirely when true.
+ */
 async function checkAndInstallForkUpdate() {
     try {
-        await checkAndInstallForkUpdateInner();
+        return await checkAndInstallForkUpdateInner();
     } catch (err) {
         logFork(`Uncaught error: ${err?.stack ?? err?.message ?? err}`);
+        return false;
     }
 }
 
@@ -1337,7 +1360,7 @@ async function checkAndInstallForkUpdateInner() {
     const defaultServer = getDefaultServer();
     if (!defaultServer?.url) {
         logFork('No default server configured, skipping');
-        return;
+        return false;
     }
     updateSplashStatus('Checking for updates…');
     let info;
@@ -1352,33 +1375,59 @@ async function checkAndInstallForkUpdateInner() {
         });
         if (status !== 200 || !body?.serverVersion) {
             logFork(`Unexpected /api/update-info response: status=${status} body=${JSON.stringify(body)}`);
-            return;
+            return false;
         }
         info = body;
     } catch (err) {
         logFork(`Fork update check failed: ${err?.message ?? err}`);
-        return;
+        return false;
     }
     const installedVersion = app.getVersion();
     logFork(
         `Installed version ${installedVersion}, server version ${info.serverVersion}, release ${info.release ? info.release.tag : 'none'}`
     );
     if (info.serverVersion === installedVersion || !info.release) {
-        return;
+        return false;
     }
-    // Windows only for now — see getForkAssetOfInterest's own doc comment
-    // in src/stores/vrcxUpdater.js, the renderer-side equivalent of this
-    // same asset-selection logic (duplicated rather than shared: that file
-    // is an ESM module in the upstream-shared src/** store graph, this one
-    // is plain CommonJS with no module-system bridge worth building for
-    // ten lines of pure logic).
-    const suffix = `win-${process.arch}.exe`;
+    // Suffix selection mirrors getForkAssetOfInterest's own doc comment in
+    // src/stores/vrcxUpdater.js, the renderer-side equivalent of this same
+    // asset-selection logic (duplicated rather than shared: that file is an
+    // ESM module in the upstream-shared src/** store graph, this one is
+    // plain CommonJS with no module-system bridge worth building for ten
+    // lines of pure logic). `appImagePath` is only ever non-empty when this
+    // process was actually launched from an AppImage (set from
+    // `process.env.APPIMAGE` near the top of this file) — a dev/unpackaged
+    // Linux run has nothing to self-update, same reasoning as
+    // `installVRCX()`'s own `if (!appImagePath) return` guard.
+    const isLinuxAppImage = process.platform === 'linux' && !!appImagePath;
+    let suffix;
+    if (process.platform === 'win32') {
+        suffix = `win-${process.arch}.exe`;
+    } else if (isLinuxAppImage) {
+        suffix = `${process.arch}.AppImage`;
+    } else {
+        logFork(
+            `Fork auto-update not supported here (platform=${process.platform}, appImagePath=${appImagePath || 'none'}), skipping`
+        );
+        return false;
+    }
     const asset = info.release.assets?.find((a) => a.name?.endsWith(suffix));
     if (!asset) {
         logFork(`No asset matching suffix ${suffix} in release ${info.release.tag}`);
-        return;
+        return false;
     }
     logFork(`Fork update available: ${installedVersion} -> ${info.serverVersion}, downloading ${asset.name}`);
+    if (isLinuxAppImage) {
+        // Dotnet/Update.cs's DownloadUpdate branches on whether Update.Init
+        // has been given an AppImage path — normally set by installVRCX()
+        // below, but that hasn't run yet this early (checkAndInstallForkUpdate
+        // is called before createWindow()/installVRCX() in app.whenReady()).
+        // Without this, DownloadUpdate would silently take the Windows
+        // branch and write a useless update.exe instead of swapping the
+        // AppImage in place. Static state on the .NET side, so calling it
+        // again from installVRCX() later is harmless.
+        interopApi.getDotNetObject('Update').Init(appImagePath);
+    }
     updateSplashStatus(`Downloading update ${info.serverVersion}…`);
     const appApi = interopApi.getDotNetObject('AppApiElectron');
     const progressTimer = setInterval(async () => {
@@ -1395,12 +1444,79 @@ async function checkAndInstallForkUpdateInner() {
         await appApi.DownloadUpdate(asset.downloadUrl, hashString, asset.size);
     } catch (err) {
         logFork(`Fork update download failed: ${err?.message ?? err}`);
-        return;
+        return false;
     } finally {
         clearInterval(progressTimer);
     }
     logFork('Download + hash check complete');
     updateSplashStatus('Installing update…');
+    if (isLinuxAppImage) {
+        // Unlike Windows, there's no separate install step to schedule —
+        // Update.DownloadUpdate's Linux branch already renamed the old
+        // AppImage aside and moved the new download into place (plus
+        // chmod +x) synchronously, before this await returned. All that's
+        // left is relaunching.
+        //
+        // Found live (2026-08-28): the first version of this used
+        // `app.relaunch({execPath: appImagePath}) + app.exit(0)`, the same
+        // mechanism `restartApp()`'s Linux branch already uses for the
+        // ordinary "restart VRCX" action. On a real run, `app.exit(0)`
+        // turned out not to actually stop the calling `app.whenReady()`
+        // chain in time — it went on to call `createWindow()` anyway (see
+        // that call site's own comment), spinning up a real GPU-accelerated
+        // window this early in startup hung on exit, and
+        // `scheduleForceExitFallback()`'s watchdog had to SIGKILL the
+        // process 3s later. `app.relaunch()`'s scheduled spawn only
+        // actually happens as a side effect of Electron's *own* graceful
+        // quit sequence completing — a raw SIGKILL bypasses that sequence
+        // entirely, so the relaunch silently never fired: confirmed live by
+        // the AppImage swap succeeding on disk but no new process ever
+        // starting. Fixed two ways: the caller now skips `createWindow()`
+        // entirely once this returns `true` (removing the thing that hung
+        // in the first place), and the relaunch itself is spawned directly
+        // here — detached, independent of how (or whether) this process's
+        // own exit sequence completes — the same pattern
+        // `tryRelaunchWithArgs()` above already uses for its own Wayland
+        // relaunch. A bare detached spawn racing this process's own
+        // teardown could still lose `requestSingleInstanceLock()` to the
+        // still-alive parent, so the spawned shell sleeps first — longer
+        // than `scheduleForceExitFallback()`'s own 3s kill delay, so the
+        // parent is guaranteed dead (cleanly or via SIGKILL) before the
+        // real relaunch attempt either way.
+        //
+        // Found live (2026-08-28, second pass): the relaunch args originally
+        // carried only `--post-update`, on the assumption the fresh process
+        // would sort out Wayland/ozone itself via its own
+        // `tryRelaunchWithArgs()` call, same as a user double-clicking the
+        // AppImage. It does — but that means a *second*, immediate
+        // self-relaunch stacked right after this one's 5s-delayed relaunch,
+        // visibly restarting the app twice for one update. Carrying the same
+        // flags `tryRelaunchWithArgs()` itself would have added
+        // (`--appimage-extract-and-run`, `--ozone-platform-hint=auto` unless
+        // `x11`) collapses this back to a single relaunch, since the fresh
+        // process's own `tryRelaunchWithArgs()` guard
+        // (`args.includes('--ozone-platform-hint=auto')`) then already finds
+        // itself relaunched.
+        const relaunchDelaySeconds = 5;
+        const relaunchArgs = ['--appimage-extract-and-run'];
+        if (!x11) {
+            relaunchArgs.push('--ozone-platform-hint=auto');
+        }
+        relaunchArgs.push('--post-update');
+        const quoteForShell = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
+        const relaunchCommand = [appImagePath, ...relaunchArgs].map(quoteForShell).join(' ');
+        logFork(`Scheduling relaunch of ${appImagePath} in ${relaunchDelaySeconds}s (${relaunchArgs.join(' ')})`);
+        const launcher = spawn('sh', ['-c', `sleep ${relaunchDelaySeconds}; exec ${relaunchCommand}`], {
+            detached: true,
+            stdio: 'ignore'
+        });
+        logFork(`Relaunch shell spawn returned, pid=${launcher.pid}`);
+        launcher.on('error', (err) => logFork(`Relaunch shell spawn error: ${err?.message ?? err}`));
+        launcher.unref();
+        scheduleForceExitFallback();
+        app.exit(0);
+        return true;
+    }
     // Found live (2026-08-24): letting `app.relaunch()` hand off to
     // Dotnet/Update.cs's Update.Check() (which installs the just-downloaded
     // update.exe at the top of the *next* ProgramElectron.Init(), then
@@ -1460,6 +1576,7 @@ async function checkAndInstallForkUpdateInner() {
     launcher.unref();
     logFork('Exiting now');
     app.exit(0);
+    return true;
 }
 
 /**
@@ -1809,9 +1926,15 @@ async function installVRCX() {
         }
     }
 
-    // ask to move AppImage to ~/Applications
+    // ask to move AppImage to ~/Applications — skipped for a post-update
+    // relaunch (see `postUpdate`'s own definition near the top of this
+    // file): the fork-updater's whole point is zero interaction, and this
+    // question is only meaningful on a genuine first run anyway, not a
+    // relaunch of an AppImage that was already sitting wherever it was.
+    // Not persisted to VRCXStorage — a later ordinary (non-post-update)
+    // launch still asks, same as before this existed.
     const appImageHomePath = `${homePath}/Applications/${expectedName}`;
-    if (!hasAskedToMoveAppImage && appImagePath !== appImageHomePath) {
+    if (!hasAskedToMoveAppImage && !postUpdate && appImagePath !== appImageHomePath) {
         const result = dialog.showMessageBoxSync(mainWindow, {
             type: 'question',
             title: 'VRCX Headless Desktop',
@@ -2075,8 +2198,15 @@ function applyWindowState() {
 
 app.whenReady().then(async () => {
     showSplash();
-    await checkAndInstallForkUpdate();
+    const updateApplied = await checkAndInstallForkUpdate();
     closeSplash();
+    if (updateApplied) {
+        // This process has already called app.exit() and is on its way out
+        // — see checkAndInstallForkUpdate's own doc comment for why the
+        // rest of startup (createWindow()/createTray()/installVRCX(), all
+        // of which spin up real GPU/tray/native state) must not run here.
+        return;
+    }
     createWindow();
     createTray();
     installVRCX();

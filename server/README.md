@@ -77,7 +77,7 @@ Release tags are `<vrcx-date-no-dots>.<minor>.<patch>` — real semver, with the
 
 ### Desktop client auto-updates
 
-The Windows desktop client updates itself automatically, but only in response to *this server's* version — not GitHub in general. On every connect (and every server switch), it asks the connected server what version it's running and, if a newer release is available **under that server's own MINOR version**, downloads and installs it for you, no confirmation needed.
+The Windows and Linux desktop clients update themselves automatically, but only in response to *this server's* version — not GitHub in general. On every launch (and every server switch, which restarts the process), it asks the configured default server what version it's running and, if a newer release is available **under that server's own MINOR version**, downloads and installs it for you, no confirmation needed.
 
 "Under that server's own MINOR" matters because PATCH releases are client-only by definition — the server never needed a code change or a redeploy to produce one, so the running server's own PATCH can genuinely lag behind the newest one published. The client isn't held back by that: it's offered the newest PATCH under the server's MINOR even if the server itself is still reporting an older PATCH. A MINOR mismatch is different — that always means the server container itself was rebuilt, and is still the trigger for the client to move onto a whole new release line.
 
