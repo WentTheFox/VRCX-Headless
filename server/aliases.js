@@ -71,7 +71,15 @@ export const aliases = {
     // `confirm`/`alert`/`prompt` resolve when a human clicks a dialog button
     // that only exists in a mounted Vue app; headless, they'd hang forever.
     // Stays stubbed permanently, same reasoning as `ui.js` just above.
-    'src/stores/modal.js': 'server/src/shims/modal.js'
+    'src/stores/modal.js': 'server/src/shims/modal.js',
+
+    // `src/stores/activity.js`'s "now" for bounding a still-open self
+    // activity session. The real file's `Date.now()` is correct on a live
+    // client (the computation only runs while that client is open); the
+    // server bounds it to desktop-agent connectivity instead — see the
+    // shim's own doc comment for the live bug this fixes (100% overlap with
+    // no desktop client ever open).
+    'src/shared/utils/clock.js': 'server/src/shims/clock.js'
 
     // `src/stores/index.js` (the barrel) is intentionally NOT aliased here —
     // phase 2b step 4 imports it for real. Everything it needs that can't

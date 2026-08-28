@@ -43,6 +43,13 @@ class DesktopAgent extends EventEmitter {
         this.socket = null;
         /** @type {Map<string, { resolve: (value: any) => void, reject: (err: Error) => void, timer: NodeJS.Timeout }>} */
         this.pending = new Map();
+        // Bounds `server/src/shims/clock.js`'s "self" activity horizon — see
+        // that file's own doc comment. Pinned to server-boot time until a
+        // desktop agent actually connects at least once, rather than left
+        // `null`, so a still-open `gamelog_location` session can never be
+        // read as "online" further back than "before this process existed"
+        // even if no agent has connected yet this run.
+        this.lastSeenAt = Date.now();
     }
 
     /**
@@ -50,6 +57,17 @@ class DesktopAgent extends EventEmitter {
      */
     isConnected() {
         return this.socket !== null && this.socket.readyState === this.socket.OPEN;
+    }
+
+    /**
+     * The latest instant this process actually knows a desktop client was
+     * present: live (`Date.now()`) while connected, frozen at the moment of
+     * the most recent disconnect otherwise.
+     *
+     * @returns {number} epoch ms
+     */
+    getPresenceHorizon() {
+        return this.isConnected() ? Date.now() : this.lastSeenAt;
     }
 
     /**
@@ -61,10 +79,12 @@ class DesktopAgent extends EventEmitter {
             this.socket.close();
         }
         this.socket = socket;
+        this.lastSeenAt = Date.now();
         socket.on('message', (data) => this.#handleMessage(data));
         socket.on('close', () => {
             if (this.socket === socket) {
                 this.socket = null;
+                this.lastSeenAt = Date.now();
             }
             this.#rejectAllPending(new Error('Desktop agent disconnected'));
         });

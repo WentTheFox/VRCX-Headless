@@ -148,4 +148,38 @@ describe('desktopAgent', () => {
             socket.emit('message', Buffer.from('not json'))
         ).not.toThrow();
     });
+
+    describe('getPresenceHorizon', () => {
+        it('tracks live time while a socket is attached', () => {
+            const socket = new FakeSocket();
+            desktopAgent.attach(socket);
+            const t0 = desktopAgent.getPresenceHorizon();
+            vi.advanceTimersByTime(60_000);
+            expect(desktopAgent.getPresenceHorizon()).toBe(t0 + 60_000);
+        });
+
+        it('freezes at the moment of disconnect instead of continuing to advance', () => {
+            const socket = new FakeSocket();
+            desktopAgent.attach(socket);
+            vi.advanceTimersByTime(5_000);
+            socket.close();
+            const frozenAt = desktopAgent.getPresenceHorizon();
+            vi.advanceTimersByTime(6 * 60 * 60 * 1000);
+            expect(desktopAgent.getPresenceHorizon()).toBe(frozenAt);
+        });
+
+        it('resumes live tracking on reconnect after being frozen', () => {
+            const first = new FakeSocket();
+            desktopAgent.attach(first);
+            vi.advanceTimersByTime(1_000);
+            first.close();
+            vi.advanceTimersByTime(60 * 60 * 1000);
+
+            const second = new FakeSocket();
+            desktopAgent.attach(second);
+            const reattachedAt = desktopAgent.getPresenceHorizon();
+            vi.advanceTimersByTime(10_000);
+            expect(desktopAgent.getPresenceHorizon()).toBe(reattachedAt + 10_000);
+        });
+    });
 });
