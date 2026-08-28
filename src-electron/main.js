@@ -27,15 +27,25 @@ const { WebSocket: WsClient } = require('ws');
  * file exists but this process wasn't started with the matching env var
  * (either a fresh normal launch after an import, or the very first launch
  * after one), self-relaunch once with it set before anything else in this
- * process touches the network. The relaunched child inherits `process.env`,
- * so this becomes a no-op on the next launch once the var is already
- * present and matches.
+ * process touches the network.
+ *
+ * Found live (2026-08-28): the comment here used to claim "the relaunched
+ * child inherits `process.env`, so this becomes a no-op on the next launch"
+ * — it doesn't, at least not in this Electron/Linux combination. A bare
+ * `app.relaunch()` with no `env` doesn't carry the `NODE_EXTRA_CA_CERTS`
+ * mutation two lines above to the new process, so the relaunched child hits
+ * this exact same check again, with the same result, forever — a fast,
+ * silent, resource-churning relaunch loop with no window ever created to
+ * show anything went wrong, reported as "the app appears on the taskbar
+ * with no window then closes." Fixed by passing `env: process.env`
+ * explicitly instead of assuming Electron forwards the current process's
+ * (already-mutated, in-memory) environment on its own.
  * @type {string}
  */
 const customCaCertPath = path.join(getVRCXPath(), 'custom-ca.pem');
 if (fs.existsSync(customCaCertPath) && process.env.NODE_EXTRA_CA_CERTS !== customCaCertPath) {
     process.env.NODE_EXTRA_CA_CERTS = customCaCertPath;
-    app.relaunch();
+    app.relaunch({ args: process.argv.slice(1), env: process.env });
     app.exit(0);
 }
 
