@@ -110,6 +110,15 @@ longer than its 180-day window.
 See `server/README.md`'s "TOTP setup" section for the server side of this
 same flow, including how to reset it if you're locked out.
 
+If more than one server is already known (this screen doubles as the
+post-boot-failure landing page when the *default* one couldn't be reached —
+see "Troubleshooting" below if that keeps happening), clicking any entry
+tries to reconnect with its already-stored session token first — no code
+needed unless that token has actually expired or been revoked. Each
+non-default entry also has its own **Set default** action, so switching
+which server this client connects to on its next cold boot doesn't require
+successfully connecting to it right now.
+
 ## Troubleshooting (Linux)
 
 **The app crashes immediately, or the taskbar icon appears and disappears with no window ever showing up.** Two distinct, confirmed causes:
@@ -124,6 +133,8 @@ Exec=env NODE_EXTRA_CA_CERTS=<path-to-custom-ca.pem> <path-to-AppImage> --ozone-
 ```
 
 (`custom-ca.pem` lives at `~/.config/VRCX/custom-ca.pem`; the `.desktop` file itself is normally at `~/.local/share/applications/VRCX-Headless.desktop`.) Combine with `--disable-gpu` too if you're also hitting the GPU crash above.
+
+**The client opens straight to the setup/pairing screen instead of connecting, even though it was already paired with a server.** Usually means the *default* server (marked ★ in `VRCX_Servers`, e.g. left over from a local dev/test server that's since been shut down) is what's actually unreachable, not that pairing was ever lost — a `serve` restart alone doesn't require re-pairing (see "First run" above). This screen lists every known server, not just the default, and clicking one reuses its own stored token rather than demanding a fresh code; use each entry's **Set default** action to stop the dead one from being tried first on the next cold boot.
 
 ## CI
 
