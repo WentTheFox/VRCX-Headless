@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { database } from '../services/database';
+import { now } from '../shared/utils/clock.js';
 import { mergeSessions } from '../shared/utils/activityEngine.js';
 import { runActivityWorkerTask } from '../workers/activityWorkerRunner.js';
 
@@ -545,7 +546,7 @@ async function fullRefresh(snapshot, rangeDays) {
         rows: snapshot.isSelf ? sourceItems : undefined,
         events: snapshot.isSelf ? undefined : sourceItems,
         initialStart: null,
-        nowMs: Date.now(),
+        nowMs: now(),
         mayHaveOpenTail: snapshot.isSelf,
         sourceRevision: sourceLastCreatedAt
     });
@@ -588,7 +589,7 @@ async function incrementalRefresh(snapshot) {
         rows: snapshot.isSelf ? sourceItems : undefined,
         events: snapshot.isSelf ? undefined : sourceItems,
         initialStart: snapshot.isSelf ? null : snapshot.sync.pendingSessionStartAt,
-        nowMs: Date.now(),
+        nowMs: now(),
         mayHaveOpenTail: snapshot.isSelf,
         sourceRevision: sourceLastCreatedAt
     });
@@ -634,7 +635,7 @@ async function expandRange(snapshot, rangeDays) {
         rows: snapshot.isSelf ? sourceItems : undefined,
         events: snapshot.isSelf ? undefined : sourceItems,
         initialStart: null,
-        nowMs: Date.now(),
+        nowMs: now(),
         mayHaveOpenTail: false,
         sourceRevision: snapshot.sync.sourceLastCreatedAt
     });

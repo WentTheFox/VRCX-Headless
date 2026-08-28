@@ -63,6 +63,16 @@ Database:
                         database's write lock, unless --force is given.
   tables               Print row counts for the main tables
   query <sql>          Run a read-only SQL query and print positional rows
+  reset-activity-cache Wipe the cached Activity/Overlap tables (they rebuild
+                        automatically from gamelog/feed data). Use this once
+                        after upgrading to a build with the desktop-agent-
+                        bounded overlap fix, to clear out any "100% overlap"
+                        numbers computed by the old, unbounded logic — see
+                        CLAUDE.md's activity.js/clock.js patch entry. Refuses
+                        while \`serve\`/\`pipeline\` hold the write lock, same
+                        as \`migrate\`, since \`serve\` also caches these
+                        tables in memory and won't see the reset until it
+                        restarts anyway.
   check-update [--force] [--json]
                         Check GitHub for a newer upstream VRCX release and
                         whether this fork already has a matching release.
@@ -86,7 +96,8 @@ Options:
   --db=PATH            Use this database file instead of the resolved one
   --user=ID            VRChat user id, for per-user table creation
   --create             Allow creating the database if it does not exist
-  --force              For \`migrate\`: run even if the write lock is held
+  --force              For \`migrate\`/\`reset-activity-cache\`: run even if
+                        the write lock is held
   --username=NAME      Skip the username prompt
   --endpoint=URL       Custom API endpoint
   --websocket=URL      Custom pipeline endpoint
@@ -302,6 +313,43 @@ async function main() {
                 `SELECT COUNT(*) FROM "${name.replaceAll('"', '""')}"`
             );
             console.log(`${String(count[0]?.[0] ?? 0).padStart(9)}  ${name}`);
+        }
+        handle.close();
+        return 0;
+    }
+
+    if (command === 'reset-activity-cache') {
+        const handle = await openDatabase({ ...openOptions, create: false });
+        const lockState = isLocked(handle.databasePath);
+        if (lockState.locked && flags.force !== true) {
+            handle.close();
+            throw new Error(
+                `${handle.databasePath} is currently held by pid ${lockState.pid} (serve/pipeline). ` +
+                    'That process caches these tables in memory and would just overwrite the reset on its next write — ' +
+                    'stop it first (it will rebuild correctly on restart), or pass --force to reset anyway.'
+            );
+        }
+        const tableNames = handle.sqlite
+            .Execute(
+                "SELECT name FROM sqlite_schema WHERE type = 'table' AND (" +
+                    "name LIKE '%\\_activity_sessions_v2' ESCAPE '\\' OR " +
+                    "name LIKE '%\\_activity_sync_state_v2' ESCAPE '\\' OR " +
+                    "name LIKE '%\\_activity_bucket_cache_v2' ESCAPE '\\'" +
+                    ')'
+            )
+            .map((row) => String(row[0]));
+        for (const name of tableNames) {
+            const quoted = `"${name.replaceAll('"', '""')}"`;
+            const cleared = handle.sqlite.ExecuteNonQuery(`DELETE FROM ${quoted}`);
+            console.log(`cleared ${String(cleared).padStart(9)} row(s) from ${name}`);
+        }
+        if (tableNames.length === 0) {
+            console.log('No activity cache tables found (nothing to reset).');
+        } else {
+            console.log(
+                '\nDone. These tables rebuild automatically from gamelog_location/feed_online_offline ' +
+                    'the next time each dialog is opened.'
+            );
         }
         handle.close();
         return 0;
