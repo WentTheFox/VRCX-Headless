@@ -397,6 +397,41 @@ function attemptServer(url, onError) {
 }
 
 /**
+ * Found live (2026-08-28): clicking any entry in the picker — including the
+ * one already marked default — always fell through to `attemptServer()`,
+ * which unconditionally demands a fresh 6-digit code via
+ * `checkTotpSetupNeeded()`/`renderLoginForm()`, even when `VRCX_Servers`
+ * already holds a perfectly valid, unexpired token for that exact server.
+ * `vrcx-switch-server` (the same IPC target the in-app `HeadlessServerStatus.vue`
+ * status-bar switcher already uses) exists precisely to reuse that stored
+ * token — it POSTs to `/api/session/refresh` with the saved `Authorization`
+ * header, and on success also marks that server default and restarts the
+ * whole app straight into it, no code entry needed at all. Tries that first;
+ * only falls back to the full re-pairing flow (a stored token can genuinely
+ * expire or be revoked server-side) if the refresh itself fails.
+ * @param {string} url
+ * @param {{url: string, label: string, isDefault: boolean}[]} servers full list, for the onError re-render
+ * @param {HTMLElement} statusEl shown "Connecting…"/error text alongside this one entry
+ */
+function connectToServer(url, servers, statusEl) {
+    statusEl.textContent = 'Connecting…';
+    statusEl.hidden = false;
+    window.vrcxDesktopAgent
+        .switchServer(url)
+        .then((result) => {
+            if (result.ok) {
+                // main.js's restartApp() is already tearing this window down
+                // — nothing left to do here.
+                return;
+            }
+            attemptServer(url, (message) => renderPicker(servers, message));
+        })
+        .catch(() => {
+            attemptServer(url, (message) => renderPicker(servers, message));
+        });
+}
+
+/**
  * Shown whenever at least one server is already known — lets a user with a
  * VPN-gated home server or a local-test/live split pick a saved entry
  * instead of retyping a URL that's already stored, and doubles as the
@@ -429,9 +464,18 @@ function renderPicker(servers, error) {
     }
 
     for (const server of servers) {
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.style.cssText = SERVER_ITEM_STYLE;
+        // A plain <div> now, not a <button> — it holds its own separate
+        // "set default" button alongside the clickable label/url area, and
+        // a <button> can't nest another interactive element.
+        const item = document.createElement('div');
+        // SERVER_ITEM_STYLE bakes in flex-direction:column (for the old
+        // label-over-url layout inside a single clickable <button>) — reset
+        // it to row here so `info` and the new "Set default" button sit
+        // side by side instead of stacked.
+        item.style.cssText = `${SERVER_ITEM_STYLE}cursor:default;flex-direction:row;align-items:center;gap:0.5rem;`;
+
+        const info = document.createElement('div');
+        info.style.cssText = 'display:flex;flex-direction:column;gap:0.125rem;flex:1;min-width:0;cursor:pointer;';
 
         const label = document.createElement('span');
         label.textContent = server.isDefault
@@ -441,15 +485,37 @@ function renderPicker(servers, error) {
 
         const url = document.createElement('span');
         url.textContent = server.url;
-        url.style.cssText = 'font-size:0.75rem;color:#888;';
+        url.style.cssText = 'font-size:0.75rem;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
 
-        item.append(label, url);
-        item.addEventListener('click', () => {
-            item.disabled = true;
-            attemptServer(server.url, (message) => {
-                renderPicker(servers, message);
-            });
+        info.append(label, url);
+
+        const statusText = document.createElement('span');
+        statusText.style.cssText = 'font-size:0.6875rem;color:#888;';
+        statusText.hidden = true;
+        info.append(statusText);
+
+        info.addEventListener('click', () => {
+            info.style.opacity = '0.6';
+            connectToServer(server.url, servers, statusText);
         });
+        item.append(info);
+
+        if (!server.isDefault) {
+            const defaultButton = document.createElement('button');
+            defaultButton.type = 'button';
+            defaultButton.textContent = 'Set default';
+            defaultButton.style.cssText = `${LINK_STYLE}white-space:nowrap;`;
+            defaultButton.addEventListener('click', (clickEvent) => {
+                // Stop this from also bubbling into `info`'s own click
+                // handler above (they're siblings, not nested, but keeping
+                // this explicit avoids relying on that not changing later).
+                clickEvent.stopPropagation();
+                defaultButton.disabled = true;
+                window.vrcxDesktopAgent.setDefaultServer(server.url).then(() => renderEntry());
+            });
+            item.append(defaultButton);
+        }
+
         container.append(item);
     }
 
