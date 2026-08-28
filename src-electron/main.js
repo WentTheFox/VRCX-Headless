@@ -1424,7 +1424,28 @@ async function checkAndInstallForkUpdateInner() {
     logFork(
         `Installed version ${installedVersion}, server version ${info.serverVersion}, release ${info.release ? info.release.tag : 'none'}`
     );
-    if (info.serverVersion === installedVersion || !info.release) {
+    if (!info.release) {
+        return false;
+    }
+    // Found live (2026-08-28): comparing against info.serverVersion here —
+    // the *connected server's own* reported version — instead of
+    // info.release.tag caused an infinite update loop the instant a client
+    // was ever newer than the server it happened to be talking to. That's
+    // not a rare edge case: CLAUDE.md's own MINOR/PATCH split means a
+    // client-only PATCH release never requires the server to be redeployed,
+    // so a real, otherwise-fine server can legitimately sit on an older
+    // PATCH indefinitely. getUpdateInfo() already accounts for exactly
+    // this — info.release is the newest PATCH under the server's own
+    // MINOR, which can be ahead of what that server itself reports — but
+    // this check compared against the server's version anyway, so it never
+    // agreed the client (already on that same newest PATCH) was up to date:
+    // every single launch re-downloaded and reinstalled the identical
+    // already-installed build, forever. `vrcxUpdater.js`'s renderer-side
+    // equivalent (`checkForForkUpdate`) already compares against
+    // `info.release.tag` for this exact reason — this brings the two back
+    // in sync instead of leaving this one path with the older, wrong logic.
+    const targetVersion = info.release.tag.replace(/^v/, '');
+    if (targetVersion === installedVersion) {
         return false;
     }
     // Suffix selection mirrors getForkAssetOfInterest's own doc comment in
@@ -1454,7 +1475,7 @@ async function checkAndInstallForkUpdateInner() {
         logFork(`No asset matching suffix ${suffix} in release ${info.release.tag}`);
         return false;
     }
-    logFork(`Fork update available: ${installedVersion} -> ${info.serverVersion}, downloading ${asset.name}`);
+    logFork(`Fork update available: ${installedVersion} -> ${targetVersion}, downloading ${asset.name}`);
     if (isLinuxAppImage) {
         // Dotnet/Update.cs's DownloadUpdate branches on whether Update.Init
         // has been given an AppImage path — normally set by installVRCX()
@@ -1466,12 +1487,12 @@ async function checkAndInstallForkUpdateInner() {
         // again from installVRCX() later is harmless.
         interopApi.getDotNetObject('Update').Init(appImagePath);
     }
-    updateSplashStatus(`Downloading update ${info.serverVersion}…`);
+    updateSplashStatus(`Downloading update ${targetVersion}…`);
     const appApi = interopApi.getDotNetObject('AppApiElectron');
     const progressTimer = setInterval(async () => {
         try {
             const progress = await appApi.CheckUpdateProgress();
-            updateSplashStatus(`Downloading update ${info.serverVersion}… ${progress}%`);
+            updateSplashStatus(`Downloading update ${targetVersion}… ${progress}%`);
         } catch {
             // Best-effort UI polish only — a failed progress read doesn't
             // affect the actual download awaited below.
