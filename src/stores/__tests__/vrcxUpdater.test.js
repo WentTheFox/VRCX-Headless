@@ -203,6 +203,33 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
         expect(window.electron.restartApp).toHaveBeenCalled();
     });
 
+    test('refuses to downgrade when the offered release is older than what is installed', async () => {
+        // Guards against update-release.js's own 30-minute cache offering a
+        // stale answer right after a newer release was just published —
+        // found live causing a real downgrade-then-reinstall loop.
+        const store = useVRCXUpdaterStore();
+        globalThis.updateService.getUpdateInfo.mockResolvedValue({
+            serverVersion: '20260718.10.0',
+            release: {
+                tag: 'v20260718.10.0',
+                assets: [
+                    {
+                        name: 'VRCX.Headless.Setup.20260718.10.0.win-x64.exe',
+                        digest: `sha256:${'4'.repeat(64)}`,
+                        size: 42,
+                        downloadUrl: 'https://example.invalid/win-x64.exe'
+                    }
+                ]
+            }
+        });
+
+        await store.checkForForkUpdate();
+
+        expect(globalThis.AppApi.DownloadUpdate).not.toHaveBeenCalled();
+        expect(window.electron.restartApp).not.toHaveBeenCalled();
+        expect(store.forkUpdateStatus).toBe('in-sync');
+    });
+
     test('warns without installing when the mismatched server version has no published release yet', async () => {
         const store = useVRCXUpdaterStore();
         globalThis.updateService.getUpdateInfo.mockResolvedValue({

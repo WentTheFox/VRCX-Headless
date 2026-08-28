@@ -1371,6 +1371,42 @@ function parseSha256Digest(digest, assetName) {
 }
 
 /**
+ * Found live (2026-08-28): `update-release.js`'s `getUpdateInfo()` caches
+ * its GitHub releases lookup server-side for 30 minutes (`CACHE_TTL_MS`) —
+ * reasonable on its own, but combined with cutting several PATCH releases
+ * in quick succession (this exact session), a client could connect to a
+ * server whose cache was populated *between* two of those releases and get
+ * confidently told the *older* one was the newest available. Reproduced
+ * live: a client already on the newest release got "updated" backward to
+ * the previous one purely from that timing — and since every release
+ * before this fix carried the infinite-loop bug this same session already
+ * found and fixed (comparing against `info.serverVersion` instead of
+ * `info.release.tag`), landing back on an unfixed build reintroduced that
+ * exact loop, from a client that had, until that moment, already been
+ * running the fix. `targetVersion === installedVersion` alone doesn't
+ * catch this — both are real version strings, just not the *same* one, and
+ * nothing in the original comparison ever asked which one was newer.
+ * Plain string comparison isn't safe here either once MINOR or PATCH
+ * reaches double digits (`"24.10" < "24.9"` as strings, backwards from the
+ * real numeric order) — this compares each dot-separated component as a
+ * number instead.
+ * @param {string} a
+ * @param {string} b
+ * @returns {number} negative if `a` is older than `b`, positive if newer, 0 if equal
+ */
+function compareForkVersions(a, b) {
+    const partsA = a.split('.').map(Number);
+    const partsB = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+        const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+        if (diff !== 0) {
+            return diff;
+        }
+    }
+    return 0;
+}
+
+/**
  * @returns {Promise<boolean>} true when an update was applied and this
  *   process has already called `app.exit()` to relaunch — found live
  *   (2026-08-28, Linux): `app.exit()` does not actually halt execution of
@@ -1446,6 +1482,12 @@ async function checkAndInstallForkUpdateInner() {
     // in sync instead of leaving this one path with the older, wrong logic.
     const targetVersion = info.release.tag.replace(/^v/, '');
     if (targetVersion === installedVersion) {
+        return false;
+    }
+    if (compareForkVersions(targetVersion, installedVersion) < 0) {
+        logFork(
+            `Offered release ${targetVersion} is older than installed ${installedVersion} — likely a stale server-side release-list cache, refusing to downgrade`
+        );
         return false;
     }
     // Suffix selection mirrors getForkAssetOfInterest's own doc comment in

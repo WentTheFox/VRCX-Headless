@@ -174,6 +174,33 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     }
 
     /**
+     * Found live (2026-08-28, in the desktop main process's own equivalent
+     * of this check): `update-release.js`'s `getUpdateInfo()` caches its
+     * GitHub releases lookup server-side for 30 minutes, so a client can
+     * connect to a server whose cache was populated *between* two PATCH
+     * releases cut in quick succession and get confidently told the older
+     * one is the newest available — `targetVersion === installedVersion`
+     * alone doesn't catch that, since both are real, valid version strings,
+     * just not the *same* one. Plain string comparison isn't safe here
+     * either once MINOR or PATCH reaches double digits (`"24.10" < "24.9"`
+     * as strings) — this compares each dot-separated component as a number.
+     * @param {string} a
+     * @param {string} b
+     * @returns {number} negative if `a` is older than `b`, positive if newer, 0 if equal
+     */
+    function compareForkVersions(a, b) {
+        const partsA = a.split('.').map(Number);
+        const partsB = b.split('.').map(Number);
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+            const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+            if (diff !== 0) {
+                return diff;
+            }
+        }
+        return 0;
+    }
+
+    /**
      * `LINUX` (this store's build flag) only means "this is the Electron
      * build" (CLAUDE.md's "Desktop client OS support"), not the actual host
      * OS — the Electron client also runs on Windows now. `navigator.platform`
@@ -253,6 +280,15 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         // an older PATCH than the newest one published under its own MINOR.
         const targetVersion = info.release.tag.replace(/^v/, '');
         if (targetVersion === installedForkVersion.value) {
+            forkUpdateStatus.value = 'in-sync';
+            return;
+        }
+        if (compareForkVersions(targetVersion, installedForkVersion.value) < 0) {
+            // A stale server-side cache offering an older release than
+            // what's already installed — treat it the same as "in sync"
+            // rather than downgrading, since the client is already on
+            // something at least as new as what this (temporarily stale)
+            // answer can offer.
             forkUpdateStatus.value = 'in-sync';
             return;
         }
