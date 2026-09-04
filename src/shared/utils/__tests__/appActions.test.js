@@ -111,9 +111,7 @@ describe('appActions utils', () => {
     test('openExternalLink shows the external link dialog', () => {
         openExternalLink('https://example.com');
 
-        expect(mocks.externalLinkStore.showExternalLinkDialog).toHaveBeenCalledWith(
-            'https://example.com'
-        );
+        expect(mocks.externalLinkStore.showExternalLinkDialog).toHaveBeenCalledWith('https://example.com');
         expect(AppApi.OpenLink).not.toHaveBeenCalled();
     });
 

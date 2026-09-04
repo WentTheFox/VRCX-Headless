@@ -349,10 +349,7 @@ export const useGeneralSettingsStore = defineStore('GeneralSettings', () => {
 
     function setAutoDeclineFriendRequests() {
         autoDeclineFriendRequests.value = !autoDeclineFriendRequests.value;
-        configRepository.setBool(
-            'VRCX_autoDeclineFriendRequests',
-             autoDeclineFriendRequests.value
-        );
+        configRepository.setBool('VRCX_autoDeclineFriendRequests', autoDeclineFriendRequests.value);
     }
 
     return {

@@ -234,16 +234,10 @@ export const useNotificationStore = defineStore('Notification', () => {
      */
     function handlePipelineNotification(args) {
         const ref = args.json;
-        if (
-            ref.type === 'friendRequest' &&
-            generalSettingsStore.autoDeclineFriendRequests
-        ) {
+        if (ref.type === 'friendRequest' && generalSettingsStore.autoDeclineFriendRequests) {
             handleAutoDeclineFriendRequest(ref);
         }
-        if (
-            ref.type !== 'requestInvite' ||
-            generalSettingsStore.autoAcceptInviteRequests === 'Off'
-        ) {
+        if (ref.type !== 'requestInvite' || generalSettingsStore.autoAcceptInviteRequests === 'Off') {
             return;
         }
 
