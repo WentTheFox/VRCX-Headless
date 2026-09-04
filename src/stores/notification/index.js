@@ -234,7 +234,16 @@ export const useNotificationStore = defineStore('Notification', () => {
      */
     function handlePipelineNotification(args) {
         const ref = args.json;
-        if (ref.type !== 'requestInvite' || generalSettingsStore.autoAcceptInviteRequests === 'Off') {
+        if (
+            ref.type === 'friendRequest' &&
+            generalSettingsStore.autoDeclineFriendRequests
+        ) {
+            handleAutoDeclineFriendRequest(ref);
+        }
+        if (
+            ref.type !== 'requestInvite' ||
+            generalSettingsStore.autoAcceptInviteRequests === 'Off'
+        ) {
             return;
         }
 
@@ -331,6 +340,27 @@ export const useNotificationStore = defineStore('Notification', () => {
                         console.error(err);
                     });
             });
+    }
+
+    async function handleAutoDeclineFriendRequest(ref) {
+        const joinInfo = await database.getJoinCount({
+            id: ref.senderUserId,
+            displayName: ref.senderUsername
+        });
+        if (Number(joinInfo.joinCount) !== 0) {
+            return;
+        }
+
+        const text = `Auto declined friend request from ${ref.senderUsername}`;
+        if (AppDebug.errorNoty) {
+            toast.dismiss(AppDebug.errorNoty);
+        }
+        AppDebug.errorNoty = toast.info(text);
+        console.log(text);
+        await notificationRequest.hideNotification({
+            notificationId: ref.id
+        });
+        handleNotificationHide(ref.id);
     }
 
     /**
