@@ -413,10 +413,7 @@ export function getGroupDialogCalendar(groupId) {
                         eventId: event.id
                     })
                     .then((args) => {
-                        Object.assign(
-                            event,
-                            groupStore.applyGroupEvent(args.json)
-                        );
+                        Object.assign(event, groupStore.applyGroupEvent(args.json));
                     });
             }
         }
