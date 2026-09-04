@@ -929,22 +929,19 @@ const groupReq = {
      * startsAt: string,
      * endsAt: string,
      * title: string,
-     * accessType: 'group' | 'public',
+     * accessType: string, // 'group' | 'public',
      * description: string,
      * category: string,
      * tags: Array<string>,
-     * isDraft: boolean,
      * imageId: string,
      * roleIds: Array<string>,
-     * parentId: null,
+     * parentId?: null,
      * platforms: Array<string>,
      * languages: Array<string>,
      * sendCreationNotification: boolean,
-     * featured: boolean,
      * hostEarlyJoinMinutes: number,
      * guestEarlyJoinMinutes: number,
      * closeInstanceAfterEndMinutes: number,
-     * usesInstanceOverflow: boolean,
      * groupId: string
      * }} params
      * @returns { Promise<{json: any, params}> }
@@ -967,29 +964,26 @@ const groupReq = {
      * startsAt?: string,
      * endsAt?: string,
      * title?: string,
-     * accessType?: 'group' | 'public',
+     * accessType?: string, // 'group' | 'public',
      * description?: string,
      * category?: string,
      * tags?: Array<string>,
-     * isDraft?: boolean,
      * imageId?: string,
      * roleIds?: Array<string>,
      * parentId?: null,
      * platforms?: Array<string>,
      * languages?: Array<string>,
-     * sendCreationNotification?: boolean,
      * featured?: boolean,
      * hostEarlyJoinMinutes?: number,
      * guestEarlyJoinMinutes?: number,
      * closeInstanceAfterEndMinutes?: number,
-     * usesInstanceOverflow?: boolean,
      * groupId: string,
      * eventId: string
      * }} params
      * @returns { Promise<{json: any, params}> }
      */
     editGroupEvent(params) {
-        return request(`calendar/${params.groupId}/${params.eventId}`, {
+        return request(`calendar/${params.groupId}/${params.eventId}/event`, {
             method: 'PUT',
             params
         }).then((json) => {

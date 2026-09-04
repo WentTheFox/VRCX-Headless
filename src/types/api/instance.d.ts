@@ -27,6 +27,23 @@ export type GetInstanceShortName = (instance: { worldId: string; instanceId: str
     params?: { shortName: string };
 }>;
 
+export type InstanceAnnouncement = (params: {
+    location: string;
+    title: string;
+    message: string;
+    imageId?: string;
+    imageVersion?: string;
+}) => Promise<{
+    json: any;
+    params: {
+        location: string;
+        title: string;
+        message: string;
+        imageId?: string;
+        imageVersion?: string;
+    };
+}>;
+
 // Internal response types
 interface GetInstanceResponse {
     active: boolean;
