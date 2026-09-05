@@ -107,3 +107,87 @@ describe('feed write deduplication', () => {
         expect(gpsRowCount('wrld_e:1~private(usr_test)')).toBe(2);
     });
 });
+
+describe('friend log history write deduplication', () => {
+    /** @type {string} */
+    let dir;
+    /** @type {Awaited<ReturnType<typeof openDatabase>>} */
+    let handle;
+
+    beforeAll(async () => {
+        dir = mkdtempSync(path.join(tmpdir(), 'vrcx-headless-friend-log-dedup-'));
+        handle = await openDatabase({
+            databasePath: path.join(dir, 'VRCX.sqlite3'),
+            create: true
+        });
+        await migrate(handle, { userId: TEST_USER_ID });
+    });
+
+    afterAll(() => {
+        handle?.close();
+        rmSync(dir, { recursive: true, force: true });
+    });
+
+    function friendLogRowCount(userId) {
+        return handle.sqlite.Execute(
+            `SELECT COUNT(*) FROM ${handle.dbVars.userPrefix}_friend_log_history WHERE user_id = @user_id`,
+            { '@user_id': userId }
+        )[0][0];
+    }
+
+    it('collapses the same friend-add event relayed to multiple clients into one row', async () => {
+        const friendUserId = 'usr_dedup-friend-add';
+        const entry = {
+            created_at: '2026-09-06T04:00:00.000Z',
+            type: 'Friend',
+            userId: friendUserId,
+            displayName: 'NewFriend',
+            friendNumber: 42
+        };
+        await handle.database.addFriendLogHistory(entry);
+        await handle.database.addFriendLogHistory({
+            ...entry,
+            created_at: '2026-09-06T04:00:00.600Z' // same event, relayed to a second client
+        });
+
+        expect(friendLogRowCount(friendUserId)).toBe(1);
+    });
+
+    it('does not dedup genuinely different friend log events for the same user', async () => {
+        const friendUserId = 'usr_dedup-friend-distinct';
+        await handle.database.addFriendLogHistory({
+            created_at: '2026-09-06T05:00:00.000Z',
+            type: 'Friend',
+            userId: friendUserId,
+            displayName: 'DistinctFriend',
+            friendNumber: 43
+        });
+        await handle.database.addFriendLogHistory({
+            created_at: '2026-09-06T05:00:00.500Z',
+            type: 'DisplayName',
+            userId: friendUserId,
+            displayName: 'RenamedFriend',
+            previousDisplayName: 'DistinctFriend',
+            friendNumber: 43
+        });
+
+        expect(friendLogRowCount(friendUserId)).toBe(2);
+    });
+
+    it('does not dedup the same friend log event far apart in time', async () => {
+        const friendUserId = 'usr_dedup-friend-farapart';
+        const entry = {
+            created_at: '2026-09-06T06:00:00.000Z',
+            type: 'Unfriend',
+            userId: friendUserId,
+            displayName: 'ReaddedFriend'
+        };
+        await handle.database.addFriendLogHistory(entry);
+        await handle.database.addFriendLogHistory({
+            ...entry,
+            created_at: '2026-09-06T06:05:00.000Z' // a genuine unfriend/refriend/unfriend cycle
+        });
+
+        expect(friendLogRowCount(friendUserId)).toBe(2);
+    });
+});
