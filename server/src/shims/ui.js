@@ -24,12 +24,16 @@ export const useUiStore = defineStore('Ui', () => {
     function jumpBackDialogCrumb() {}
     function clearDialogCrumbs() {}
     function notifyMenu() {}
+    function removeNotify() {}
+    function updateTrayIconNotify() {}
 
     return {
         openDialog,
         setDialogCrumbLabel,
         jumpBackDialogCrumb,
         clearDialogCrumbs,
-        notifyMenu
+        notifyMenu,
+        removeNotify,
+        updateTrayIconNotify
     };
 });
