@@ -1,6 +1,8 @@
 /**
  * Wraps the 5 feed-writing methods on the real, unmodified `database`
- * facade (`src/services/database/feed.js`) with a near-duplicate check.
+ * facade (`src/services/database/feed.js`), plus `addFriendLogHistory`
+ * (`src/services/database/friendLogHistory.js`), with a near-duplicate
+ * check.
  *
  * Both the server's own pipeline processing and every client's RPC-relayed
  * "write" call the exact same method on this shared object (Node's module
@@ -15,16 +17,24 @@
  * search.js`, `src/stores/photon.js`, not just `websocket.js`'s pipeline
  * handler), so a client-side "always no-op" allowlist isn't safe for
  * those -- it would silently drop legitimate feed writes triggered by
- * direct actions.
+ * direct actions. `addFriendship`/`updateFriendship`/
+ * `runDeleteFriendshipFlow` (`src/coordinators/friendRelationshipCoordinator.js`)
+ * have the exact same shape: every connected client (and the server
+ * itself) runs the real, unmodified `handlePipeline` -> `handleFriendAdd`
+ * -> `addFriendship` against the same relayed `friend-add`/`friend-delete`
+ * frame, and each independently decides "not yet in my local `friendLog`
+ * map" and calls `database.addFriendLogHistory` -- one row per connected
+ * client, found live (2026-09-06: a new friend showed up duplicated once
+ * per connected client in Friend Log).
  *
  * Deduping here instead, by content rather than by caller, sidesteps that
  * entirely: a genuinely new event's content won't match a recent row and
  * still inserts normally, from any source. The existing `INSERT OR IGNORE`
- * in feed.js only catches byte-identical rows, but the server-side and
- * client-relayed writes for the *same* real event each compute their own
- * `created_at` independently (found live, 2026-08-18: real duplicate rows
- * in `feed_gps`/`feed_avatar` a few hundred ms to ~1s apart), so that
- * never fires for this case.
+ * in feed.js/friendLogHistory.js only catches byte-identical rows, but the
+ * server-side and client-relayed writes for the *same* real event each
+ * compute their own `created_at` independently (found live, 2026-08-18:
+ * real duplicate rows in `feed_gps`/`feed_avatar` a few hundred ms to ~1s
+ * apart), so that never fires for this case.
  */
 import sqliteService from '../../src/services/sqlite.js';
 
@@ -68,6 +78,17 @@ const DEDUP_CONFIGS = {
         fields: (entry) => ({
             type: entry.type,
             location: entry.location
+        })
+    },
+    addFriendLogHistory: {
+        table: 'friend_log_history',
+        fields: (entry) => ({
+            type: entry.type,
+            display_name: entry.displayName,
+            previous_display_name: entry.previousDisplayName,
+            trust_level: entry.trustLevel,
+            previous_trust_level: entry.previousTrustLevel,
+            friend_number: entry.friendNumber
         })
     }
 };
