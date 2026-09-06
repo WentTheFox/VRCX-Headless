@@ -16,6 +16,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
 
     const overlayToast = ref('Game Running');
     const openVR = ref(false);
+    const startWithSteamVR = ref(false);
     const overlayNotifications = ref(true);
     const xsNotifications = ref(true);
     const ovrtHudNotifications = ref(true);
@@ -128,6 +129,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             overlayToastConfig,
             overlayNotificationsConfig,
             openVRConfig,
+            startWithSteamVRConfig,
             xsNotificationsConfig,
             ovrtHudNotificationsConfig,
             ovrtWristNotificationsConfig,
@@ -145,6 +147,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             configRepository.getString('VRCX_overlayToast', 'Game Running'),
             configRepository.getBool('VRCX_overlayNotifications', true),
             configRepository.getBool('openVR', false),
+            configRepository.getBool('VRCX_startWithSteamVR', false),
             configRepository.getBool('VRCX_xsNotifications', true),
             configRepository.getBool('VRCX_ovrtHudNotifications', true),
             configRepository.getBool('VRCX_ovrtWristNotifications', false),
@@ -162,6 +165,16 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
 
         overlayToast.value = overlayToastConfig;
         openVR.value = openVRConfig;
+        startWithSteamVR.value = startWithSteamVRConfig;
+        // Reconcile on every launch, same reasoning as general.js's
+        // isStartAtWindowsStartup: a config value saved from before this
+        // registration existed (or a run where SteamVR wasn't installed
+        // yet) would otherwise sit there showing "on" with nothing actually
+        // registered with SteamVR, since nothing else re-invokes this
+        // unless the user manually re-toggles it.
+        if (!WEB) {
+            AppApi.SetStartupSteamVR(startWithSteamVR.value);
+        }
         overlayNotifications.value = overlayNotificationsConfig;
         xsNotifications.value = xsNotificationsConfig;
         ovrtHudNotifications.value = ovrtHudNotificationsConfig;
@@ -199,6 +212,13 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     function setOpenVR() {
         openVR.value = !openVR.value;
         configRepository.setBool('openVR', openVR.value);
+    }
+    function setStartWithSteamVR() {
+        startWithSteamVR.value = !startWithSteamVR.value;
+        configRepository.setBool('VRCX_startWithSteamVR', startWithSteamVR.value);
+        if (!WEB) {
+            AppApi.SetStartupSteamVR(startWithSteamVR.value);
+        }
     }
     function setXsNotifications() {
         xsNotifications.value = !xsNotifications.value;
@@ -421,6 +441,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     return {
         overlayToast,
         openVR,
+        startWithSteamVR,
         overlayNotifications,
         xsNotifications,
         ovrtHudNotifications,
@@ -441,6 +462,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
 
         setOverlayToast,
         setOpenVR,
+        setStartWithSteamVR,
         setOverlayNotifications,
         setXsNotifications,
         setOvrtHudNotifications,

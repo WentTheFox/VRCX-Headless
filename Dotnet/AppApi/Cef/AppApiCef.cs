@@ -178,6 +178,13 @@ namespace VRCX
             }
         }
 
+        // Not implemented on this client — see AppApiElectron's own
+        // implementation and CLAUDE.md's patch inventory for why this is
+        // Electron-only rather than ported here too.
+        public override void SetStartupSteamVR(bool enabled)
+        {
+        }
+
         public override void CopyImageToClipboard(string path)
         {
             if (!File.Exists(path) ||

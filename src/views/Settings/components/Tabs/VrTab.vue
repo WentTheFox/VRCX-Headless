@@ -12,6 +12,16 @@
                     " />
             </SettingsItem>
 
+            <SettingsItem
+                v-if="isLinux && !isWeb"
+                :label="t('view.settings.vr.vr_core.start_with_steamvr')"
+                :description="t('view.settings.vr.vr_core.start_with_steamvr_description')">
+                <Switch
+                    :model-value="startWithSteamVR"
+                    :ariaLabel="t('view.settings.vr.vr_core.start_with_steamvr')"
+                    @update:modelValue="setStartWithSteamVR" />
+            </SettingsItem>
+
             <SettingsItem :label="t('view.settings.wrist_overlay.steamvr_wrist_overlay.start_overlay_with')">
                 <Select
                     :model-value="openVRAlways ? 'true' : 'false'"
@@ -272,6 +282,7 @@
     const {
         overlayToast,
         openVR,
+        startWithSteamVR,
         overlayNotifications,
         xsNotifications,
         ovrtHudNotifications,
@@ -290,6 +301,7 @@
     const {
         setOverlayToast,
         setOpenVR,
+        setStartWithSteamVR,
         setOverlayNotifications,
         setXsNotifications,
         setOvrtHudNotifications,
@@ -305,6 +317,7 @@
     const isNotificationPositionDialogVisible = ref(false);
     const feedFiltersDialogMode = ref('');
     const isLinux = computed(() => LINUX);
+    const isWeb = computed(() => WEB);
 
     const notificationOpacityValue = computed({
         get: () => [notificationOpacity.value],
