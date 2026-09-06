@@ -1,10 +1,12 @@
 # Fork-only workflow: pushes an updated PKGBUILD to the vrcx-headless-bin AUR
 # package (aur.archlinux.org) whenever a GitHub Release is actually
-# *published* -- not on tag push, deliberately, since desktop-release.yaml
-# (see CLAUDE.md's "Cutting a release") only creates a draft release for a
-# human to review first. AUR should only ever point at a real, permanent
-# download URL, so this waits for that same human approval rather than
-# racing ahead of it.
+# *published* -- not on tag push. desktop-release.yaml (see CLAUDE.md's
+# "Cutting a release") publishes its release immediately as of 2026-09-06,
+# so in practice this now fires right after that workflow finishes; kept as
+# a `released` trigger rather than folded into that workflow so a future
+# reversion back to draft releases there (see that workflow's own comment)
+# would still gate this one on the human's manual publish, with no change
+# needed here.
 #
 # Cannot go live until two things exist that only a human can create:
 #   1. An AUR account (aur.archlinux.org) with an SSH key registered to it.
