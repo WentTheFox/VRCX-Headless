@@ -130,6 +130,107 @@ namespace VRCX
             }
         }
 
+        private const string SteamVRAppKey = "wtf.wentthefox.vrcx_headless";
+
+        /// <summary>
+        /// Registers (or unregisters auto-launch for) this client as a SteamVR
+        /// application via OpenVR's IVRApplications, so SteamVR can start it
+        /// automatically whenever SteamVR itself starts — the VR-side analogue
+        /// of SetStartup's Windows Run-key registration above, using the same
+        /// "reconcile on every launch" self-healing pattern (see
+        /// src/stores/settings/notifications.js's initNotificationsSettings).
+        /// Runs on a background thread since OpenVR.Init can briefly launch
+        /// SteamVR itself when it isn't already running.
+        /// </summary>
+        public override void SetStartupSteamVR(bool enabled)
+        {
+            Task.Run(() => SetStartupSteamVRInner(enabled));
+        }
+
+        private static void SetStartupSteamVRInner(bool enabled)
+        {
+            try
+            {
+                var manifestPath = WriteSteamVRManifest();
+                if (manifestPath == null)
+                    return;
+
+                var ownsSession = Valve.VR.OpenVR.System == null;
+                if (ownsSession)
+                {
+                    var err = Valve.VR.EVRInitError.None;
+                    Valve.VR.OpenVR.Init(ref err, Valve.VR.EVRApplicationType.VRApplication_Utility);
+                    if (err != Valve.VR.EVRInitError.None)
+                    {
+                        logger.Warn("Failed to init OpenVR for SteamVR startup registration: {0}", err);
+                        return;
+                    }
+                }
+
+                try
+                {
+                    var addErr = Valve.VR.OpenVR.Applications.AddApplicationManifest(manifestPath, false);
+                    if (addErr != Valve.VR.EVRApplicationError.None)
+                    {
+                        logger.Warn("Failed to add SteamVR application manifest: {0}", addErr);
+                        return;
+                    }
+
+                    var launchErr = Valve.VR.OpenVR.Applications.SetApplicationAutoLaunch(SteamVRAppKey, enabled);
+                    if (launchErr != Valve.VR.EVRApplicationError.None)
+                        logger.Warn("Failed to set SteamVR auto-launch: {0}", launchErr);
+                }
+                finally
+                {
+                    if (ownsSession)
+                        Valve.VR.OpenVR.Shutdown();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Warn(ex, "Failed to set SteamVR startup");
+            }
+        }
+
+        private static string WriteSteamVRManifest()
+        {
+            var path = Environment.ProcessPath;
+            if (path == null)
+            {
+                logger.Warn("Failed to determine process path for SteamVR manifest");
+                return null;
+            }
+
+            var pathKey = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? "binary_path_windows"
+                : "binary_path_linux";
+            var escapedPath = path.Replace("\\", "\\\\");
+            var manifest = $$"""
+                {
+                    "source": "vrcx-headless",
+                    "applications": [
+                        {
+                            "app_key": "{{SteamVRAppKey}}",
+                            "launch_type": "binary",
+                            "{{pathKey}}": "{{escapedPath}}",
+                            "arguments": "--startup",
+                            "is_dashboard_overlay": false,
+                            "strings": {
+                                "en_us": {
+                                    "name": "VRCX Headless Desktop",
+                                    "description": "VRCX Headless desktop client"
+                                }
+                            }
+                        }
+                    ]
+                }
+                """;
+
+            var manifestPath = Path.Join(Program.AppDataDirectory, "openvr.vrmanifest");
+            File.WriteAllText(manifestPath, manifest);
+            return manifestPath;
+        }
+
         public override void CopyImageToClipboard(string path)
         {
             if (!File.Exists(path) ||

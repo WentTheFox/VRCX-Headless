@@ -162,6 +162,7 @@ declare global {
         DoFunny(): Promise<void>;
         GetClipboard(): Promise<string>;
         SetStartup(enabled: boolean): Promise<void>;
+        SetStartupSteamVR(enabled: boolean): Promise<void>;
         CopyImageToClipboard(path: string): Promise<void>;
         FlashWindow(): Promise<void>;
         SetUserAgent(): Promise<void>;

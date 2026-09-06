@@ -759,7 +759,9 @@
             },
             "vr": {
                 "vr_core": {
-                    "header": "VR Core"
+                    "header": "VR Core",
+                    "start_with_steamvr": "Start with SteamVR",
+                    "start_with_steamvr_description": "Registers this app with SteamVR so it launches automatically whenever SteamVR starts."
                 },
                 "vr_notifications": {
                     "header": "VR Notifications"
