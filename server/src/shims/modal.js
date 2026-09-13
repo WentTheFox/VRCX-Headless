@@ -22,10 +22,20 @@
  * behaviour to inherit for free rather than something built for here.
  * `VRCHAT_2FA_CODE` takes priority when set, for non-interactive login
  * (`server/README.md`'s documented env var, same one `server/src/cli.js`
- * checks for the password).
+ * checks for the password). For `mode: 'totp'` specifically, `VRCHAT_2FA_SECRET`
+ * (a base32 secret from the *VRChat* account's own authenticator enrollment —
+ * distinct from `VRCX_SERVER_TOTP_SECRET`, which protects this server's own
+ * HTTP API) generates a fresh code on every call instead. `VRCHAT_2FA_CODE`
+ * is a single code, stale after one use — fine for a one-shot `login` CLI
+ * run, but useless for the unattended re-logins `authAutoLoginCoordinator.js`
+ * triggers over a server's lifetime, which is exactly when there's no human
+ * around to supply a fresh one. `mode: 'otp'` (backup code) and `'emailOtp'`
+ * have no equivalent — a backup code is single-use by design and an email
+ * code can't be derived locally — so those still fall through to stdin.
  */
 import { ask } from '../prompt.js';
 import { log } from '../log.js';
+import { generateTotpCode } from '../totp.js';
 
 /**
  * @param {string} kind
@@ -65,7 +75,11 @@ export function useModalStore() {
          */
         async otpPrompt(options) {
             const label = options?.title ? `${options.title}: ` : '2FA code: ';
-            const value = process.env.VRCHAT_2FA_CODE ?? (await ask(label));
+            const value =
+                process.env.VRCHAT_2FA_CODE ??
+                (options?.mode === 'totp' && process.env.VRCHAT_2FA_SECRET
+                    ? generateTotpCode(process.env.VRCHAT_2FA_SECRET)
+                    : await ask(label));
             return { ok: !!value, reason: value ? 'ok' : 'cancel', value };
         }
     };
