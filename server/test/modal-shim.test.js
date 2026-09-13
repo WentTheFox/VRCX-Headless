@@ -48,4 +48,32 @@ describe('modal.otpPrompt', () => {
         ]);
         expect(result).toBe('timed-out');
     });
+
+    it('accepts a lowercase secret grouped in 4s with spaces (common authenticator-export formatting)', async () => {
+        clearEnv();
+        const secret = generateTotpSecret();
+        const grouped = secret
+            .toLowerCase()
+            .match(/.{1,4}/g)
+            .join(' ');
+        process.env.VRCHAT_2FA_SECRET = grouped;
+        const result = await useModalStore().otpPrompt({ mode: 'totp' });
+        expect(result).toEqual({
+            ok: true,
+            reason: 'ok',
+            value: generateTotpCode(secret)
+        });
+    });
+
+    it('falls back to stdin (rather than a silently-wrong code) when the secret has non-base32 characters', async () => {
+        clearEnv();
+        // 0/1/8/9 are never valid base32 -- deliberately excluded from the
+        // alphabet to avoid confusion with O/I(l)/B/g.
+        process.env.VRCHAT_2FA_SECRET = 'abcd018 9efgh';
+        const result = await Promise.race([
+            useModalStore().otpPrompt({ mode: 'totp' }),
+            new Promise((resolve) => setTimeout(() => resolve('timed-out'), 50))
+        ]);
+        expect(result).toBe('timed-out');
+    });
 });

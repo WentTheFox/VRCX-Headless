@@ -48,6 +48,28 @@ function record(kind, options) {
     });
 }
 
+// Real base32 (RFC 4648) never contains 0/1/8/9 -- they're deliberately
+// excluded from the alphabet to avoid confusion with O/I(l)/B/g. totp.js's
+// own base32Decode() silently *drops* anything outside A-Z2-7 rather than
+// erroring (so setup-totp's own manual-entry parsing tolerates stray
+// whitespace/dashes), which is exactly wrong for a secret pasted from
+// somewhere else -- it would quietly decode to a shorter, wrong key and
+// every generated code would just fail forever with nothing in the logs to
+// explain why. Checked here, at the one call site that takes an
+// externally-supplied secret on faith, rather than loosening
+// base32Decode's own tolerant behaviour everywhere else it's used.
+const BASE32_SHAPE = /^[A-Za-z2-7]+$/;
+
+/**
+ * @param {string} rawSecret
+ * @returns {string | null} the normalized secret, or `null` if it isn't
+ *   plausibly base32
+ */
+function normalizeBase32Secret(rawSecret) {
+    const stripped = rawSecret.replace(/[\s-]/g, '');
+    return BASE32_SHAPE.test(stripped) ? stripped : null;
+}
+
 export function useModalStore() {
     return {
         /**
@@ -75,11 +97,18 @@ export function useModalStore() {
          */
         async otpPrompt(options) {
             const label = options?.title ? `${options.title}: ` : '2FA code: ';
-            const value =
-                process.env.VRCHAT_2FA_CODE ??
-                (options?.mode === 'totp' && process.env.VRCHAT_2FA_SECRET
-                    ? generateTotpCode(process.env.VRCHAT_2FA_SECRET)
-                    : await ask(label));
+            let value = process.env.VRCHAT_2FA_CODE;
+            if (value === undefined && options?.mode === 'totp' && process.env.VRCHAT_2FA_SECRET) {
+                const secret = normalizeBase32Secret(process.env.VRCHAT_2FA_SECRET);
+                if (secret) {
+                    value = generateTotpCode(secret);
+                } else {
+                    log.error(
+                        'VRCHAT_2FA_SECRET is not valid base32 (only A-Z and 2-7 -- never 0/1/8/9) -- falling back to stdin'
+                    );
+                }
+            }
+            value ??= await ask(label);
             return { ok: !!value, reason: value ? 'ok' : 'cancel', value };
         }
     };
