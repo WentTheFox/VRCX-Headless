@@ -174,6 +174,7 @@ sqlite3 ~/.config/VRCX/VRCX.sqlite3 "DELETE FROM configs WHERE name = 'VRCX_Serv
 | `VRCX_LOG_LEVEL`       | `debug` \| `info` \| `warn` \| `error` (default `info`) |
 | `VRCHAT_PASSWORD`      | Password for a non-interactive `login`                  |
 | `VRCHAT_2FA_CODE`      | Two-factor code for a non-interactive `login`           |
+| `VRCHAT_2FA_SECRET`    | Base32 TOTP secret from the VRChat account's own authenticator enrollment — generates a fresh code on every login/re-login, so an unattended auto-login retry can clear a TOTP challenge without `VRCHAT_2FA_CODE` (good for only one code) |
 | `VRCX_SERVER_TOTP_SECRET` | Base32 TOTP secret for `serve`, instead of running `setup-totp` |
 | `VRCX_SERVER_HOST`     | HTTP/WS bind address (default `0.0.0.0`)                |
 | `VRCX_SERVER_PORT`     | HTTP/WS bind port (default `9000`)                      |

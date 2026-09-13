@@ -115,6 +115,11 @@ Environment:
   VRCX_LOG_LEVEL       debug | info | warn | error   (default: info)
   VRCHAT_PASSWORD      Password for a non-interactive login
   VRCHAT_2FA_CODE      Two-factor code for a non-interactive login
+  VRCHAT_2FA_SECRET    Base32 TOTP secret from the VRChat account's own
+                       authenticator enrollment — generates a fresh code on
+                       every login/re-login, unlike VRCHAT_2FA_CODE (which is
+                       one code, good for one login). Needed for auto-login
+                       retries to survive a full re-login unattended.
   VRCX_SERVER_TOTP_SECRET
                        Base32 TOTP secret for \`serve\`, instead of \`setup-totp\`
   VRCX_SERVER_HOST     HTTP/WS bind address                (default: 0.0.0.0)
