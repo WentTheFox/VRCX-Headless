@@ -160,27 +160,37 @@ export function runCheckIfGameCrashedFlow() {
         return;
     }
     const { location } = locationStore.lastLocation;
-    AppApi.VrcClosedGracefully().then((result) => {
-        if (result || !isRealInstance(location)) {
-            return;
-        }
-        // check if relaunched less than 2mins ago (prevent crash loop)
-        if (
-            gameStore.state.lastCrashedTime &&
-            new Date().getTime() - gameStore.state.lastCrashedTime.getTime() < 120_000
-        ) {
-            console.log('VRChat was recently crashed, not relaunching');
-            return;
-        }
-        gameStore.setLastCrashedTime(new Date());
-        // wait a bit for SteamVR to potentially close before deciding to relaunch
-        let restartDelay = 8000;
-        if (gameStore.isGameNoVR) {
-            // wait for game to close before relaunching
-            restartDelay = 2000;
-        }
-        workerTimers.setTimeout(() => runRestartCrashedGameFlow(location), restartDelay);
-    });
+    // VRChat writes its graceful-quit log line ("OnApplicationQuit"/
+    // "HandleApplicationQuit") right as the process exits, but LogWatcher's
+    // native thread only rescans the log file for it once a second, on its
+    // own independent timer (Dotnet/LogWatcher.cs's ThreadLoop). Reading
+    // VrcClosedGracefully() immediately raced that poll almost every time --
+    // found live (2026-09-14): a confirmed clean, in-game exit still read as
+    // a crash and relaunched VRChat, because the flag hadn't flipped true
+    // yet. Waiting briefly gives that poll cycle a chance to catch up first.
+    workerTimers.setTimeout(() => {
+        AppApi.VrcClosedGracefully().then((result) => {
+            if (result || !isRealInstance(location)) {
+                return;
+            }
+            // check if relaunched less than 2mins ago (prevent crash loop)
+            if (
+                gameStore.state.lastCrashedTime &&
+                new Date().getTime() - gameStore.state.lastCrashedTime.getTime() < 120_000
+            ) {
+                console.log('VRChat was recently crashed, not relaunching');
+                return;
+            }
+            gameStore.setLastCrashedTime(new Date());
+            // wait a bit for SteamVR to potentially close before deciding to relaunch
+            let restartDelay = 8000;
+            if (gameStore.isGameNoVR) {
+                // wait for game to close before relaunching
+                restartDelay = 2000;
+            }
+            workerTimers.setTimeout(() => runRestartCrashedGameFlow(location), restartDelay);
+        });
+    }, 2000);
 }
 
 /**
