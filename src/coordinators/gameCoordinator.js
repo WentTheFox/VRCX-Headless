@@ -160,6 +160,9 @@ export function runCheckIfGameCrashedFlow() {
         return;
     }
     const { location } = locationStore.lastLocation;
+    if (!isRealInstance(location)) {
+        return;
+    }
     // VRChat writes its graceful-quit log line ("OnApplicationQuit"/
     // "HandleApplicationQuit") right as the process exits, but LogWatcher's
     // native thread only rescans the log file for it once a second, on its
@@ -167,10 +170,22 @@ export function runCheckIfGameCrashedFlow() {
     // VrcClosedGracefully() immediately raced that poll almost every time --
     // found live (2026-09-14): a confirmed clean, in-game exit still read as
     // a crash and relaunched VRChat, because the flag hadn't flipped true
-    // yet. Waiting briefly gives that poll cycle a chance to catch up first.
-    workerTimers.setTimeout(() => {
+    // yet. A single 2s delay (2026-09-14's own fix) turned out to still lose
+    // the race often enough to reproduce live again (2026-09-16) on the
+    // exact same build -- rather than guess at a longer fixed delay, poll
+    // repeatedly for up to 10s so a slow disk flush/poll cycle can't cause a
+    // false crash regardless of how long it actually takes.
+    const maxAttempts = 10;
+    /**
+     * @param {number} attempt Current poll attempt, 0-indexed.
+     */
+    function pollVrcClosedGracefully(attempt) {
         AppApi.VrcClosedGracefully().then((result) => {
-            if (result || !isRealInstance(location)) {
+            if (result) {
+                return;
+            }
+            if (attempt < maxAttempts - 1) {
+                workerTimers.setTimeout(() => pollVrcClosedGracefully(attempt + 1), 1000);
                 return;
             }
             // check if relaunched less than 2mins ago (prevent crash loop)
@@ -190,7 +205,8 @@ export function runCheckIfGameCrashedFlow() {
             }
             workerTimers.setTimeout(() => runRestartCrashedGameFlow(location), restartDelay);
         });
-    }, 2000);
+    }
+    pollVrcClosedGracefully(0);
 }
 
 /**
