@@ -59,13 +59,14 @@ describe('acquireLock / releaseLock', () => {
         releaseLock(databasePath);
     });
 
-    it('refuses to acquire when a fake-but-plausible live pid holds it', () => {
-        // pid 1 (init/systemd) is essentially always alive on a real
-        // machine and never our own process, so isProcessAlive(1) === true
+    it('refuses to acquire when another live pid holds it', () => {
+        // Our parent process (the test runner) is alive and never our own
+        // pid on every platform, so isProcessAlive(process.ppid) === true
         // without needing to spawn a real child process for this test.
+        // (pid 1 would only be alive on Unix.)
         writeFileSync(
             `${databasePath}.lock`,
-            JSON.stringify({ pid: 1, startedAt: new Date().toISOString() })
+            JSON.stringify({ pid: process.ppid, startedAt: new Date().toISOString() })
         );
         expect(() => acquireLock(databasePath)).toThrow(/already has/i);
     });
@@ -106,7 +107,9 @@ describe('acquireLock / releaseLock', () => {
         ).toBe(true);
     });
 
-    it('reclaims a lock whose pid was reused by an unrelated process (the container-restart bug)', () => {
+    // The start-time identity check reads /proc/<pid>/stat, so it only exists
+    // where procfs does; elsewhere isProcessAlive falls back to kill(pid, 0).
+    it.skipIf(!existsSync('/proc/self/stat'))('reclaims a lock whose pid was reused by an unrelated process (the container-restart bug)', () => {
         // Reproduces a real deployment failure: serve is SIGKILLed/OOM-killed
         // instead of exiting cleanly, so the lockfile survives on the
         // bind-mounted data volume with the old container's pid. A fresh
