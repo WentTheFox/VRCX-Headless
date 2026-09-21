@@ -684,7 +684,7 @@
     const { currentUser, isLocalUserVrcPlusSupporter } = storeToRefs(useUserStore());
     const { cachedConfig } = storeToRefs(useAuthStore());
     const cachedConfigTyped = computed(
-        () => /** @type {{ maxUserEmoji?: number, maxUserStickers?: number }} */ (cachedConfig.value ?? {})
+        () => /** @type {{ maxUserEmoji?: number; maxUserStickers?: number }} */ (cachedConfig.value ?? {})
     );
     const galleryTabs = computed(() => [
         { value: 'gallery', label: t('dialog.gallery_icons.gallery') },
@@ -753,30 +753,20 @@
         galleryDialogVisible.value = false;
     });
 
-    /**
-     *
-     */
     function startUpload() {
         pendingUploads.value += 1;
     }
 
-    /**
-     *
-     */
     function finishUpload() {
         pendingUploads.value = Math.max(0, pendingUploads.value - 1);
     }
 
-    /**
-     *
-     */
     function goBack() {
         galleryDialogVisible.value = false;
         router.push({ name: 'tools' });
     }
 
     /**
-     *
      * @param {string} id
      */
     function triggerFileInput(id) {
@@ -784,8 +774,7 @@
     }
 
     /**
-     *
-     * @param {Array<{ id: string }>} array
+     * @param {{ id: string }[]} array
      * @param {string} itemId
      */
     function removeItemById(array, itemId) {
@@ -799,7 +788,6 @@
     }
 
     /**
-     *
      * @param file
      * @param title
      * @param aspectRatio
@@ -814,7 +802,6 @@
     }
 
     /**
-     *
      * @param blob
      */
     async function onCropConfirm(blob) {
@@ -832,9 +819,8 @@
     }
 
     /**
-     *
      * @param {string} fileId
-     * @param {Array<{ id: string }>} array
+     * @param {{ id: string }[]} array
      */
     function deleteFileAndRemove(fileId, array) {
         miscRequest.deleteFile(fileId).then((args) => {
@@ -844,7 +830,6 @@
     }
 
     /**
-     *
      * @param {string} currentUrl
      * @param {string} fileId
      * @returns {boolean}
@@ -854,14 +839,17 @@
     }
 
     /**
-     *
      * @param {Event} e
      * @param {{
-     *   inputSelector: string,
-     *   aspectRatio: number,
-     *   beforeCrop?: (file: File) => void,
-     *   upload: (payload: { file: File, blob: Blob, base64Body: string }) => Promise<void>,
-     *   errorMessage?: string
+     *     inputSelector: string;
+     *
+     *     aspectRatio: number;
+     *
+     *     beforeCrop?: (file: File) => void;
+     *
+     *     upload: (payload: { file: File; blob: Blob; base64Body: string }) => Promise<void>;
+     *
+     *     errorMessage?: string;
      * }} options
      */
     function openImageUploadFlow(
@@ -907,7 +895,6 @@
     }
 
     /**
-     *
      * @param e
      */
     function onFileChangeGallery(e) {
@@ -920,15 +907,11 @@
         });
     }
 
-    /**
-     *
-     */
     function displayGalleryUpload() {
         triggerFileInput('GalleryUploadButton');
     }
 
     /**
-     *
      * @param fileId
      */
     function setProfilePicOverride(fileId) {
@@ -954,7 +937,6 @@
     }
 
     /**
-     *
      * @param fileId
      */
     function compareCurrentProfilePic(fileId) {
@@ -962,7 +944,6 @@
     }
 
     /**
-     *
      * @param fileId
      */
     function deleteGalleryImage(fileId) {
@@ -976,7 +957,6 @@
         }
     }
     /**
-     *
      * @param e
      */
     function onFileChangeVRCPlusIcon(e) {
@@ -990,15 +970,11 @@
         });
     }
 
-    /**
-     *
-     */
     function displayVRCPlusIconUpload() {
         triggerFileInput('VRCPlusIconUploadButton');
     }
 
     /**
-     *
      * @param fileId
      */
     function setVRCPlusIcon(fileId) {
@@ -1024,7 +1000,6 @@
     }
 
     /**
-     *
      * @param userIcon
      */
     function compareCurrentVRCPlusIcon(userIcon) {
@@ -1032,7 +1007,6 @@
     }
 
     /**
-     *
      * @param fileId
      */
     function deleteVRCPlusIcon(fileId) {
@@ -1040,7 +1014,6 @@
     }
 
     /**
-     *
      * @param fileName
      */
     function parseEmojiFileName(fileName) {
@@ -1086,7 +1059,6 @@
     }
 
     /**
-     *
      * @param e
      */
     function onFileChangeEmoji(e) {
@@ -1103,15 +1075,11 @@
         });
     }
 
-    /**
-     *
-     */
     function displayEmojiUpload() {
         triggerFileInput('EmojiUploadButton');
     }
 
     /**
-     *
      * @param fileId
      */
     function deleteEmoji(fileId) {
@@ -1128,7 +1096,6 @@
     }
 
     /**
-     *
      * @param e
      */
     function onFileChangeSticker(e) {
@@ -1141,15 +1108,11 @@
         });
     }
 
-    /**
-     *
-     */
     function displayStickerUpload() {
         triggerFileInput('StickerUploadButton');
     }
 
     /**
-     *
      * @param fileId
      */
     function deleteSticker(fileId) {
@@ -1171,7 +1134,6 @@
     }
 
     /**
-     *
      * @param e
      */
     function onFileChangePrint(e) {
@@ -1187,15 +1149,11 @@
         });
     }
 
-    /**
-     *
-     */
     function displayPrintUpload() {
         triggerFileInput('PrintUploadButton');
     }
 
     /**
-     *
      * @param printId
      */
     function deletePrint(printId) {
@@ -1279,7 +1237,6 @@
     }
 
     /**
-     *
      * @param inventoryId
      */
     async function consumeInventoryBundle(inventoryId) {
@@ -1306,9 +1263,6 @@
         // inventoryItemsCreated: 0
     }
 
-    /**
-     *
-     */
     async function redeemReward() {
         modalStore
             .prompt({

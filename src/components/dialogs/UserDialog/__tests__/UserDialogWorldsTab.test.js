@@ -124,7 +124,6 @@ const MOCK_WORLDS = [
 ];
 
 /**
- *
  * @param overrides
  */
 function mountComponent(overrides = {}) {

@@ -61,9 +61,6 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
 
     const ipcTimeout = state.ipcTimeout;
 
-    /**
-     *
-     */
     async function updateLoop() {
         try {
             if (watchState.isLoggedIn) {
@@ -141,7 +138,6 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
     }
 
     /**
-     *
      * @param value
      */
     function setNextClearVRCXCacheCheck(value) {
@@ -149,7 +145,6 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
     }
 
     /**
-     *
      * @param value
      */
     function setNextGroupInstanceRefresh(value) {
@@ -157,7 +152,6 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
     }
 
     /**
-     *
      * @param value
      */
     function setNextDiscordUpdate(value) {
@@ -165,7 +159,6 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
     }
 
     /**
-     *
      * @param value
      */
     function setIpcTimeout(value) {
@@ -173,7 +166,6 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
     }
 
     /**
-     *
      * @param value
      */
     function setNextCurrentUserRefresh(value) {

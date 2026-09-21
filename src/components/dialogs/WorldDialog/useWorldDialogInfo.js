@@ -4,12 +4,15 @@ import { database } from '../../../services/database';
 
 /**
  * Composable for WorldDialogInfoTab computed properties and actions.
- * @param {import('vue').Ref} worldDialog - reactive ref to the world dialog state
- * @param {object} deps - external dependencies
- * @param {Function} deps.t - i18n translation function
- * @param {Function} deps.toast - toast notification function
- * @param deps.sdkUnityVersion
- * @returns {object} info composable API
+ *
+ * @param {import('vue').Ref} worldDialog - Reactive ref to the world dialog state
+ * @param {object} deps - External dependencies
+ * @param {Function} deps.t - I18n translation function
+ * @param {object} deps.toast - Toast notification functions
+ * @param {Function} deps.toast.success - Toast success notification function
+ * @param {Function} deps.toast.error - Toast error notification function
+ * @param {string} [deps.sdkUnityVersion]
+ * @returns {object} Info composable API
  */
 export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
     const { memo, onWorldMemoChange } = useWorldMemo(worldDialog);
@@ -93,9 +96,6 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
         return newest;
     });
 
-    /**
-     *
-     */
     function copyWorldId() {
         navigator.clipboard
             .writeText(worldDialog.value.id)
@@ -108,9 +108,6 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
             });
     }
 
-    /**
-     *
-     */
     function copyWorldUrl() {
         navigator.clipboard
             .writeText(`https://vrchat.com/home/world/${worldDialog.value.id}`)
@@ -123,9 +120,6 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
             });
     }
 
-    /**
-     *
-     */
     function copyWorldName() {
         navigator.clipboard
             .writeText(worldDialog.value.ref.name)
@@ -156,8 +150,8 @@ export function useWorldDialogInfo(worldDialog, { t, toast, sdkUnityVersion }) {
 }
 
 /**
- * @param {import('vue').Ref} worldDialog - reactive ref to the world dialog state
- * @returns {object} memo composable API
+ * @param {import('vue').Ref} worldDialog - Reactive ref to the world dialog state
+ * @returns {object} Memo composable API
  */
 export function useWorldMemo(worldDialog) {
     const memo = computed({
@@ -169,9 +163,6 @@ export function useWorldMemo(worldDialog) {
         }
     });
 
-    /**
-     *
-     */
     function onWorldMemoChange() {
         const worldId = worldDialog.value.id;
         const memo = worldDialog.value.memo;

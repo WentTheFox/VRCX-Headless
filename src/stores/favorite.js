@@ -191,7 +191,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     });
 
     /**
-     *
      * @param {Array} list
      * @param {object} selectionRef
      * @returns {void}
@@ -257,7 +256,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param {string} objectId
      * @returns {object | undefined}
      */
@@ -266,8 +264,7 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
-     * @param {object}  args
+     * @param {object} args
      * @returns {void}
      */
     function handleFavoriteGroup(args) {
@@ -275,7 +272,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @returns {void}
      */
     function refreshFavoriteGroups() {
@@ -309,9 +305,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
         });
     }
 
-    /**
-     *
-     */
     function buildFavoriteGroups() {
         let group;
         let groups;
@@ -423,9 +416,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
         countFavoriteGroups();
     }
 
-    /**
-     *
-     */
     function countFavoriteGroups() {
         const cachedFavoriteGroups = getCachedFavoriteGroupsByTypeName();
         for (const key in cachedFavoriteGroups) {
@@ -441,7 +431,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param {object} json
      * @returns {object}
      */
@@ -499,7 +488,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param avatarRef
      */
     function syncLocalAvatarFavoriteRef(avatarRef) {
@@ -521,7 +509,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param {string} worldId
      * @param {string} group
      * @returns {boolean}
@@ -540,7 +527,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param {string} avatarId
      * @param {string} group
      * @returns {boolean}
@@ -559,7 +545,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param {string} objectId
      */
     function updateFavoriteDialog(objectId) {
@@ -593,7 +578,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param {string} group
      */
     function deleteLocalWorldFavoriteGroup(group) {
@@ -642,6 +626,7 @@ export const useFavoriteStore = defineStore('Favorite', () => {
 
     /**
      * Check if a user is in any local friend favorite group.
+     *
      * @param {string} userId
      * @returns {boolean}
      */
@@ -672,7 +657,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param objectId
      */
     function deleteFavoriteNoConfirm(objectId) {
@@ -693,7 +677,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param type
      * @param objectId
      */
@@ -706,7 +689,6 @@ export const useFavoriteStore = defineStore('Favorite', () => {
     }
 
     /**
-     *
      * @param a
      * @param b
      */

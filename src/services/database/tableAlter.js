@@ -27,9 +27,9 @@ const tableAlter = {
             try {
                 await sqliteService.executeNonQuery(`ALTER TABLE ${tableName} ADD group_name TEXT DEFAULT ''`);
             } catch (e) {
-                e = e.toString();
-                if (e.indexOf('duplicate column name') === -1) {
-                    console.error(e);
+                const msg = e.toString();
+                if (msg.indexOf('duplicate column name') === -1) {
+                    console.error(msg);
                 }
             }
         }
@@ -37,9 +37,9 @@ const tableAlter = {
         try {
             await sqliteService.executeNonQuery(`ALTER TABLE gamelog_location DROP COLUMN groupName`);
         } catch (e) {
-            e = e.toString();
-            if (e.indexOf('no such column') === -1) {
-                console.error(e);
+            const msg = e.toString();
+            if (msg.indexOf('no such column') === -1) {
+                console.error(msg);
             }
         }
     },
@@ -53,9 +53,9 @@ const tableAlter = {
             try {
                 await sqliteService.executeNonQuery(`ALTER TABLE ${tableName} ADD friend_number INTEGER DEFAULT 0`);
             } catch (e) {
-                e = e.toString();
-                if (e.indexOf('duplicate column name') === -1) {
-                    console.error(e);
+                const msg = e.toString();
+                if (msg.indexOf('duplicate column name') === -1) {
+                    console.error(msg);
                 }
             }
         }
@@ -70,9 +70,9 @@ const tableAlter = {
             try {
                 await sqliteService.executeNonQuery(`ALTER TABLE ${tableName} ADD time INTEGER DEFAULT 0`);
             } catch (e) {
-                e = e.toString();
-                if (e.indexOf('duplicate column name') === -1) {
-                    console.error(e);
+                const msg = e.toString();
+                if (msg.indexOf('duplicate column name') === -1) {
+                    console.error(msg);
                 }
             }
         }

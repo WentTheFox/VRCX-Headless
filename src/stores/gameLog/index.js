@@ -18,7 +18,7 @@ import { useAdvancedSettingsStore } from '../settings/advanced';
 import { useFriendStore } from '../friend';
 import { useNotificationStore } from '../notification';
 import { useDashboardStore } from '../dashboard';
-import { useUiStore } from '../ui';
+
 import { useUserStore } from '../user';
 import { useVrStore } from '../vr';
 import { useVrcxStore } from '../vrcx';
@@ -39,7 +39,7 @@ export const useGameLogStore = defineStore('GameLog', () => {
     const vrStore = useVrStore();
     const friendStore = useFriendStore();
     const userStore = useUserStore();
-    const uiStore = useUiStore();
+
     const vrcxStore = useVrcxStore();
     const advancedSettingsStore = useAdvancedSettingsStore();
     const dashboardStore = useDashboardStore();
@@ -160,9 +160,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
         { flush: 'sync' }
     );
 
-    /**
-     *
-     */
     async function init() {
         gameLogTable.value.filter = JSON.parse(await configRepository.getString('VRCX_gameLogTableFilters', '[]'));
         gameLogTable.value.vip = await configRepository.getBool('VRCX_gameLogTableVIPFilter', false);
@@ -175,7 +172,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
     initPromise = init();
 
     /**
-     *
      * @param entry
      */
     function insertGameLogSorted(entry) {
@@ -201,9 +197,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
         gameLogTableData.value = [...arr, entry];
     }
 
-    /**
-     *
-     */
     function clearNowPlaying() {
         nowPlaying.value = {
             url: '',
@@ -220,16 +213,12 @@ export const useGameLogStore = defineStore('GameLog', () => {
         vrStore.updateVrNowPlaying();
     }
 
-    /**
-     *
-     */
     function resetLastMediaUrls() {
         lastVideoUrl.value = '';
         lastResourceloadUrl.value = '';
     }
 
     /**
-     *
      * @param data
      */
     function setNowPlaying(data) {
@@ -299,9 +288,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
         advancedSettingsStore
     });
 
-    /**
-     *
-     */
     function updateNowPlaying() {
         const np = nowPlaying.value;
         if (!nowPlaying.value.playing) {
@@ -321,7 +307,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     *
      * @param row
      */
     function gameLogIsFriend(row) {
@@ -335,7 +320,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     *
      * @param row
      */
     function gameLogIsFavorite(row) {
@@ -348,9 +332,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
         return friendStore.localFavoriteFriends.has(row.userId);
     }
 
-    /**
-     *
-     */
     async function gameLogTableLookup() {
         await configRepository.setString('VRCX_gameLogTableFilters', JSON.stringify(gameLogTable.value.filter));
         await configRepository.setBool('VRCX_gameLogTableVIPFilter', gameLogTable.value.vip);
@@ -384,7 +365,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     *
      * @param entry
      */
     function addGameLog(entry) {
@@ -432,7 +412,6 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     *
      * @param input
      */
     async function addGamelogLocationToDatabase(input) {
@@ -445,16 +424,12 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     *
      * @param row
      */
     function gameLogSearch(row) {
         return gameLogSearchFilter(row, gameLogTable.value.search);
     }
 
-    /**
-     *
-     */
     function sweepGameLog() {
         const j = gameLogTableData.value.length;
         if (j > vrcxStore.maxTableSize + 50) {
@@ -599,8 +574,8 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     * @param {Array<object>} events
-     * @returns {Array<object>}
+     * @param {object[]} events
+     * @returns {object[]}
      */
     function filterSessionsEventsByFilters(events) {
         let result = events;
@@ -617,16 +592,16 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     * @param {Array<object>} segments
-     * @returns {Array<object>}
+     * @param {object[]} segments
+     * @returns {object[]}
      */
     function dropEmptySessionsSegments(segments) {
         return segments.filter((segment) => segment.events && segment.events.length > 0);
     }
 
     /**
-     * @param {Array<object>} segments
-     * @returns {Array<object>}
+     * @param {object[]} segments
+     * @returns {object[]}
      */
     function filterSessionsSegmentsByDateRange(segments) {
         if (!sessionsDateRangeActive.value) {
@@ -636,8 +611,8 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     * @param {Array<object>} segments
-     * @returns {Array<object>}
+     * @param {object[]} segments
+     * @returns {object[]}
      */
     function applySessionsSearchFilter(segments) {
         const value = normalizeSessionsSearch(sessionsSearch.value);
@@ -704,7 +679,7 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     * @param {Array<string>} value
+     * @param {string[]} value
      */
     async function handleSessionsEventFilterChange(value) {
         const selected = Array.isArray(value) ? value : [];
@@ -762,9 +737,9 @@ export const useGameLogStore = defineStore('GameLog', () => {
     }
 
     /**
-     * @param {number|null} beforeId
+     * @param {number | null} beforeId
      * @param {number} fetchCount
-     * @returns {Promise<{ beforeId: number|null, hasMore: boolean }>}
+     * @returns {Promise<{ beforeId: number | null; hasMore: boolean }>}
      */
     async function loadSessionsSearchBatch(beforeId, fetchCount) {
         const locations = await database.getSessionsLocationSegments(beforeId, fetchCount);
@@ -979,7 +954,8 @@ export const useGameLogStore = defineStore('GameLog', () => {
 
     /**
      * Jump to a time anchor (load segments from N hours ago).
-     * @param {number} hours - how many hours back
+     *
+     * @param {number} hours - How many hours back
      */
     async function jumpToSessionsAnchor(hours) {
         if (sessionsLoading.value) return;
@@ -1018,8 +994,9 @@ export const useGameLogStore = defineStore('GameLog', () => {
 
     /**
      * Fetch events (join/leave + video) for a batch of location segments.
-     * @param {Array<object>} locations
-     * @returns {Promise<Array<object>>}
+     *
+     * @param {object[]} locations
+     * @returns {Promise<object[]>}
      */
     async function fetchEventsForLocations(locations) {
         const locationTags = [...new Set(locations.map((l) => l.location))];
@@ -1046,6 +1023,7 @@ export const useGameLogStore = defineStore('GameLog', () => {
     /**
      * Append a real-time entry to the sessions raw data and rebuild.
      * Only handles event types relevant to the sessions view.
+     *
      * @param {object} entry
      */
     function appendSessionsEntry(entry) {
@@ -1091,7 +1069,8 @@ export const useGameLogStore = defineStore('GameLog', () => {
 
     /**
      * Switch between sessions and table view.
-     * @param {'sessions'|'table'} mode
+     *
+     * @param {'sessions' | 'table'} mode
      */
     async function setSessionsViewMode(mode) {
         if (mode !== 'sessions' && mode !== 'table') {

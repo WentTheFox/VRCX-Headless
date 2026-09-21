@@ -327,6 +327,7 @@ export function updateUserCurrentStatus(ref) {
 
 /**
  * Validates and applies unfriend transition side effects.
+ *
  * @param {string} id User id.
  * @param {object} [options] Test seams.
  * @param {function} [options.nowIso] ISO timestamp provider.
@@ -382,6 +383,7 @@ export function runDeleteFriendshipFlow(id, { nowIso = () => new Date().toJSON()
 
 /**
  * Reconciles current friend list against local friend log.
+ *
  * @param {object} ref Current user reference.
  * @param {object} [options] Test seams.
  * @param {function} [options.nowIso] ISO timestamp provider.

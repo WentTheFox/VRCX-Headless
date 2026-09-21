@@ -4,7 +4,6 @@ import { ref } from 'vue';
 import { useFavoritesGroupPanel } from '../useFavoritesGroupPanel';
 
 /**
- *
  * @param options
  */
 function createPanel(options = {}) {

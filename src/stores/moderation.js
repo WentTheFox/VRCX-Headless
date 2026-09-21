@@ -105,7 +105,6 @@ export const useModerationStore = defineStore('Moderation', () => {
     }
 
     /**
-     *
      * @param {object} json
      * @returns {object}
      */
@@ -170,12 +169,13 @@ export const useModerationStore = defineStore('Moderation', () => {
 
     /**
      * Get user moderations
-     * @param {string} userId
-     * @returns {object} moderations
+     *
      * @property {boolean} isBlocked
      * @property {boolean} isMuted
      * @property {boolean} isAvatarInteractionDisabled
      * @property {boolean} isChatBoxMuted
+     * @param {string} userId
+     * @returns {object} Moderations
      */
     function getUserModerations(userId) {
         let moderations = {

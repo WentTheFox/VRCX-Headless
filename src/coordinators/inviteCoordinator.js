@@ -10,6 +10,7 @@ import { useLaunchStore } from '../stores/launch';
 /**
  * Creates a new instance for the given world and either opens it in-game
  * or sends a self-invite, depending on game state.
+ *
  * @param {string} worldId
  */
 export function runNewInstanceSelfInviteFlow(worldId) {

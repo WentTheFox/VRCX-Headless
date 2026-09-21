@@ -22,7 +22,6 @@ export function useSearchWorld() {
     const isSearchWorldLoading = ref(false);
 
     /**
-     *
      * @param ref
      */
     function searchWorld(ref) {
@@ -95,7 +94,6 @@ export function useSearchWorld() {
     }
 
     /**
-     *
      * @param index
      */
     function handleSearchWorldCategorySelect(index) {
@@ -105,7 +103,6 @@ export function useSearchWorld() {
     }
 
     /**
-     *
      * @param go
      */
     function moreSearchWorld(go) {
@@ -135,9 +132,6 @@ export function useSearchWorld() {
             });
     }
 
-    /**
-     *
-     */
     function clearWorldSearch() {
         searchWorldParams.value = {};
         searchWorldResults.value = [];

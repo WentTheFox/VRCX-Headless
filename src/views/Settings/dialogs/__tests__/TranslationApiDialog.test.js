@@ -77,15 +77,11 @@ import TranslationApiDialog from '../TranslationApiDialog.vue';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-/**
- *
- */
 function flushPromises() {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 /**
- *
  * @param propsOverrides
  */
 function mountComponent(propsOverrides = {}) {

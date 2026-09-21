@@ -14,8 +14,9 @@ const GROUP_EXACT_TYPES = new Set(['groupChange', 'event.announcement']);
 
 /**
  * Determine the category of a notification type.
+ *
  * @param {string} type
- * @returns {'friend'|'group'|'other'}
+ * @returns {'friend' | 'group' | 'other'}
  */
 function getNotificationCategory(type) {
     if (!type) return 'other';
@@ -26,6 +27,7 @@ function getNotificationCategory(type) {
 
 /**
  * Extract a millisecond timestamp from a notification object.
+ *
  * @param {object} n - A notification with created_at or createdAt field
  * @returns {number}
  */

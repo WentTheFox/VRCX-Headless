@@ -79,7 +79,6 @@ export const useAvatarStore = defineStore('Avatar', () => {
     }
 
     /**
-     *
      * @param {string} avatarId
      * @returns {Promise<string[]>}
      */
@@ -110,9 +109,8 @@ export const useAvatarStore = defineStore('Avatar', () => {
     }
 
     /**
-     *
      * @param {object} json
-     * @returns {object} ref
+     * @returns {object} Ref
      */
     function applyAvatarModeration(json) {
         // fix inconsistent Unix time response
@@ -142,16 +140,10 @@ export const useAvatarStore = defineStore('Avatar', () => {
         return ref;
     }
 
-    /**
-     *
-     */
     function resetCachedAvatarModerations() {
         cachedAvatarModerations.clear();
     }
 
-    /**
-     *
-     */
     function updateVRChatAvatarCache() {
         const D = avatarDialog.value;
         if (D.visible) {
@@ -170,9 +162,6 @@ export const useAvatarStore = defineStore('Avatar', () => {
         }
     }
 
-    /**
-     *
-     */
     function clearAvatarHistory() {
         avatarHistory.value = [];
         database.clearAvatarHistory();
@@ -186,7 +175,7 @@ export const useAvatarStore = defineStore('Avatar', () => {
     }
 
     /**
-     * @param {*} value
+     * @param {any} value
      */
     function setLoadingToastId(value) {
         loadingToastId.value = value;

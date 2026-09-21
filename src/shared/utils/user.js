@@ -9,9 +9,8 @@ const THEME_COLOR_LIMITS = Object.freeze({
 });
 
 /**
- *
  * @param {object} ctx
- * @returns {string?}
+ * @returns {string | null}
  */
 function userOnlineForTimestamp(ctx) {
     if (ctx.ref.state === 'online' && ctx.ref.$online_for) {
@@ -25,7 +24,6 @@ function userOnlineForTimestamp(ctx) {
 }
 
 /**
- *
  * @param {string} language
  * @returns
  */
@@ -41,7 +39,6 @@ function languageClass(language) {
 }
 
 /**
- *
  * @param {string} userId
  * @param {boolean} isDarkMode
  * @returns
@@ -68,7 +65,7 @@ function normalizeProfileHex(value) {
 
 /**
  * @param {string} hex
- * @returns {{ r: number, g: number, b: number } | null}
+ * @returns {{ r: number; g: number; b: number } | null}
  */
 function hexToRgb(hex) {
     const match = /^#?([0-9a-f]{6})$/i.exec(hex);
@@ -84,7 +81,7 @@ function hexToRgb(hex) {
 }
 
 /**
- * @param {{ r: number, g: number, b: number }} rgb
+ * @param {{ r: number; g: number; b: number }} rgb
  * @returns {string}
  */
 function rgbToHex(rgb) {
@@ -96,7 +93,7 @@ function rgbToHex(rgb) {
 }
 
 /**
- * @param {{ r: number, g: number, b: number }} rgb
+ * @param {{ r: number; g: number; b: number }} rgb
  * @returns {number}
  */
 function getRelativeLuminance(rgb) {
@@ -114,10 +111,10 @@ function getRelativeLuminance(rgb) {
 }
 
 /**
- * @param {{ r: number, g: number, b: number }} from
- * @param {{ r: number, g: number, b: number }} to
+ * @param {{ r: number; g: number; b: number }} from
+ * @param {{ r: number; g: number; b: number }} to
  * @param {number} weight
- * @returns {{ r: number, g: number, b: number }}
+ * @returns {{ r: number; g: number; b: number }}
  */
 function mixRgb(from, to, weight) {
     return {
@@ -184,10 +181,9 @@ function invertHexColor(colorValue) {
 }
 
 /**
- *
  * @param {object} user
  * @param {boolean} pendingOffline
- * @param {object} currentUser - current user object from useUserStore
+ * @param {object} currentUser - Current user object from useUserStore
  * @returns
  */
 function userStatusClass(user, pendingOffline = false, currentUser) {
@@ -282,7 +278,6 @@ function userStatusClass(user, pendingOffline = false, currentUser) {
 }
 
 /**
- *
  * @param {string} status
  * @returns {object}
  */
@@ -313,37 +308,19 @@ function statusClass(status) {
 
 /**
  * @param {object} user - User Ref Object
- * @param {boolean} isIcon - is use for icon (about 40x40)
- * @param {string} resolution - requested icon resolution (default 128),
- * @param {boolean} isUserDialogIcon - is use for user dialog icon
- * @param {boolean} displayVRCPlusIconsAsAvatar - from appearance settings store
- * @returns {string} - img url
+ * @param {boolean} isIcon - Is use for icon (about 40x40)
+ * @param {string} resolution - Requested icon resolution (default 128),
+ * @returns {string} - Img url
  */
-function userImage(
-    user,
-    isIcon = false,
-    resolution = '128',
-    isUserDialogIcon = false,
-    displayVRCPlusIconsAsAvatar = false
-) {
+function userImage(user, isIcon = false, resolution = '128') {
     if (!user) {
         return '';
     }
-    if ((isUserDialogIcon && user.userIcon) || (displayVRCPlusIconsAsAvatar && user.userIcon)) {
+    if (user.iconUrl) {
         if (isIcon) {
-            return convertFileUrlToImageUrl(user.userIcon);
+            return convertFileUrlToImageUrl(user.iconUrl);
         }
-        return user.userIcon;
-    }
-
-    if (user.profilePicOverrideThumbnail) {
-        if (isIcon) {
-            return user.profilePicOverrideThumbnail.replace('/256', `/${resolution}`);
-        }
-        return user.profilePicOverrideThumbnail;
-    }
-    if (user.profilePicOverride) {
-        return user.profilePicOverride;
+        return user.iconUrl;
     }
     if (user.thumbnailUrl) {
         return user.thumbnailUrl;
@@ -364,17 +341,15 @@ function userImage(
 }
 
 /**
- *
  * @param {object} user
- * @param {boolean} displayVRCPlusIconsAsAvatar - from appearance settings store
- * @returns {string|*}
+ * @returns {string | any}
  */
-function userImageFull(user, displayVRCPlusIconsAsAvatar = false) {
+function userImageFull(user) {
     if (!user) {
         return '';
     }
-    if (displayVRCPlusIconsAsAvatar && user.userIcon) {
-        return user.userIcon;
+    if (user.iconUrl) {
+        return user.iconUrl;
     }
     if (user.profilePicOverride) {
         return user.profilePicOverride;
@@ -383,9 +358,8 @@ function userImageFull(user, displayVRCPlusIconsAsAvatar = false) {
 }
 
 /**
- *
  * @param {string} user
- * @returns {*|string}
+ * @returns {any | string}
  */
 function parseUserUrl(user) {
     const url = new URL(user);
@@ -398,10 +372,11 @@ function parseUserUrl(user) {
 
 /**
  * Find a user object from cachedUsers by displayName.
+ *
  * @param {Map} cachedUsers
  * @param {string} displayName
  * @param {Map<string, Set<string>>} [cachedUserIdsByDisplayName]
- * @returns {object|undefined}
+ * @returns {object | undefined}
  */
 function findUserByDisplayName(cachedUsers, displayName, cachedUserIdsByDisplayName) {
     const indexedUserIds = cachedUserIdsByDisplayName?.get(displayName);

@@ -1,5 +1,4 @@
 /**
- *
  * @param {object} print
  * @returns
  */
@@ -13,7 +12,6 @@ function getPrintFileName(print) {
 }
 
 /**
- *
  * @param {object} print
  * @returns
  */

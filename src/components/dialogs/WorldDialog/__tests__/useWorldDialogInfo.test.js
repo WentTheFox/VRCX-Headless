@@ -20,7 +20,6 @@ const { database } = await import('../../../../services/database');
 const { compareUnityVersion } = await import('../../../../shared/utils');
 
 /**
- *
  * @param overrides
  */
 function createWorldDialog(overrides = {}) {
@@ -58,8 +57,8 @@ function createWorldDialog(overrides = {}) {
 }
 
 /**
- *
- * @param overrides
+ * @param {Object} overrides
+ * @returns {{ t: Function; toast: { success: Function; error: Function }; sdkUnityVersion?: string }}
  */
 function createDeps(overrides = {}) {
     return {
@@ -68,6 +67,7 @@ function createDeps(overrides = {}) {
             success: vi.fn(),
             error: vi.fn()
         },
+        sdkUnityVersion: '0',
         ...overrides
     };
 }
@@ -259,10 +259,9 @@ describe('useWorldDialogInfo', () => {
     });
 
     describe('clipboard operations', () => {
-        let originalClipboard;
+        const originalClipboard = navigator.clipboard;
 
         beforeEach(() => {
-            originalClipboard = navigator.clipboard;
             Object.defineProperty(navigator, 'clipboard', {
                 value: {
                     writeText: vi.fn().mockResolvedValue(undefined)
@@ -270,6 +269,14 @@ describe('useWorldDialogInfo', () => {
                 writable: true,
                 configurable: true
             });
+
+            return () => {
+                Object.defineProperty(navigator, 'clipboard', {
+                    value: originalClipboard,
+                    writable: true,
+                    configurable: true
+                });
+            };
         });
 
         test('copyWorldId copies world id', async () => {

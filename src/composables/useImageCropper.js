@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 const MAX_PREVIEW_SIZE = 800;
 
 /**
- * @param {HTMLImageElement|HTMLCanvasElement} img
+ * @param {HTMLImageElement | HTMLCanvasElement} img
  * @param {number} angleDeg
  * @param {boolean} flipH
  * @param {boolean} flipV
@@ -34,11 +34,11 @@ export function applyTransforms(img, angleDeg, flipH, flipV) {
 }
 
 /**
- * @param {HTMLImageElement|HTMLCanvasElement} originalImage
+ * @param {HTMLImageElement | HTMLCanvasElement} originalImage
  * @param {number} previewScale
- * @param {{ coordinates: object, image: object }} cropperResult
+ * @param {{ coordinates: object; image: object }} cropperResult
  * @param {File} [originalFile]
- * @returns {Promise<Blob|null>}
+ * @returns {Promise<Blob | null>}
  */
 export function cropImage(originalImage, previewScale, cropperResult, originalFile) {
     if (!cropperResult?.coordinates || !originalImage) {
@@ -83,9 +83,6 @@ export function cropImage(originalImage, previewScale, cropperResult, originalFi
     });
 }
 
-/**
- *
- */
 export function useImageCropper() {
     const { t } = useI18n();
 
@@ -94,9 +91,6 @@ export function useImageCropper() {
     const originalImage = ref(null);
     const previewScale = ref(1);
 
-    /**
-     *
-     */
     function resetCropState() {
         cropperImageSrc.value = '';
         originalImage.value = null;
@@ -105,6 +99,7 @@ export function useImageCropper() {
 
     /**
      * Downscale for interactive preview, keep original for final crop.
+     *
      * @param {File} file
      */
     function loadImageForCrop(file) {
@@ -143,7 +138,7 @@ export function useImageCropper() {
 
     /**
      * @param {File} [originalFile]
-     * @returns {Promise<Blob|null>}
+     * @returns {Promise<Blob | null>}
      */
     function getCroppedBlob(originalFile) {
         const result = cropperRef.value?.getResult();

@@ -76,8 +76,8 @@ export function handleImageUploadInput(event, options = {}) {
 }
 
 /**
- * @param {string} base64Data - base64 encoded image
- * @returns {Promise<string>} resized base64 encoded image
+ * @param {string} base64Data - Base64 encoded image
+ * @returns {Promise<string>} Resized base64 encoded image
  */
 export async function resizeImageToFitLimits(base64Data) {
     // frontend limit check = 20MB
@@ -86,12 +86,13 @@ export async function resizeImageToFitLimits(base64Data) {
 
 /**
  * Upload image through AWS
- * @param {'avatar'|'world'} type
+ *
+ * @param {'avatar' | 'world'} type
  * @param {object} opts
- * @param {string} opts.entityId - avatar or world id
- * @param {string} opts.imageUrl - current imageUrl on the entity
- * @param {string} opts.base64File - base64 encoded image data
- * @param {Blob}   opts.blob - the original blob (used for file size)
+ * @param {string} opts.entityId - Avatar or world id
+ * @param {string} opts.imageUrl - Current imageUrl on the entity
+ * @param {string} opts.base64File - Base64 encoded image data
+ * @param {Blob} opts.blob - The original blob (used for file size)
  */
 export async function uploadImageLegacy(type, { entityId, imageUrl, base64File, blob }) {
     const apiMap = {

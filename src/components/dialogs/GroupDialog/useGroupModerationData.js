@@ -9,19 +9,20 @@ import * as workerTimers from 'worker-timers';
 /**
  * Composable for group moderation data fetching, member management,
  * searching, sorting and filtering.
+ *
  * @param {object} deps
- * @param {import('vue').Ref} deps.groupMemberModeration - store ref
- * @param {import('vue').Ref} deps.currentUser - store ref
- * @param {Function} deps.applyGroupMember - store action
- * @param {Function} deps.handleGroupMember - store action
- * @param {object} deps.tables - reactive table data objects
+ * @param {import('vue').Ref} deps.groupMemberModeration - Store ref
+ * @param {import('vue').Ref} deps.currentUser - Store ref
+ * @param {Function} deps.applyGroupMember - Store action
+ * @param {Function} deps.handleGroupMember - Store action
+ * @param {object} deps.tables - Reactive table data objects
  * @param {object} deps.tables.members
  * @param {object} deps.tables.bans
  * @param {object} deps.tables.invites
  * @param {object} deps.tables.joinRequests
  * @param {object} deps.tables.blocked
  * @param {object} deps.tables.logs
- * @param {object} deps.selection - from useGroupModerationSelection
+ * @param {object} deps.selection - From useGroupModerationSelection
  * @param {object} deps.selection.selectedUsers
  * @param {Function} deps.selection.setSelectedUsers
  * @param {object} deps.groupRequest - API module
@@ -53,9 +54,6 @@ export function useGroupModerationData(deps) {
 
     // ── Members ──────────────────────────────────────────────────
 
-    /**
-     *
-     */
     async function getGroupMembers() {
         members.value = [];
         isGroupMembersDone.value = false;
@@ -90,9 +88,6 @@ export function useGroupModerationData(deps) {
         await loadMoreGroupMembers();
     }
 
-    /**
-     *
-     */
     async function loadMoreGroupMembers() {
         if (isGroupMembersDone.value || isGroupMembersLoading.value) {
             return;
@@ -141,9 +136,6 @@ export function useGroupModerationData(deps) {
             });
     }
 
-    /**
-     *
-     */
     async function loadAllGroupMembers() {
         if (isGroupMembersLoading.value) {
             return;
@@ -160,7 +152,6 @@ export function useGroupModerationData(deps) {
     }
 
     /**
-     *
      * @param sortOrder
      */
     async function setGroupMemberSortOrder(sortOrder) {
@@ -172,7 +163,6 @@ export function useGroupModerationData(deps) {
     }
 
     /**
-     *
      * @param filter
      */
     async function setGroupMemberFilter(filter) {
@@ -183,9 +173,6 @@ export function useGroupModerationData(deps) {
         await getGroupMembers();
     }
 
-    /**
-     *
-     */
     function groupMembersSearch() {
         if (memberSearch.value.length < 3) {
             tables.members.data = [];
@@ -196,9 +183,6 @@ export function useGroupModerationData(deps) {
         debounce(groupMembersSearchDebounced, 200)();
     }
 
-    /**
-     *
-     */
     function groupMembersSearchDebounced() {
         const groupId = groupMemberModeration.value.id;
         const search = memberSearch.value;
@@ -236,7 +220,6 @@ export function useGroupModerationData(deps) {
     // ── Bans ─────────────────────────────────────────────────────
 
     /**
-     *
      * @param groupId
      */
     async function getAllGroupBans(groupId) {
@@ -278,7 +261,6 @@ export function useGroupModerationData(deps) {
     // ── Invites / Join Requests / Blocked ────────────────────────
 
     /**
-     *
      * @param groupId
      */
     async function getAllGroupInvites(groupId) {
@@ -316,7 +298,6 @@ export function useGroupModerationData(deps) {
     }
 
     /**
-     *
      * @param groupId
      */
     async function getAllGroupJoinRequests(groupId) {
@@ -352,7 +333,6 @@ export function useGroupModerationData(deps) {
     }
 
     /**
-     *
      * @param groupId
      */
     async function getAllGroupBlockedRequests(groupId) {
@@ -388,7 +368,6 @@ export function useGroupModerationData(deps) {
     }
 
     /**
-     *
      * @param groupId
      */
     async function getAllGroupInvitesAndJoinRequests(groupId) {
@@ -406,7 +385,6 @@ export function useGroupModerationData(deps) {
     // ── Logs ─────────────────────────────────────────────────────
 
     /**
-     *
      * @param groupId
      * @param eventTypes
      */
@@ -452,7 +430,6 @@ export function useGroupModerationData(deps) {
     // ── User Selection ───────────────────────────────────────────
 
     /**
-     *
      * @param userId
      */
     async function addGroupMemberToSelection(userId) {
@@ -477,7 +454,6 @@ export function useGroupModerationData(deps) {
     }
 
     /**
-     *
      * @param userIdInput
      */
     async function selectGroupMemberUserId(userIdInput) {
@@ -500,9 +476,6 @@ export function useGroupModerationData(deps) {
 
     // ── Reset ────────────────────────────────────────────────────
 
-    /**
-     *
-     */
     function resetData() {
         tables.members.data = [];
         tables.bans.data = [];

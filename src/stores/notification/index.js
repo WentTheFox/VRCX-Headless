@@ -35,7 +35,7 @@ import { useFriendStore } from '../friend';
 import { handleFriendAdd } from '../../coordinators/friendRelationshipCoordinator';
 import { useGameStore } from '../game';
 import { useGeneralSettingsStore } from '../settings/general';
-import { useGroupStore } from '../group';
+
 import { showGroupDialog } from '../../coordinators/groupCoordinator';
 import { showUserDialog } from '../../coordinators/userCoordinator';
 import { useInstanceStore } from '../instance';
@@ -137,9 +137,6 @@ export const useNotificationStore = defineStore('Notification', () => {
         { flush: 'sync' }
     );
 
-    /**
-     *
-     */
     async function init() {
         notificationTable.value.filters[0].value = JSON.parse(
             await configRepository.getString('VRCX_notificationTableFilters', '[]')
@@ -149,7 +146,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     init();
 
     /**
-     *
      * @param args
      */
     function handleNotification(args) {
@@ -206,7 +202,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param notificationId
      */
     function handleNotificationHide(notificationId) {
@@ -229,7 +224,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handlePipelineNotification(args) {
@@ -371,15 +365,11 @@ export const useNotificationStore = defineStore('Notification', () => {
         notificationInitStatus.value = value;
     }
 
-    /**
-     *
-     */
     function clearUnseenNotifications() {
         unseenNotifications.value = [];
     }
 
     /**
-     *
      * @param notificationId
      */
     function handleNotificationSee(notificationId) {
@@ -398,9 +388,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     const seenIds = new Set();
     let seeProcessing = false;
 
-    /**
-     *
-     */
     async function processSeeQueue() {
         if (seeProcessing) return;
         seeProcessing = true;
@@ -431,7 +418,7 @@ export const useNotificationStore = defineStore('Notification', () => {
                         shouldRetry: (err) => err?.status === 429 || (err?.message || '').includes('429')
                     }
                 );
-            } catch (err) {
+            } catch {
                 console.warn('Failed to mark notification as seen:', id);
                 if (version >= 2) {
                     handleNotificationV2Hide(id);
@@ -443,6 +430,7 @@ export const useNotificationStore = defineStore('Notification', () => {
 
     /**
      * Queue a notification to be marked as seen.
+     *
      * @param {string} notificationId
      * @param {number} [version]
      */
@@ -453,9 +441,6 @@ export const useNotificationStore = defineStore('Notification', () => {
         processSeeQueue();
     }
 
-    /**
-     *
-     */
     function markAllAsSeen() {
         const unseenIds = [...unseenNotifications.value];
         for (const id of unseenIds) {
@@ -468,7 +453,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handleNotificationAccept(args) {
@@ -506,7 +490,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handleNotificationExpire(args) {
@@ -519,7 +502,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param {object} data
      * @returns {object}
      */
@@ -544,7 +526,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param data
      */
     function applyNotificationV2(data) {
@@ -561,7 +542,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handleNotificationV2(args) {
@@ -592,7 +572,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handleNotificationV2Update(args) {
@@ -614,7 +593,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param notificationId
      */
     function handleNotificationV2Hide(notificationId) {
@@ -626,9 +604,6 @@ export const useNotificationStore = defineStore('Notification', () => {
         }
     }
 
-    /**
-     *
-     */
     function expireFriendRequestNotifications() {
         const array = notificationTable.value.data;
         for (let i = array.length - 1; i >= 0; i--) {
@@ -639,7 +614,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param {string} notificationId
      */
     function expireNotification(notificationId) {
@@ -665,7 +639,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @returns {Promise<void>}
      */
     async function refreshNotifications() {
@@ -744,7 +717,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param {object} noty
      */
     function queueNotificationNoty(noty) {
@@ -762,7 +734,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param noty
      */
     function playNoty(noty) {
@@ -882,7 +853,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param {object} noty
      * @param {string} displayName
      * @param {string} message
@@ -921,7 +891,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     // are in ./overlayDispatch.js — destructured above via createOverlayDispatch().
 
     /**
-     *
      * @param {object} noty
      * @returns
      */
@@ -938,7 +907,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param gamelog
      */
     function queueGameLogNoty(gamelog) {
@@ -1012,7 +980,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param feed
      */
     function queueFeedNoty(feed) {
@@ -1038,7 +1005,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param noty
      */
     function queueFriendLogNoty(noty) {
@@ -1059,7 +1025,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param noty
      */
     function queueModerationNoty(noty) {
@@ -1075,9 +1040,6 @@ export const useNotificationStore = defineStore('Notification', () => {
         }
     }
 
-    /**
-     *
-     */
     async function initNotifications() {
         notificationInitStatus.value = false;
         let tableData = await database.getNotificationsV2();
@@ -1089,9 +1051,6 @@ export const useNotificationStore = defineStore('Notification', () => {
         refreshNotifications();
     }
 
-    /**
-     *
-     */
     function testNotification() {
         playNoty({
             type: 'Event',
@@ -1101,7 +1060,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param row
      */
     function acceptFriendRequestNotification(row) {
@@ -1129,7 +1087,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param row
      */
     async function hideNotification(row) {
@@ -1148,7 +1105,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param row
      */
     function hideNotificationPrompt(row) {
@@ -1164,7 +1120,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param row
      */
     function acceptRequestInvite(row) {
@@ -1211,7 +1166,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param notificationId
      * @param responses
      * @param responseType
@@ -1241,7 +1195,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param row
      */
     function deleteNotificationLog(row) {
@@ -1259,7 +1212,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param row
      */
     function deleteNotificationLogPrompt(row) {
@@ -1276,7 +1228,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param notification
      */
     function isNotificationExpired(notification) {
@@ -1291,7 +1242,6 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
-     *
      * @param link
      */
     function openNotificationLink(link) {

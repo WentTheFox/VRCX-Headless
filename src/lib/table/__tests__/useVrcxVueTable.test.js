@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useVrcxVueTable } from '../useVrcxVueTable';
 
 /**
- *
  * @param {...any} ids
  */
 function makeColumns(...ids) {

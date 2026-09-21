@@ -12,19 +12,19 @@ import { useI18n } from 'vue-i18n';
  * @typedef {object} ConfirmOptions
  * @property {string} title
  * @property {string} description
- * @property {string=} confirmText
- * @property {string=} cancelText
- * @property {boolean=} dismissible  // true: allow esc/outside, false: block
- * @property {boolean=} destructive  // true: use destructive variant for confirm button
+ * @property {string} [confirmText]
+ * @property {string} [cancelText]
+ * @property {boolean} [dismissible] // true: allow esc/outside, false: block
+ * @property {boolean} [destructive] // true: use destructive variant for confirm button
  */
 
 /**
  * @typedef {object} AlertOptions
  * @property {string} title
  * @property {string} description
- * @property {string=} confirmText
- * @property {boolean=} dismissible
- * @property {boolean=} destructive  // true: use destructive variant for confirm button
+ * @property {string} [confirmText]
+ * @property {boolean} [dismissible]
+ * @property {boolean} [destructive] // true: use destructive variant for confirm button
  */
 
 /**
@@ -38,13 +38,13 @@ import { useI18n } from 'vue-i18n';
  * @typedef {object} PromptOptions
  * @property {string} title
  * @property {string} description
- * @property {string=} confirmText
- * @property {string=} cancelText
- * @property {string=} inputValue
- * @property {string=} inputType
- * @property {RegExp | string=} pattern
- * @property {string=} errorMessage
- * @property {boolean=} dismissible
+ * @property {string} [confirmText]
+ * @property {string} [cancelText]
+ * @property {string} [inputValue]
+ * @property {string} [inputType]
+ * @property {RegExp | string} [pattern]
+ * @property {string} [errorMessage]
+ * @property {boolean} [dismissible]
  */
 
 /**
@@ -52,9 +52,9 @@ import { useI18n } from 'vue-i18n';
  * @property {string} title
  * @property {string} description
  * @property {'totp' | 'emailOtp' | 'otp'} mode
- * @property {string=} confirmText
- * @property {string=} cancelText
- * @property {boolean=} dismissible
+ * @property {string} [confirmText]
+ * @property {string} [cancelText]
+ * @property {boolean} [dismissible]
  */
 
 export const useModalStore = defineStore('Modal', () => {
@@ -206,7 +206,8 @@ export const useModalStore = defineStore('Modal', () => {
     }
 
     /**
-     * confirm: always resolve({ok, reason})
+     * Confirm: always resolve({ok, reason})
+     *
      * @param {ConfirmOptions} options
      * @returns {Promise<ConfirmResult>}
      */
@@ -215,7 +216,8 @@ export const useModalStore = defineStore('Modal', () => {
     }
 
     /**
-     * alert: always resolve({ok:true, reason:'ok'}) when closed
+     * Alert: always resolve({ok:true, reason:'ok'}) when closed
+     *
      * @param {AlertOptions} options
      * @returns {Promise<ConfirmResult>}
      */
@@ -224,7 +226,8 @@ export const useModalStore = defineStore('Modal', () => {
     }
 
     /**
-     * prompt: always resolve({ok, reason, value})
+     * Prompt: always resolve({ok, reason, value})
+     *
      * @param {PromptOptions} options
      * @returns {Promise<PromptResult>}
      */
@@ -338,7 +341,8 @@ export const useModalStore = defineStore('Modal', () => {
     }
 
     /**
-     * otpPrompt: always resolve({ok, reason, value})
+     * OtpPrompt: always resolve({ok, reason, value})
+     *
      * @param {OtpPromptOptions} options
      * @returns {Promise<PromptResult>}
      */

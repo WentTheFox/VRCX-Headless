@@ -21,19 +21,14 @@ try {
 
 /**
  * Renames the build files for the specified architecture and platform
+ *
  * @param {string} arch
  * @param {string} platform
  */
 function renameBuild(arch, platform) {
     if (platform === 'linux') {
-        const oldAppImage = path.join(
-            buildDir,
-            `VRCX-Headless_Version.AppImage`
-        );
-        const newAppImage = path.join(
-            buildDir,
-            `VRCX-Headless_${version}_${arch}.AppImage`
-        );
+        const oldAppImage = path.join(buildDir, `VRCX-Headless_Version.AppImage`);
+        const newAppImage = path.join(buildDir, `VRCX-Headless_${version}_${arch}.AppImage`);
         try {
             if (fs.existsSync(oldAppImage)) {
                 fs.renameSync(oldAppImage, newAppImage);
@@ -47,10 +42,7 @@ function renameBuild(arch, platform) {
         }
     } else if (platform === 'darwin') {
         const oldDmg = path.join(buildDir, `VRCX-Headless_Version.dmg`);
-        const newDmg = path.join(
-            buildDir,
-            `VRCX-Headless_${version}_${arch}.dmg`
-        );
+        const newDmg = path.join(buildDir, `VRCX-Headless_${version}_${arch}.dmg`);
         try {
             if (fs.existsSync(oldDmg)) {
                 fs.renameSync(oldDmg, newDmg);

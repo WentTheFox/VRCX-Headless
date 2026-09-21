@@ -4,7 +4,6 @@ import { useResizeObserver } from '@vueuse/core';
 import configRepository from '../../../services/config.js';
 
 /**
- *
  * @param value
  * @param min
  * @param max
@@ -114,8 +113,6 @@ export function useAvatarCardGrid(options = {}) {
         return { minWidth, gap, columns, cardWidth };
     };
 
-    /**
-     */
     const gridStyle = computed(() => {
         const scale = cardScale.value;
         const spacing = cardSpacing.value;

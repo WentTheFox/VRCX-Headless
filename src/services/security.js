@@ -9,7 +9,6 @@ const hexToUint8Array = (hexStr) => {
 const uint8ArrayToHex = (arr) => arr.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
 
 /**
- *
  * @param key
  */
 function stdAESKey(key) {
@@ -24,7 +23,6 @@ function stdAESKey(key) {
 }
 
 /**
- *
  * @param plaintext
  * @param key
  */
@@ -50,7 +48,6 @@ async function encrypt(plaintext, key) {
 }
 
 /**
- *
  * @param ciphertext
  * @param key
  */

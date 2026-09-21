@@ -2,13 +2,12 @@ import { entityQueryPolicies, fetchWithEntityPolicy, queryKeys } from '../querie
 
 import avatarRequest from './avatar';
 import favoriteRequest from './favorite';
-import friendRequest from './friend';
+
 import groupRequest from './group';
 import inventoryRequest from './inventory';
 import miscRequest from './misc';
 import userRequest from './user';
-import vrcPlusIconRequest from './vrcPlusIcon';
-import vrcPlusImageRequest from './vrcPlusImage';
+
 import worldRequest from './world';
 
 const registry = Object.freeze({
@@ -188,7 +187,7 @@ const queryRequest = {
      * @template T
      * @param {keyof typeof registry} resource
      * @param {any} [params]
-     * @returns {Promise<T & {cache: boolean}>}
+     * @returns {Promise<T & { cache: boolean }>}
      */
     async fetch(resource, params = {}) {
         const entry = registry[resource];

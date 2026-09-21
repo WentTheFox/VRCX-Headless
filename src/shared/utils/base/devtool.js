@@ -3,9 +3,8 @@ import { useAuthStore, useAvatarStore, useWorldStore } from '../../../stores';
 import { compareUnityVersion } from '../avatar';
 
 /**
- *
  * @param {string} input
- * @returns {Promise<string|null>}
+ * @returns {Promise<string | null>}
  */
 async function getBundleLocation(input) {
     const authStore = useAuthStore();
