@@ -29,7 +29,6 @@ const mocks = vi.hoisted(() => {
 
 mocks.useSearchUserApi = {
     searchUserParams: ref({ offset: 0 }),
-    searchUserByBio: ref(false),
     searchUserSortByLastLoggedIn: ref(false),
     isSearchUserLoading: ref(false),
     searchUser: vi.fn(),
@@ -98,6 +97,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 });
 
 vi.mock('../../../stores', () => ({
+    useUserStore: () => ({ currentUser: {} }),
     useAppearanceSettingsStore: () => ({
         randomUserColours: mocks.randomUserColours
     }),
@@ -280,7 +280,6 @@ describe('Search.vue', () => {
         mocks.randomUserColours.value = false;
 
         mocks.useSearchUserApi.searchUserParams.value = { offset: 0 };
-        mocks.useSearchUserApi.searchUserByBio.value = false;
         mocks.useSearchUserApi.searchUserSortByLastLoggedIn.value = false;
         mocks.useSearchUserApi.isSearchUserLoading.value = false;
 

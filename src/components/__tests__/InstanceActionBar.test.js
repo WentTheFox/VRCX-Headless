@@ -116,7 +116,8 @@ vi.mock('@/components/ui/button', () => ({
     }
 }));
 
-vi.mock('lucide-vue-next', () => ({
+vi.mock('lucide-vue-next', async (importOriginal) => ({
+    ...(await importOriginal()),
     History: { template: '<i data-testid="icon-history" />' },
     Loader2: { template: '<i data-testid="icon-loader" />' },
     LogIn: { template: '<i data-testid="icon-login" />' },
@@ -312,7 +313,7 @@ describe('InstanceActionBar.vue', () => {
 
         const closeBtn = wrapper
             .findAll('button')
-            .find((btn) => btn.text().includes('dialog.user.info.close_instance'));
+            .find((btn) => btn.attributes('aria-label') === 'dialog.user.info.close_instance');
         expect(closeBtn).toBeTruthy();
 
         await closeBtn.trigger('click');

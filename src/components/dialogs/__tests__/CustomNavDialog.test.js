@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { ref } from 'vue';
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (k) => k }) }));
 vi.mock('@/shared/utils/common', () => ({ openExternalLink: vi.fn() }));
 vi.mock('../../../stores', () => ({
+    useNotificationsSettingsStore: () => ({ notificationLayout: ref('notification-center') }),
     useDashboardStore: () => ({
         createDashboard: vi.fn(async () => ({
             id: 'dashboard-1',

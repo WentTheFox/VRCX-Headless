@@ -127,7 +127,8 @@ vi.mock('@/components/ui/spinner', () => ({
     Spinner: { template: '<span />' }
 }));
 
-vi.mock('lucide-vue-next', () => ({
+vi.mock('lucide-vue-next', async (importOriginal) => ({
+    ...(await importOriginal()),
     RefreshCw: { template: '<span />' }
 }));
 
@@ -235,7 +236,8 @@ describe('Moderation.vue', () => {
     test('refresh button triggers moderation refresh', async () => {
         const wrapper = mountModeration();
 
-        await wrapper.get('[data-testid="moderation-button"]').trigger('click');
+        // The clear-by-type trash button precedes refresh, so take the last one.
+        await wrapper.findAll('[data-testid="moderation-button"]').at(-1).trigger('click');
 
         expect(mocks.refreshPlayerModerations).toHaveBeenCalledTimes(1);
     });

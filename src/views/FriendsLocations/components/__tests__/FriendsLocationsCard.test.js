@@ -186,7 +186,8 @@ const i18n = createI18n({
     messages: { en }
 });
 
-vi.mock('lucide-vue-next', () => ({
+vi.mock('lucide-vue-next', async (importOriginal) => ({
+    ...(await importOriginal()),
     Pencil: { template: '<span class="pencil-icon" />' },
     User: { template: '<span class="user-icon" />' }
 }));

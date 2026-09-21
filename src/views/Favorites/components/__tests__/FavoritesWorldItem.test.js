@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { ref } from 'vue';
 
 const mocks = vi.hoisted(() => ({
     showFavoriteDialog: vi.fn(),
@@ -103,7 +104,8 @@ vi.mock('@/components/ui/checkbox', () => ({
     }
 }));
 
-vi.mock('lucide-vue-next', () => ({
+vi.mock('lucide-vue-next', async (importOriginal) => ({
+    ...(await importOriginal()),
     AlertTriangle: { template: '<i />' },
     Image: { template: '<i />' },
     Lock: { template: '<i />' },
@@ -111,6 +113,7 @@ vi.mock('lucide-vue-next', () => ({
 }));
 
 vi.mock('../../../../stores', () => ({
+    useLocationStore: () => ({ lastLocation: ref({ location: '' }) }),
     useFavoriteStore: () => ({
         showFavoriteDialog: (...args) => mocks.showFavoriteDialog(...args)
     }),
@@ -120,6 +123,13 @@ vi.mock('../../../../stores', () => ({
     useInstanceStore: () => ({
         createNewInstance: (...args) => mocks.createNewInstance(...args)
     })
+}));
+
+vi.mock('../../../../components/dialogs/NewInstanceDialog/NewInstanceDialog.vue', () => ({
+    default: {
+        props: ['newInstanceDialogLocationTag'],
+        template: '<div data-testid="new-instance-dialog" :data-tag="newInstanceDialogLocationTag" />'
+    }
 }));
 
 vi.mock('../../../../api', () => ({
@@ -316,7 +326,9 @@ describe('FavoritesWorldItem.vue', () => {
         await clickMenuItem(wrapper, 'dialog.world.actions.new_instance');
         await clickMenuItem(wrapper, 'dialog.world.actions.new_instance_and_self_invite');
 
-        expect(mocks.createNewInstance).toHaveBeenCalledWith('wrld_default');
+        // New instance now opens NewInstanceDialog with the world as its location tag.
+        await wrapper.vm.$nextTick();
+        expect(wrapper.get('[data-testid="new-instance-dialog"]').attributes('data-tag')).toBe('wrld_default');
         expect(mocks.newInstanceSelfInvite).toHaveBeenCalledWith('wrld_default');
     });
 });

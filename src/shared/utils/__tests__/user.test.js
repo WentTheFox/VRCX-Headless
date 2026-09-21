@@ -404,126 +404,96 @@ describe('User Utils', () => {
         });
     });
 
-    describe('userImage (explicit settings)', () => {
-        test('does not access appearance store when setting is passed (pure path)', () => {
-            userImage({ thumbnailUrl: 'https://img.com/thumb' }, false, '128', false, false);
+    describe('userImage', () => {
+        test('does not access appearance store (pure path)', () => {
+            userImage({ thumbnailUrl: 'https://img.com/thumb' }, false, '128');
             expect(storeMocks.useAppearanceSettingsStore).not.toHaveBeenCalled();
         });
 
         test('returns empty string for falsy user', () => {
-            expect(userImage(null, false, '128', false, false)).toBe('');
-            expect(userImage(undefined, false, '128', false, false)).toBe('');
+            expect(userImage(null, false, '128')).toBe('');
+            expect(userImage(undefined, false, '128')).toBe('');
         });
 
-        test('returns profilePicOverrideThumbnail when available', () => {
-            const user = {
-                profilePicOverrideThumbnail: 'https://img.com/pic/256/thumb'
-            };
-            expect(userImage(user, false, '128', false, false)).toBe('https://img.com/pic/256/thumb');
+        test('returns iconUrl when present', () => {
+            const user = { iconUrl: 'https://img.com/icon', thumbnailUrl: 'https://img.com/thumb' };
+            expect(userImage(user, false, '128')).toBe('https://img.com/icon');
         });
 
-        test('replaces resolution for icon mode with profilePicOverrideThumbnail', () => {
-            const user = {
-                profilePicOverrideThumbnail: 'https://img.com/pic/256/thumb'
-            };
-            expect(userImage(user, true, '64', false, false)).toBe('https://img.com/pic/64/thumb');
+        test('converts iconUrl for icon mode', () => {
+            const user = { iconUrl: 'https://img.com/icon' };
+            expect(userImage(user, true, '128')).toBe('converted:https://img.com/icon');
         });
 
-        test('returns profilePicOverride when no thumbnail', () => {
-            const user = { profilePicOverride: 'https://img.com/full' };
-            expect(userImage(user, false, '128', false, false)).toBe('https://img.com/full');
-        });
-
-        test('returns thumbnailUrl as fallback', () => {
+        test('returns thumbnailUrl when there is no iconUrl', () => {
             const user = { thumbnailUrl: 'https://img.com/thumb' };
-            expect(userImage(user, false, '128', false, false)).toBe('https://img.com/thumb');
+            expect(userImage(user, false, '128')).toBe('https://img.com/thumb');
         });
 
         test('returns currentAvatarThumbnailImageUrl as fallback', () => {
             const user = {
                 currentAvatarThumbnailImageUrl: 'https://img.com/avatar/256/thumb'
             };
-            expect(userImage(user, false, '128', false, false)).toBe('https://img.com/avatar/256/thumb');
+            expect(userImage(user, false, '128')).toBe('https://img.com/avatar/256/thumb');
         });
 
         test('replaces resolution for icon mode with currentAvatarThumbnailImageUrl', () => {
             const user = {
                 currentAvatarThumbnailImageUrl: 'https://img.com/avatar/256/thumb'
             };
-            expect(userImage(user, true, '64', false, false)).toBe('https://img.com/avatar/64/thumb');
+            expect(userImage(user, true, '64')).toBe('https://img.com/avatar/64/thumb');
         });
 
         test('returns currentAvatarImageUrl as last resort', () => {
             const user = {
                 currentAvatarImageUrl: 'https://img.com/avatar/full'
             };
-            expect(userImage(user, false, '128', false, false)).toBe('https://img.com/avatar/full');
+            expect(userImage(user, false, '128')).toBe('https://img.com/avatar/full');
         });
 
         test('converts currentAvatarImageUrl for icon mode', () => {
             const user = {
                 currentAvatarImageUrl: 'https://img.com/avatar/full'
             };
-            expect(userImage(user, true, '128', false, false)).toBe('converted:https://img.com/avatar/full');
+            expect(userImage(user, true, '128')).toBe('converted:https://img.com/avatar/full');
         });
 
         test('returns empty string when user has no image fields', () => {
-            expect(userImage({}, false, '128', false, false)).toBe('');
-        });
-
-        test('returns userIcon when displayVRCPlusIconsAsAvatar is true', () => {
-            const user = {
-                userIcon: 'https://img.com/icon',
-                thumbnailUrl: 'https://img.com/thumb'
-            };
-            expect(userImage(user, false, '128', false, true)).toBe('https://img.com/icon');
-        });
-
-        test('converts userIcon for icon mode when VRCPlus setting enabled', () => {
-            const user = { userIcon: 'https://img.com/icon' };
-            expect(userImage(user, true, '128', false, true)).toBe('converted:https://img.com/icon');
-        });
-
-        test('returns userIcon for isUserDialogIcon even if VRCPlus setting off', () => {
-            const user = {
-                userIcon: 'https://img.com/icon',
-                thumbnailUrl: 'https://img.com/thumb'
-            };
-            expect(userImage(user, false, '128', true, false)).toBe('https://img.com/icon');
+            expect(userImage({}, false, '128')).toBe('');
         });
     });
 
-    describe('userImageFull (explicit settings)', () => {
-        test('does not access appearance store when setting is passed (pure path)', () => {
-            userImageFull({ currentAvatarImageUrl: 'https://img.com/avatar' }, false);
+    describe('userImageFull', () => {
+        test('does not access appearance store (pure path)', () => {
+            userImageFull({ currentAvatarImageUrl: 'https://img.com/avatar' });
             expect(storeMocks.useAppearanceSettingsStore).not.toHaveBeenCalled();
         });
 
         test('returns empty string for falsy user', () => {
-            expect(userImageFull(null, false)).toBe('');
+            expect(userImageFull(null)).toBe('');
         });
 
-        test('returns profilePicOverride when available', () => {
+        test('returns iconUrl when available', () => {
+            const user = {
+                iconUrl: 'https://img.com/icon',
+                currentAvatarImageUrl: 'https://img.com/avatar'
+            };
+            expect(userImageFull(user)).toBe('https://img.com/icon');
+        });
+
+        test('returns profilePicOverride when there is no iconUrl', () => {
             const user = {
                 profilePicOverride: 'https://img.com/full',
                 currentAvatarImageUrl: 'https://img.com/avatar'
             };
-            expect(userImageFull(user, false)).toBe('https://img.com/full');
+            expect(userImageFull(user)).toBe('https://img.com/full');
         });
 
         test('returns currentAvatarImageUrl as fallback', () => {
             const user = {
                 currentAvatarImageUrl: 'https://img.com/avatar'
             };
-            expect(userImageFull(user, false)).toBe('https://img.com/avatar');
-        });
-
-        test('returns userIcon when VRCPlus setting enabled', () => {
-            const user = {
-                userIcon: 'https://img.com/icon',
-                profilePicOverride: 'https://img.com/full'
-            };
-            expect(userImageFull(user, true)).toBe('https://img.com/icon');
+            expect(userImageFull(user)).toBe('https://img.com/avatar');
         });
     });
 });
