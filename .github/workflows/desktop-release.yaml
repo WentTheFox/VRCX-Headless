@@ -336,8 +336,27 @@ jobs:
                       range="${prev_tag}..${tag}"
                       echo "Diffing $range (previous release: $prev_tag)"
                   else
+                      # First release under a new VRCX base (right after an
+                      # upstream sync): fall back to the newest fork release of
+                      # any *earlier* major, not the repo root -- diffing from
+                      # the first commit produced a >125000-char body that
+                      # GitHub rejects (v20260916.1.0). Fork tags are
+                      # `v<8-digit-date>.<minor>.<patch>`, which also keeps
+                      # upstream's own `v2026.09.16`-style tags out of this.
+                      mapfile -t all_tags < <(git tag -l 'v*' --sort=v:refname | grep -E '^v[0-9]{8}\.[0-9]+\.[0-9]+$')
+                      for i in "${!all_tags[@]}"; do
+                          if [ "${all_tags[$i]}" = "$tag" ]; then
+                              [ "$i" -gt 0 ] && prev_tag="${all_tags[$((i - 1))]}"
+                              break
+                          fi
+                      done
+                  fi
+                  if [ -n "$prev_tag" ]; then
+                      range="${prev_tag}..${tag}"
+                      echo "Diffing $range (previous release: $prev_tag)"
+                  else
                       range="$(git rev-list --max-parents=0 HEAD)..${tag}"
-                      echo "No previous $major release tag found, diffing from repo root: $range"
+                      echo "No previous fork release tag found, diffing from repo root: $range"
                   fi
                   {
                       echo "## Changes"
@@ -345,6 +364,14 @@ jobs:
                       git log "$range" --no-merges --pretty=format:'- %s (%h)'
                       echo
                   } > changelog.md
+                  # GitHub rejects release bodies over 125000 characters; cap
+                  # well under that so a huge commit range degrades to a
+                  # truncated changelog instead of no release at all.
+                  if [ "$(wc -c < changelog.md)" -gt 100000 ]; then
+                      head -c 100000 changelog.md > changelog.trunc
+                      { cat changelog.trunc; echo; echo; echo "_(changelog truncated -- see the commit history for the full range)_"; } > changelog.md
+                      rm changelog.trunc
+                  fi
                   cat changelog.md
 
             # Published immediately, not draft -- was draft-only through
