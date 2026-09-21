@@ -72,4 +72,9 @@ jobs:
 
                   title=$(node -pe "JSON.parse(require('fs').readFileSync('result.json', 'utf8')).issueTitle")
                   body=$(node -pe "JSON.parse(require('fs').readFileSync('result.json', 'utf8')).issueBody")
-                  gh issue create --title "$title" --body "$body" --label upstream-sync-needed
+                  # Assigning + @-mentioning the owner is what actually
+                  # notifies them: issues opened by github-actions[bot]
+                  # otherwise only notify repo watchers.
+                  owner="${{ github.repository_owner }}"
+                  body="$body"$'\n\n'"cc @$owner"
+                  gh issue create --title "$title" --body "$body" --label upstream-sync-needed --assignee "$owner"
