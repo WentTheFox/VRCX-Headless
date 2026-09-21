@@ -138,16 +138,43 @@ tryRelaunchWithArgs(args);
 tryCopyFromWinePrefix();
 const userDataPath = getElectronUserDataPath();
 console.log('Electron userData path:', userDataPath);
-if (!fs.existsSync(userDataPath)) {
-    fs.mkdirSync(userDataPath, { recursive: true });
+try {
+    if (!fs.existsSync(userDataPath)) {
+        fs.mkdirSync(userDataPath, { recursive: true });
+    }
+} catch (err) {
+    // existsSync() follows symlinks, so a dangling link (e.g. %APPDATA%\VRCX
+    // pointing at a drive that's no longer there) reads as "missing" and then
+    // mkdirSync() throws — surface that as something actionable, not a crash.
+    console.error('Failed to create userData directory:', err);
+    dialog.showErrorBox(
+        'VRCX Headless Desktop',
+        `Could not create the data folder:\n${userDataPath}\n\n${err.message}\n\n` +
+            `If ${path.dirname(userDataPath)} is a symbolic link, check that its target still exists.`
+    );
+    app.exit(1);
+    process.exit(1);
 }
 app.setPath('userData', userDataPath);
 
 const armPath = path.join(rootDir, 'build/Electron/VRCX-Electron-arm64.cjs');
-if (process.arch === 'arm64' && fs.existsSync(armPath)) {
-    require(armPath);
-} else {
-    require(path.join(rootDir, 'build/Electron/VRCX-Electron.cjs'));
+try {
+    if (process.arch === 'arm64' && fs.existsSync(armPath)) {
+        require(armPath);
+    } else {
+        require(path.join(rootDir, 'build/Electron/VRCX-Electron.cjs'));
+    }
+} catch (err) {
+    // node-api-dotnet throws a cryptic error when no .NET runtime is installed.
+    console.error('Failed to load the .NET backend:', err);
+    dialog.showErrorBox(
+        'VRCX Headless Desktop',
+        'Failed to start the .NET backend. This is most often because the .NET Runtime 10 is not installed.\n\n' +
+            'Download it from:\nhttps://dotnet.microsoft.com/en-us/download/dotnet/10.0\n\n' +
+            `Details: ${err.message}`
+    );
+    app.exit(1);
+    process.exit(1);
 }
 
 const InteropApi = require('./InteropApi');
