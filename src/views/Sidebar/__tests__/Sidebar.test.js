@@ -21,6 +21,8 @@ vi.mock('@vueuse/core', async (importOriginal) => {
     };
 });
 vi.mock('../../../stores', () => ({
+    useNotificationsSettingsStore: () => ({ notificationLayout: ref('notification-center') }),
+    useVrStore: () => ({ saveOpenVROption: vi.fn() }),
     useFriendStore: () => ({
         friends: ref(new Map()),
         isRefreshFriendsLoading: ref(false),

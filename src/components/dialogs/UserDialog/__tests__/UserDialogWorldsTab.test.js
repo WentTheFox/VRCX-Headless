@@ -173,7 +173,7 @@ describe('UserDialogWorldsTab.vue', () => {
 
         test('renders all worlds', () => {
             const wrapper = mountComponent();
-            const items = wrapper.findAll('.cursor-pointer');
+            const items = wrapper.findAll('[class*="w-[167px]"]');
             expect(items).toHaveLength(3);
         });
 
@@ -209,7 +209,7 @@ describe('UserDialogWorldsTab.vue', () => {
                 ]
             });
             // The (0) should NOT be rendered because v-if="world.occupants" is falsy for 0
-            const items = wrapper.findAll('.cursor-pointer');
+            const items = wrapper.findAll('[class*="w-[167px]"]');
             expect(items).toHaveLength(1);
             expect(wrapper.text()).not.toContain('(0)');
         });
@@ -261,7 +261,7 @@ describe('UserDialogWorldsTab.vue', () => {
                 }
             });
 
-            const firstItem = wrapper.findAll('.cursor-pointer')[0];
+            const firstItem = wrapper.findAll('[class*="w-[167px]"]')[0];
             await firstItem.trigger('click');
             expect(showWorldDialogSpy).toHaveBeenCalledWith('wrld_1');
         });

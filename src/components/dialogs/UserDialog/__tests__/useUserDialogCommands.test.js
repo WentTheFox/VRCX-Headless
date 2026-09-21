@@ -139,9 +139,9 @@ describe('useUserDialogCommands', () => {
             expect(deps.showUserDialog).toHaveBeenCalledWith('usr_test123');
         });
 
-        it('Share: should copy user URL', () => {
+        it('Copy Profile URL: should copy user URL', () => {
             const { userDialogCommand } = useUserDialogCommands(userDialog, deps);
-            userDialogCommand('Share');
+            userDialogCommand('Copy Profile URL');
             expect(copyToClipboard).toHaveBeenCalledWith(
                 'https://vrchat.com/home/user/usr_test123',
                 'message.user.url_copied'
@@ -216,11 +216,11 @@ describe('useUserDialogCommands', () => {
 
     describe('userDialogCommand — string callback commands', () => {
         it('should delegate string-type commands to registered callbacks', () => {
-            const showSocialStatusDialog = vi.fn();
+            const showEditNoteAndMemoDialog = vi.fn();
             const { userDialogCommand, registerCallbacks } = useUserDialogCommands(userDialog, deps);
-            registerCallbacks({ showSocialStatusDialog });
-            userDialogCommand('Edit Social Status');
-            expect(showSocialStatusDialog).toHaveBeenCalled();
+            registerCallbacks({ showEditNoteAndMemoDialog });
+            userDialogCommand('Edit Note Memo');
+            expect(showEditNoteAndMemoDialog).toHaveBeenCalled();
         });
 
         it('should not throw when callback is not registered', () => {

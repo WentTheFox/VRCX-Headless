@@ -78,7 +78,7 @@ describe('FullscreenImagePreview.vue', () => {
     it('closes dialog when close button clicked', async () => {
         const wrapper = mount(FullscreenImagePreview);
 
-        await wrapper.get('button[aria-label="Close"]').trigger('click');
+        await wrapper.get('button[aria-label="dialog.shared_feed_filters.close"]').trigger('click');
 
         expect(mocks.dialog.value.visible).toBe(false);
     });

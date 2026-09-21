@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('pinia', async (i) => ({ ...(await i()), storeToRefs: (s) => s }));
 vi.mock('@/stores', () => ({
+    useAppearanceSettingsStore: () => ({
+        displayVRCProfileBackgrounds: false,
+        profileBackgroundOpacity: 0,
+        isDarkMode: false
+    }),
     useUiStore: () => ({
         dialogCrumbs: mocks.dialogCrumbs.value,
         closeMainDialog: (...a) => mocks.closeMainDialog(...a),

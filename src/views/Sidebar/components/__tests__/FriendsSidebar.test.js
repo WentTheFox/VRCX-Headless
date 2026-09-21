@@ -193,6 +193,10 @@ vi.mock('../../../../components/BackToTop.vue', () => ({
     default: { template: '<div data-testid="back-to-top" />' }
 }));
 
+vi.mock('../../../../components/dialogs/UserDialog/EditProfileDialog.vue', () => ({
+    default: { template: '<div data-testid="edit-profile-dialog" />' }
+}));
+
 vi.mock('../../../../components/Location.vue', () => ({
     default: {
         props: ['location', 'traveling', 'link'],

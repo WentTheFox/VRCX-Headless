@@ -158,7 +158,7 @@ describe('UserDialogAvatarsTab.vue', () => {
 
         test('renders all avatars when releaseStatus is "all"', () => {
             const wrapper = mountComponent();
-            const items = wrapper.findAll('.cursor-pointer');
+            const items = wrapper.findAll('[class*="w-[167px]"]');
             expect(items).toHaveLength(3);
         });
 

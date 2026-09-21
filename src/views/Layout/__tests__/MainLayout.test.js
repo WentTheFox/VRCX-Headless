@@ -105,6 +105,14 @@ vi.mock('../../Favorites/dialogs/WorldImportDialog.vue', () => ({
 vi.mock('../../Favorites/dialogs/AvatarImportDialog.vue', () => ({
     default: { template: '<div />' }
 }));
+vi.mock('../../../components/dialogs/GroupDialog/GroupEditDialog.vue', () => ({
+    default: { template: '<div data-testid="group-edit-dialog" />' }
+}));
+
+vi.mock('../../../components/dialogs/GroupDialog/GroupEventEditDialog.vue', () => ({
+    default: { template: '<div data-testid="group-event-edit-dialog" />' }
+}));
+
 vi.mock('../../../components/dialogs/GroupDialog/GroupMemberModerationDialog.vue', () => ({
     default: { template: '<div />' }
 }));

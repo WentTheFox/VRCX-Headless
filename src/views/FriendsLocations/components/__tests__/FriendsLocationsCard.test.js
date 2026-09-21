@@ -186,7 +186,8 @@ const i18n = createI18n({
     messages: { en }
 });
 
-vi.mock('lucide-vue-next', () => ({
+vi.mock('lucide-vue-next', async (importOriginal) => ({
+    ...(await importOriginal()),
     Pencil: { template: '<span class="pencil-icon" />' },
     User: { template: '<span class="user-icon" />' }
 }));
@@ -441,17 +442,19 @@ describe('FriendsLocationsCard.vue', () => {
                     ref: { location: 'wrld_12345:67890~region(us)' }
                 })
             });
-            expect(wrapper.find('[data-testid="context-menu-separator"]').exists()).toBe(true);
+            // One permanent separator after 'View details' plus one before Launch/Invite.
+            expect(wrapper.findAll('[data-testid="context-menu-separator"]')).toHaveLength(2);
         });
 
-        test('hides separator when friend has no real location', () => {
+        test('hides the launch separator when friend has no real location', () => {
             const wrapper = mountCard({
                 friend: makeFriend({
                     state: 'online',
                     ref: { location: 'private' }
                 })
             });
-            expect(wrapper.find('[data-testid="context-menu-separator"]').exists()).toBe(false);
+            // Only the permanent separator after 'View details' remains.
+            expect(wrapper.findAll('[data-testid="context-menu-separator"]')).toHaveLength(1);
         });
 
         test('shows Invite but disabled when cannot invite to my location', () => {
@@ -552,14 +555,14 @@ describe('FriendsLocationsCard.vue', () => {
                 active: false
             });
             const wrapper = mountCard();
-            expect(wrapper.find('.friend-card__status-dot').classes()).toContain('friend-card__status-dot--join');
+            expect(wrapper.find('.friend-card__status-dot').classes()).toContain('friend-card__status-dot--joinme');
         });
 
         test('shows active busy status class when active + busy', () => {
             mockUserStatusClass.mockReturnValue({
                 joinme: false,
                 online: false,
-                active: true
+                'active-busy': true
             });
             const wrapper = mountCard({
                 friend: makeFriend({ status: 'busy' })

@@ -59,14 +59,17 @@ vi.mock('@/components/ui/switch', () => ({
     }
 }));
 
-vi.mock('../../../../components/ui/radio-group', () => ({
-    RadioGroup: {
+vi.mock('@/components/ui/select', () => ({
+    Select: {
         props: ['modelValue', 'disabled'],
         emits: ['update:modelValue'],
         template:
-            '<div data-testid="radio-group" :data-disabled="disabled"><button data-testid="radio-false" @click="$emit(\'update:modelValue\', \'false\')" /><button data-testid="radio-true" @click="$emit(\'update:modelValue\', \'true\')" /><slot /></div>'
+            '<div data-testid="select" :data-disabled="disabled"><button data-testid="select-false" @click="$emit(\'update:modelValue\', \'false\')" /><button data-testid="select-true" @click="$emit(\'update:modelValue\', \'true\')" /><button data-testid="select-2" @click="$emit(\'update:modelValue\', \'2\')" /><slot /></div>'
     },
-    RadioGroupItem: { template: '<div />' }
+    SelectContent: { template: '<div><slot /></div>' },
+    SelectItem: { template: '<div><slot /></div>' },
+    SelectTrigger: { template: '<div><slot /></div>' },
+    SelectValue: { template: '<div />' }
 }));
 
 vi.mock('../../../../components/ui/toggle-group', () => ({
@@ -113,13 +116,13 @@ describe('WristOverlaySettings.vue', () => {
         expect(mocks.wristStore.setOverlayWrist).toHaveBeenCalledTimes(1);
         expect(mocks.saveOpenVROption).toHaveBeenCalled();
 
-        // First (and only) radio group is now overlay button (Start Overlay With moved to VrTab)
-        const radioGroups = wrapper.findAll('[data-testid="radio-group"]');
-        await radioGroups[0].get('[data-testid="radio-true"]').trigger('click');
+        // First (and only) select is now overlay button (Start Overlay With moved to VrTab)
+        const radioGroups = wrapper.findAll('[data-testid="select"]');
+        await radioGroups[0].get('[data-testid="select-true"]').trigger('click');
         expect(mocks.wristStore.setOverlaybutton).toHaveBeenCalledTimes(1);
 
-        // Toggle group for overlay hand
-        await wrapper.get('[data-testid="toggle-right"]').trigger('click');
+        // Second select is the overlay hand
+        await wrapper.findAll('[data-testid="select"]')[1].get('[data-testid="select-2"]').trigger('click');
         expect(mocks.wristStore.setOverlayHand).toHaveBeenCalledWith('2');
     });
 
@@ -127,8 +130,8 @@ describe('WristOverlaySettings.vue', () => {
         mocks.wristStore.overlaybutton.value = true;
         const wrapper = mount(WristOverlaySettings);
 
-        const firstRadio = wrapper.findAll('[data-testid="radio-group"]')[0];
-        await firstRadio.get('[data-testid="radio-true"]').trigger('click');
+        const firstRadio = wrapper.findAll('[data-testid="select"]')[0];
+        await firstRadio.get('[data-testid="select-true"]').trigger('click');
 
         expect(mocks.wristStore.setOverlaybutton).not.toHaveBeenCalled();
     });
