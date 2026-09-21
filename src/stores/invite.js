@@ -54,7 +54,6 @@ export const useInviteStore = defineStore('Invite', () => {
     });
 
     /**
-     *
      * @param {'message' | 'request' | 'response' | 'requestResponse'} mode
      */
     function refreshInviteMessageTableData(mode) {

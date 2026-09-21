@@ -1,6 +1,6 @@
 import { toast } from 'vue-sonner';
 
-import { useAuthStore, useModalStore, useNotificationStore, useUpdateLoopStore, useUserStore } from '../stores';
+import { useAuthStore, useModalStore, useNotificationStore, useUpdateLoopStore } from '../stores';
 import { getCurrentUser } from '../coordinators/userCoordinator';
 import { AppDebug, isApiLogSuppressed, logWebRequest } from './appConfig.js';
 import { i18n } from '../plugins/i18n';
@@ -17,7 +17,7 @@ const t = i18n.global.t;
 /**
  * @param {string} endpoint
  * @param {object} [options]
- * @returns {object} init object ready for webApiService.execute
+ * @returns {object} Init object ready for webApiService.execute
  */
 export function buildRequestInit(endpoint, options) {
     const init = {
@@ -50,8 +50,9 @@ export function buildRequestInit(endpoint, options) {
 
 /**
  * Parses a raw response: JSON-decodes response.data and detects API-level errors.
- * @param {{status: number, data?: string | object}} response
- * @returns {{status: number, data?: any, hasApiError?: boolean, parseError?: boolean}}
+ *
+ * @param {{ status: number; data?: string | object }} response
+ * @returns {{ status: number; data?: any; hasApiError?: boolean; parseError?: boolean }}
  */
 export function parseResponse(response) {
     if (!response.data) {
@@ -71,7 +72,7 @@ export function parseResponse(response) {
 /**
  * @template T
  * @param {string} endpoint
- * @param {RequestInit & { params?: any } & {customMsg?: string}} [options]
+ * @param {RequestInit & { params?: any } & { customMsg?: string }} [options]
  * @returns {Promise<T>}
  */
 export function request(endpoint, options) {
@@ -260,7 +261,7 @@ export function shouldIgnoreError(code, endpoint) {
 
 /**
  * @param {number} code
- * @param {string|object} [error]
+ * @param {string | object} [error]
  * @param {string} [endpoint]
  * @returns {never}
  */
@@ -305,24 +306,28 @@ export function $throw(code, error, endpoint) {
 
 /**
  * Processes data in bulk by making paginated requests until all data is fetched or limits are reached.
+ *
  * @async
+ * @example
+ *     await processBulk({
+ *         fn: fetchUsers,
+ *         params: { n: 50 },
+ *         N: 200,
+ *         handle: (result) => console.log(`Fetched ${result.json.length} users`),
+ *         done: (success) => console.log(success ? 'Complete' : 'Failed')
+ *     });
+ *
  * @function processBulk
  * @param {object} options - Configuration options for bulk processing
- * @param {function} options.fn - The function to call for each batch request. Must return a result with a 'json' property containing an array
+ * @param {function} options.fn - The function to call for each batch request. Must return a result with a 'json'
+ *   property containing an array
  * @param {object} [options.params] - Parameters to pass to the function. Will be modified to include pagination
  * @param {number} [options.N] - Maximum number of items to fetch. -1 for unlimited, 0 for fetch until page size not met
  * @param {string} [options.limitParam] - The parameter name used for page size in the request
  * @param {function} [options.handle] - Callback function to handle each batch result
- * @param {function} [options.done] - Callback function called when processing is complete. Receives boolean indicating success
+ * @param {function} [options.done] - Callback function called when processing is complete. Receives boolean indicating
+ *   success
  * @returns {Promise<void>} Promise that resolves when bulk processing is complete
- * @example
- * await processBulk({
- *   fn: fetchUsers,
- *   params: { n: 50 },
- *   N: 200,
- *   handle: (result) => console.log(`Fetched ${result.json.length} users`),
- *   done: (success) => console.log(success ? 'Complete' : 'Failed')
- * });
  */
 export async function processBulk(options) {
     const { fn, params: rawParams = {}, N = -1, limitParam = 'n', handle, done } = options;

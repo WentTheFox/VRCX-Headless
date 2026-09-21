@@ -16,7 +16,6 @@ import { isRpcWorld, findUserByDisplayName } from '../../shared/utils';
 import { createMediaParsers } from '../gameLog/mediaParsers';
 
 /**
- *
  * @param overrides
  */
 function makeDeps(overrides = {}) {

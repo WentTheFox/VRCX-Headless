@@ -187,7 +187,6 @@ vi.mock('lucide-vue-next', async (importOriginal) => {
 import FavoritesFriendItem from '../FavoritesFriendItem.vue';
 
 /**
- *
  * @param {Record<string, any>} props
  */
 function mountItem(props = {}) {
@@ -213,7 +212,6 @@ function mountItem(props = {}) {
 }
 
 /**
- *
  * @param wrapper
  * @param text
  */

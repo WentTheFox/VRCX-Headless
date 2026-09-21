@@ -4,9 +4,6 @@ import { useUserStore } from '../stores/user';
 import { applyUser } from '../coordinators/userCoordinator';
 import { watchState } from '../services/watchState';
 
-/**
- *
- */
 function refetchActiveFriendListQueries() {
     queryClient
         .invalidateQueries({
@@ -21,6 +18,7 @@ function refetchActiveFriendListQueries() {
 const friendReq = {
     /**
      * Fetch friends of current user.
+     *
      * @type {import('../types/api/friend').GetFriends}
      */
     getFriends(params) {
@@ -58,7 +56,7 @@ const friendReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: any, params: { userId: string }}>}
+     * @returns {Promise<{ json: any; params: { userId: string } }>}
      */
     sendFriendRequest(params) {
         return request(`user/${params.userId}/friendRequest`, {
@@ -75,7 +73,7 @@ const friendReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: any, params: { userId: string }}>}
+     * @returns {Promise<{ json: any; params: { userId: string } }>}
      */
     cancelFriendRequest(params) {
         return request(`user/${params.userId}/friendRequest`, {
@@ -93,7 +91,7 @@ const friendReq = {
     /**
      * @param {{ userId: string }} params
      * @param customMsg
-     * @returns {Promise<{json: any, params: { userId: string }}>}
+     * @returns {Promise<{ json: any; params: { userId: string } }>}
      */
     deleteFriend(params, customMsg) {
         return request(`auth/user/friends/${params.userId}`, {
@@ -110,9 +108,10 @@ const friendReq = {
     },
 
     /**
-     * currentUserId for own reference
-     * @param {{ userId: string, currentUserId: string }} params
-     * @returns {Promise<{json: any, params: { userId: string, currentUserId: string }}>}
+     * CurrentUserId for own reference
+     *
+     * @param {{ userId: string; currentUserId: string }} params
+     * @returns {Promise<{ json: any; params: { userId: string; currentUserId: string } }>}
      */
     getFriendStatus(params) {
         return request(`user/${params.userId}/friendStatus`, {
@@ -130,7 +129,7 @@ const friendReq = {
     /**
      * @param {any} params
      * @param {string} userId
-     * @returns {Promise<{json: any, params: any, userId: string}>}
+     * @returns {Promise<{ json: any; params: any; userId: string }>}
      */
     deleteHiddenFriendRequest(params, userId) {
         return request(`user/${userId}/friendRequest`, {

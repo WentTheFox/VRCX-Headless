@@ -138,7 +138,6 @@ const stubs = {
 };
 
 /**
- *
  * @param storeOverrides
  */
 function mountLogin(storeOverrides = {}) {

@@ -1,7 +1,6 @@
 /**
- *
  * @param {Array} array
- * @param {*} item
+ * @param {any} item
  * @returns {boolean}
  */
 function removeFromArray(array, item) {
@@ -16,7 +15,6 @@ function removeFromArray(array, item) {
 }
 
 /**
- *
  * @param {Array} a
  * @param {Array} b
  * @returns {boolean}
@@ -29,7 +27,6 @@ function arraysMatch(a, b) {
 }
 
 /**
- *
  * @param {Array} array
  * @param {number} fromIndex
  * @param {number} toIndex

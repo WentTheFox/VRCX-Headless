@@ -153,6 +153,7 @@ export const useFeedStore = defineStore('Feed', () => {
     /**
      * Appends a feed entry to the local table if it passes filters.
      * Does NOT trigger notifications or shared feed — that is the caller's responsibility.
+     *
      * @param {object} feed The feed entry to add.
      */
     function addFeedEntry(feed) {

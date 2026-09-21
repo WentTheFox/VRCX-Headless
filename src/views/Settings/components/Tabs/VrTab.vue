@@ -329,22 +329,15 @@
         }
     });
 
-    /**
-     *
-     */
     function showNotificationPositionDialog() {
         isNotificationPositionDialogVisible.value = true;
     }
 
-    /**
-     *
-     */
     function showWristFeedFiltersDialog() {
         feedFiltersDialogMode.value = 'wrist';
     }
 
     /**
-     *
      * @param value
      */
     function handleOpenVRAlwaysRadio(value) {
@@ -356,7 +349,6 @@
     }
 
     /**
-     *
      * @param configKey
      */
     async function changeYouTubeApi(configKey = '') {

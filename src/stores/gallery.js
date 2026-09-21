@@ -92,7 +92,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     );
 
     /**
-     *
      * @param args
      */
     function handleFilesList(args) {
@@ -113,7 +112,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handleGalleryImageAdd(args) {
@@ -122,9 +120,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
         }
     }
 
-    /**
-     *
-     */
     function showGalleryPage() {
         galleryDialogVisible.value = true;
         if (router.currentRoute.value?.name === 'gallery') {
@@ -134,9 +129,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
         router.push({ name: 'gallery' });
     }
 
-    /**
-     *
-     */
     function loadGalleryData() {
         refreshGalleryTable();
         refreshVRCPlusIconsTable();
@@ -146,9 +138,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
         (refreshPrintFavorites(), getInventory());
     }
 
-    /**
-     *
-     */
     function refreshGalleryTable() {
         galleryDialogGalleryLoading.value = true;
         const params = {
@@ -166,9 +155,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
             });
     }
 
-    /**
-     *
-     */
     function refreshVRCPlusIconsTable() {
         galleryDialogIconsLoading.value = true;
         const params = {
@@ -187,7 +173,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param e
      */
     function inviteImageUpload(e) {
@@ -207,18 +192,12 @@ export const useGalleryStore = defineStore('Gallery', () => {
         r.readAsBinaryString(file);
     }
 
-    /**
-     *
-     */
     function clearInviteImageUpload() {
         const buttonList = document.querySelectorAll('.inviteImageUploadButton');
         buttonList.forEach((button) => (button.value = ''));
         uploadImage.value = '';
     }
 
-    /**
-     *
-     */
     function refreshStickerTable() {
         galleryDialogStickersLoading.value = true;
         const params = {
@@ -237,7 +216,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param args
      */
     function handleStickerAdd(args) {
@@ -247,7 +225,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param displayName
      * @param userId
      * @param inventoryId
@@ -285,9 +262,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
         }
     }
 
-    /**
-     *
-     */
     async function refreshPrintTable() {
         galleryDialogPrintsLoading.value = true;
         const params = {
@@ -313,7 +287,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param printId
      */
     function queueSavePrintToFile(printId) {
@@ -338,7 +311,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param printId
      */
     async function trySavePrintToFile(printId) {
@@ -386,9 +358,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     // #endregion
     // #region | Emoji
 
-    /**
-     *
-     */
     function refreshEmojiTable() {
         galleryDialogEmojisLoading.value = true;
         const params = {
@@ -406,9 +375,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
             });
     }
 
-    /**
-     *
-     */
     async function getInventory() {
         inventoryTable.value = [];
         advancedSettingsStore.currentUserInventory.clear();
@@ -442,9 +408,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
         }
     }
 
-    /**
-     *
-     */
     async function tryDeleteOldPrints() {
         if (!advancedSettingsStore.autoDeleteOldPrints) {
             return;
@@ -490,7 +453,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param imageUrl
      * @param fileName
      */
@@ -505,7 +467,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param inventoryId
      * @param userId
      */
@@ -531,7 +492,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param inventoryId
      * @param userId
      */
@@ -594,7 +554,6 @@ export const useGalleryStore = defineStore('Gallery', () => {
     }
 
     /**
-     *
      * @param fileId
      */
     async function getCachedEmoji(fileId) {

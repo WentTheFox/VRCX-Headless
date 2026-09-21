@@ -40,6 +40,7 @@ const { WebSocket: WsClient } = require('ws');
  * with no window then closes." Fixed by passing `env: process.env`
  * explicitly instead of assuming Electron forwards the current process's
  * (already-mutated, in-memory) environment on its own.
+ *
  * @type {string}
  */
 const customCaCertPath = path.join(getVRCXPath(), 'custom-ca.pem');
@@ -237,7 +238,8 @@ let serverToken = null;
  * call site); this is the backing store `completeSession()` also upserts
  * into, and what the `vrcx-list-servers`/`vrcx-switch-server`/etc. IPC
  * handlers below operate on.
- * @type {{url: string, token: string, label: string, isDefault: boolean}[]}
+ *
+ * @type {{ url: string; token: string; label: string; isDefault: boolean }[]}
  */
 let servers = [];
 /** @type {import('ws').WebSocket | null} */
@@ -251,14 +253,18 @@ let agentReconnectTimer = null;
  * constructing a fresh relay `WebSocket` object, which calls
  * `vrcx-stream-connect` again. Only one at a time, same as the real pipeline
  * connection it replaces.
+ *
  * @type {import('ws').WebSocket | null}
  */
 let streamSocket = null;
-/** Updated opportunistically by every `vrcx-rpc` call and a periodic
+/**
+ * Updated opportunistically by every `vrcx-rpc` call and a periodic
  * health-check timer; pushed to the renderer on change (not every tick) so
  * the "Headless" status-bar indicator (`src/components/HeadlessServerStatus.vue`)
  * can reflect it without polling.
- * @type {boolean} */
+ *
+ * @type {boolean}
+ */
 let serverReachable = true;
 /** @type {NodeJS.Timeout | null} */
 let serverHealthCheckTimer = null;
@@ -276,6 +282,7 @@ let serverHealthCheckTimer = null;
  * (the setup screen, the "Headless" status panel's add-server form, etc.),
  * so unwrapping the cause once here — rather than in each of the ~8 call
  * sites — is what actually reaches them instead of a dead end.
+ *
  * @param {unknown} err
  * @returns {string}
  */
@@ -318,7 +325,7 @@ function describeFetchError(err) {
 /**
  * @param {string} url
  * @param {import('node:https').RequestOptions & { body?: string }} options
- * @returns {Promise<{ status: number, body: any }>}
+ * @returns {Promise<{ status: number; body: any }>}
  */
 async function fetchJson(url, options) {
     let response;
@@ -352,6 +359,7 @@ async function fetchJson(url, options) {
  * `serverReachable` actually flips, not on every check — the "Headless"
  * status-bar indicator (`src/components/HeadlessServerStatus.vue`) listens
  * for this instead of polling.
+ *
  * @param {boolean} reachable
  */
 function setServerReachable(reachable) {
@@ -435,7 +443,7 @@ function connectAgentSocket() {
     });
     ws.on('open', () => console.log('Connected to server agent channel'));
     ws.on('message', async (data) => {
-        /** @type {{ requestId?: unknown, className?: unknown, methodName?: unknown, args?: unknown }} */
+        /** @type {{ requestId?: unknown; className?: unknown; methodName?: unknown; args?: unknown }} */
         let message;
         try {
             message = JSON.parse(data.toString());
@@ -542,6 +550,7 @@ ipcMain.on('vrcx-stream-close', () => {
  * pairing. Same shape as `client-web/bootstrap.js`'s `refreshSession()`.
  * 401 (or any other failure) means the stored token is missing, expired,
  * or the server rejected it outright — falls through to the setup screen.
+ *
  * @returns {Promise<boolean>}
  */
 async function refreshServerSession() {
@@ -623,7 +632,7 @@ function saveServers() {
 }
 
 /**
- * @returns {{url: string, token: string, label: string, isDefault: boolean} | null}
+ * @returns {{ url: string; token: string; label: string; isDefault: boolean } | null}
  */
 function getDefaultServer() {
     return servers.find((s) => s.isDefault) ?? servers[0] ?? null;
@@ -637,9 +646,10 @@ function getDefaultServer() {
  * whatever was already the default just because it happened to refresh
  * first. The very first server ever added still becomes default
  * automatically (`servers.length === 0` at insert time).
+ *
  * @param {string} url
  * @param {string} token
- * @param {{isDefault?: boolean}} [options]
+ * @param {{ isDefault?: boolean }} [options]
  */
 function upsertServer(url, token, { isDefault } = {}) {
     const existing = servers.find((s) => s.url === url);
@@ -673,8 +683,9 @@ function upsertServer(url, token, { isDefault } = {}) {
  * entry's own token; failures are swallowed since the entry is being
  * deleted either way and there's no meaningful recovery action if the
  * server itself can't be reached to log out of.
+ *
  * @param {string} url
- * @returns {Promise<{ok: true} | {ok: false, error: string}>}
+ * @returns {Promise<{ ok: true } | { ok: false; error: string }>}
  */
 async function removeServer(url) {
     if (url === serverUrl) {
@@ -707,7 +718,7 @@ async function removeServer(url) {
 
 /**
  * @param {string} url
- * @returns {boolean} whether a matching server was found
+ * @returns {boolean} Whether a matching server was found
  */
 function setDefaultServer(url) {
     let found = false;
@@ -727,6 +738,7 @@ function setDefaultServer(url) {
  * agent channel." Also the write path for `servers` (§ above) — every
  * successful login/refresh keeps that list's copy of this server's token
  * in sync, not just the active `serverUrl`/`serverToken` cache.
+ *
  * @param {string} normalizedUrl
  * @param {string} token
  */
@@ -740,8 +752,8 @@ function completeSession(normalizedUrl, token) {
 
 /**
  * @param {string} url
- * @param {string} code the 6-digit TOTP code from the user's authenticator app
- * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
+ * @param {string} code The 6-digit TOTP code from the user's authenticator app
+ * @returns {Promise<{ ok: true } | { ok: false; error: string }>}
  */
 async function connectToServer(url, code) {
     const normalizedUrl = String(url).replace(/\/+$/, '');
@@ -772,8 +784,9 @@ async function connectToServer(url, code) {
  * `/api/totp/setup`'s status code doubles as "is this server already
  * enrolled?" — same convention `client-web/bootstrap.js` relies on. 200
  * means no (hands back a fresh secret + QR URI), 403 means yes.
+ *
  * @param {string} url
- * @returns {Promise<{ needed: true, secret: string, uri: string } | { needed: false }>}
+ * @returns {Promise<{ needed: true; secret: string; uri: string } | { needed: false }>}
  */
 async function checkTotpSetupNeeded(url) {
     const normalizedUrl = String(url).replace(/\/+$/, '');
@@ -799,7 +812,7 @@ async function checkTotpSetupNeeded(url) {
  * @param {string} url
  * @param {string} secret
  * @param {string} code
- * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
+ * @returns {Promise<{ ok: true } | { ok: false; error: string }>}
  */
 async function confirmTotpSetup(url, secret, code) {
     const normalizedUrl = String(url).replace(/\/+$/, '');
@@ -1359,6 +1372,7 @@ function closeSplash() {
  * NLog's own `.NET`-side lines, which stop the moment control returns to
  * JS. Appends a timestamped line to `fork-update.log` (`getVRCXPath()`)
  * instead, mirroring `apply-update.log`'s own reasoning.
+ *
  * @param {string} text
  */
 function logFork(text) {
@@ -1383,9 +1397,10 @@ function logFork(text) {
  * `parseSha256Digest` — the thrown error surfaces through the existing
  * `catch` around `DownloadUpdate` below as a specific, readable
  * `logFork()` line instead of a silent skip.
+ *
  * @param {string | undefined} digest GitHub's `asset.digest`, expected `sha256:<64 lowercase hex chars>`
- * @param {string} assetName only used to make the thrown message useful
- * @returns {string} the bare hex hash
+ * @param {string} assetName Only used to make the thrown message useful
+ * @returns {string} The bare hex hash
  */
 function parseSha256Digest(digest, assetName) {
     const match = /^sha256:([0-9a-f]{64})$/i.exec(digest ?? '');
@@ -1417,9 +1432,10 @@ function parseSha256Digest(digest, assetName) {
  * reaches double digits (`"24.10" < "24.9"` as strings, backwards from the
  * real numeric order) — this compares each dot-separated component as a
  * number instead.
+ *
  * @param {string} a
  * @param {string} b
- * @returns {number} negative if `a` is older than `b`, positive if newer, 0 if equal
+ * @returns {number} Negative if `a` is older than `b`, positive if newer, 0 if equal
  */
 function compareForkVersions(a, b) {
     const partsA = a.split('.').map(Number);
@@ -1434,7 +1450,7 @@ function compareForkVersions(a, b) {
 }
 
 /**
- * @returns {Promise<boolean>} true when an update was applied and this
+ * @returns {Promise<boolean>} True when an update was applied and this
  *   process has already called `app.exit()` to relaunch — found live
  *   (2026-08-28, Linux): `app.exit()` does not actually halt execution of
  *   the calling `app.whenReady().then(async () => {...})` chain — it
@@ -2008,7 +2024,6 @@ function createTray() {
 }
 
 /**
- *
  * @param {Boolean} notify
  */
 function setTrayIconNotification(notify) {
@@ -2127,7 +2142,8 @@ async function installVRCX() {
  * exists to avoid. Both are fixed by using this fork's own distinct
  * filename throughout — it can never collide with the real app's entry,
  * and now actually matches what's bundled.
- * @returns void
+ *
+ * @returns Void
  */
 function updateDesktopFile() {
     if (noDesktop) {

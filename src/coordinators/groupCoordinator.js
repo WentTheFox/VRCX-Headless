@@ -49,9 +49,8 @@ function applyGroupLanguage(ref) {
 }
 
 /**
- *
  * @param {object} json
- * @returns {object} ref
+ * @returns {object} Ref
  */
 export function applyGroup(json) {
     const groupStore = useGroupStore();
@@ -126,9 +125,8 @@ export function applyGroup(json) {
 }
 
 /**
- *
  * @param {object} json
- * @returns {*}
+ * @returns {any}
  */
 export function applyGroupMember(json) {
     const userStore = useUserStore();
@@ -170,7 +168,6 @@ export function applyGroupMember(json) {
 }
 
 /**
- *
  * @param ref
  * @param message
  */
@@ -205,8 +202,7 @@ function groupChange(ref, message) {
 }
 
 /**
- *
- * @param {object }ref
+ * @param {object} ref
  * @param {string} oldUserId
  * @param {string} newUserId
  * @returns {Promise<void>}
@@ -225,7 +221,6 @@ async function groupOwnerChange(ref, oldUserId, newUserId) {
 }
 
 /**
- *
  * @param {object} ref
  * @param {Array} oldRoles
  * @param {Array} newRoles
@@ -259,7 +254,6 @@ function groupRoleChange(ref, oldRoles, newRoles, oldRoleIds, newRoleIds) {
 }
 
 /**
- *
  * @param groupId
  * @param options
  */
@@ -421,10 +415,9 @@ export function getGroupDialogCalendar(groupId) {
 }
 
 /**
- *
  * @param groupId
  * @param {object} [existingRef]
- * @returns { Promise<object> }
+ * @returns {Promise<object>}
  */
 export function getGroupDialogGroup(groupId, existingRef) {
     const groupStore = useGroupStore();
@@ -495,7 +488,6 @@ export function getGroupDialogGroup(groupId, existingRef) {
 }
 
 /**
- *
  * @param {object} ref
  */
 export function applyPresenceGroups(ref) {
@@ -528,7 +520,6 @@ export function applyPresenceGroups(ref) {
 }
 
 /**
- *
  * @param {string} groupId
  */
 export function onGroupJoined(groupId) {
@@ -554,7 +545,6 @@ export function onGroupJoined(groupId) {
 }
 
 /**
- *
  * @param {string} groupId
  */
 export async function onGroupLeft(groupId) {
@@ -579,9 +569,6 @@ export async function onGroupLeft(groupId) {
     }
 }
 
-/**
- *
- */
 export function saveCurrentUserGroups() {
     const groupStore = useGroupStore();
     const userStore = useUserStore();
@@ -603,7 +590,6 @@ export function saveCurrentUserGroups() {
 }
 
 /**
- *
  * @param userId
  * @param groups
  */
@@ -658,9 +644,6 @@ export async function loadCurrentUserGroups(userId, groups) {
     getCurrentUserGroups();
 }
 
-/**
- *
- */
 export async function getCurrentUserGroups() {
     const groupStore = useGroupStore();
     const userStore = useUserStore();
@@ -684,9 +667,6 @@ export async function getCurrentUserGroups() {
     saveCurrentUserGroups();
 }
 
-/**
- *
- */
 export function getCurrentUserRepresentedGroup() {
     const userStore = useUserStore();
     return groupRequest
@@ -699,18 +679,12 @@ export function getCurrentUserRepresentedGroup() {
         });
 }
 
-/**
- *
- */
 export async function initUserGroups() {
     const userStore = useUserStore();
     updateInGameGroupOrder();
     loadCurrentUserGroups(userStore.currentUser.id, userStore.currentUser?.presence?.groups);
 }
 
-/**
- *
- */
 export async function updateInGameGroupOrder() {
     const groupStore = useGroupStore();
     const gameStore = useGameStore();
@@ -737,7 +711,6 @@ export function isSoleGroupOwner(group, userId) {
 }
 
 /**
- *
  * @param groupId
  */
 export function leaveGroup(groupId) {
@@ -780,7 +753,6 @@ export function leaveGroup(groupId) {
 }
 
 /**
- *
  * @param groupId
  */
 export function leaveGroupPrompt(groupId) {
@@ -804,7 +776,6 @@ export function leaveGroupPrompt(groupId) {
 }
 
 /**
- *
  * @param groupId
  * @param visibility
  */
@@ -823,7 +794,6 @@ export function setGroupVisibility(groupId, visibility) {
 }
 
 /**
- *
  * @param groupId
  * @param subscribe
  */
@@ -842,7 +812,6 @@ export function setGroupSubscription(groupId, subscribe) {
 }
 
 /**
- *
  * @param groupId
  * @param subscribeToEventAnnouncements
  */
@@ -863,7 +832,6 @@ export function setGroupEventAnnouncements(groupId, subscribe) {
 // ─── Event handlers ──────────────────────────────────────────────────────────
 
 /**
- *
  * @param args
  */
 export function handleGroupRepresented(args) {
@@ -889,7 +857,6 @@ export function handleGroupRepresented(args) {
 }
 
 /**
- *
  * @param args
  */
 export function handleGroupList(args) {
@@ -901,7 +868,6 @@ export function handleGroupList(args) {
 }
 
 /**
- *
  * @param args
  */
 export function handleGroupMemberProps(args) {
@@ -948,7 +914,6 @@ export function handleGroupMemberProps(args) {
 }
 
 /**
- *
  * @param args
  */
 export function handleGroupPermissions(args) {
@@ -968,7 +933,6 @@ export function handleGroupPermissions(args) {
 }
 
 /**
- *
  * @param args
  */
 export function handleGroupMember(args) {
@@ -976,7 +940,6 @@ export function handleGroupMember(args) {
 }
 
 /**
- *
  * @param args
  */
 export async function handleGroupUserInstances(args) {

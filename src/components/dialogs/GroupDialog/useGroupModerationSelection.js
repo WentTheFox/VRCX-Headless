@@ -10,7 +10,7 @@ export function useGroupModerationSelection(groupMemberModeration) {
     }
 
     /**
-     * @param {string|null} userId
+     * @param {string | null} userId
      * @param {boolean} isAll
      */
     function deselectedUsers(userId, isAll = false) {
@@ -41,7 +41,8 @@ export function useGroupModerationSelection(groupMemberModeration) {
 
     /**
      * Deselect a user across all tables.
-     * @param {string} [userId] - if omitted, deselects all rows in all tables
+     *
+     * @param {string} [userId] - If omitted, deselects all rows in all tables
      */
     function deselectInTables(userId) {
         const allTables = [
@@ -76,9 +77,6 @@ export function useGroupModerationSelection(groupMemberModeration) {
         deselectInTables(user.userId);
     }
 
-    /**
-     *
-     */
     function clearAllSelected() {
         deselectedUsers(null, true);
         deselectInTables();
@@ -86,6 +84,7 @@ export function useGroupModerationSelection(groupMemberModeration) {
 
     /**
      * Select all rows in a given table data array.
+     *
      * @param {Array} tableData
      */
     function selectAll(tableData) {

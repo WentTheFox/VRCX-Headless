@@ -1,11 +1,10 @@
 import { extractFileId, extractFileVersion, extractVariantVersion } from './fileUtils';
-import { escapeTag, replaceBioSymbols } from './base/string';
+import { replaceBioSymbols } from './base/string';
 import { getFaviconUrl, replaceVrcPackageUrl } from './urlUtils';
 import { AppDebug } from '../../services/appConfig.js';
 import { getAvailablePlatforms } from './platformUtils';
 
 /**
- *
  * @param {string} url
  * @param {number} resolution
  * @param endpointDomain
@@ -16,7 +15,7 @@ function convertFileUrlToImageUrl(url, resolution = 128, endpointDomain = AppDeb
         return '';
     }
     /**
-     * possible patterns?
+     * Possible patterns?
      * /file/file_fileId/version
      * /file/file_fileId/version/
      * /file/file_fileId/version/file
@@ -35,7 +34,6 @@ function convertFileUrlToImageUrl(url, resolution = 128, endpointDomain = AppDeb
 }
 
 /**
- *
  * @param func
  * @param delay
  */

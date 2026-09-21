@@ -434,7 +434,7 @@ export const useActivityStore = defineStore('Activity', () => {
     }
 
     /**
-     * @returns {Promise<Array<{date: string, totalMs: number}>>}
+     * @returns {Promise<{ date: string; totalMs: number }[]>}
      */
     async function getDailySummary(userId) {
         const snapshot = await hydrateSnapshot(userId, true);

@@ -1,7 +1,6 @@
 import { sortStatus } from './friend';
 
 /**
- *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -14,7 +13,8 @@ function compareByName(a, b) {
 }
 
 /**
- * descending
+ * Descending
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -35,7 +35,8 @@ function compareByCreatedAt(a, b) {
 }
 
 /**
- * ascending
+ * Ascending
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -53,7 +54,8 @@ function compareByCreatedAtAscending(a, b) {
 }
 
 /**
- * descending
+ * Descending
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -74,7 +76,8 @@ function compareByUpdatedAt(a, b) {
 }
 
 /**
- * ascending
+ * Ascending
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -87,7 +90,8 @@ function compareByDisplayName(a, b) {
 }
 
 /**
- * ascending
+ * Ascending
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -100,7 +104,6 @@ function compareById(a, b) {
 }
 
 /**
- *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -113,7 +116,8 @@ function compareByMemberCount(a, b) {
 }
 
 /**
- * private
+ * Private
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -133,7 +137,6 @@ function compareByPrivate(a, b) {
 }
 
 /**
- *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -152,7 +155,8 @@ function compareByStatus(a, b) {
 }
 
 /**
- * last active
+ * Last active
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -179,7 +183,8 @@ function compareByLastActiveRef(a, b) {
 }
 
 /**
- * last seen
+ * Last seen
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -189,7 +194,6 @@ function compareByLastSeen(a, b) {
 }
 
 /**
- *
  * @param {object} a
  * @param {object} b
  * @param {string} field
@@ -228,7 +232,8 @@ function compareByTimeInInstance(a, b) {
 }
 
 /**
- * location at
+ * Location at
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -253,7 +258,8 @@ function compareByLocationAt(a, b) {
 }
 
 /**
- * location at but for the sidebar
+ * Location at but for the sidebar
+ *
  * @param {object} a
  * @param {object} b
  * @returns
@@ -271,6 +277,7 @@ function compareByLocation(a, b) {
 
 /**
  * $friendNumber friend order
+ *
  * @param {object} a
  * @param {object} b
  * @returns

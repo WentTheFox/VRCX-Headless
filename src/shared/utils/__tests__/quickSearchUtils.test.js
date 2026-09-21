@@ -65,7 +65,6 @@ describe('isPrefixMatch', () => {
 
 describe('searchFriends', () => {
     /**
-     *
      * @param id
      * @param name
      * @param memo

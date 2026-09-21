@@ -288,6 +288,8 @@ export function showUserDialog(userId) {
         return;
     }
     D.id = userId;
+    D.ref = {};
+    D.publicProfileRef = {};
     D.memo = '';
     D.note = '';
     getUserMemo(userId).then((memo) => {
@@ -359,6 +361,7 @@ export function showUserDialog(userId) {
             D.$homeLocationName = worldName;
         });
     }
+    updateUserDialogProfile();
     AppApi.SendIpc('ShowUserDialog', userId);
     queryRequest
         .fetch('user', {
@@ -485,7 +488,6 @@ export function showUserDialog(userId) {
                 queryRequest.fetch('representedGroup', { userId }).then((args1) => {
                     handleGroupRepresented(args1);
                 });
-                updateUserDialogProfile();
                 D.visible = true;
                 userStore.applyUserDialogLocation(true);
             }
@@ -883,15 +885,9 @@ export function applyCurrentUser(json) {
         ageVerificationStatus: json.ageVerificationStatus,
         ageVerified: json.ageVerified,
         allowAvatarCopying: json.allowAvatarCopying,
-        badges: json.badges,
         bannerColor: json.bannerColor,
         bannerType: json.bannerType,
         bannerUrl: json.bannerUrl,
-        bio: json.bio,
-        bioLinks: json.bioLinks,
-        currentAvatarImageUrl: json.currentAvatarImageUrl,
-        currentAvatarTags: json.currentAvatarTags,
-        currentAvatarThumbnailImageUrl: json.currentAvatarThumbnailImageUrl,
         date_joined: json.date_joined,
         developerType: json.developerType,
         discordId: json.discordId,
@@ -909,14 +905,11 @@ export function applyCurrentUser(json) {
         nameplateEffect: json.nameplateEffect,
         platform: json.platform,
         profileEffect: json.profileEffect,
-        profilePicOverride: json.profilePicOverride,
-        profilePicOverrideThumbnail: json.profilePicOverrideThumbnail,
         pronouns: json.pronouns,
         state: json.state,
         status: json.status,
         statusDescription: json.statusDescription,
         tags: json.tags,
-        userIcon: json.userIcon,
         location,
         instanceId,
         worldId,
@@ -936,8 +929,6 @@ export function applyCurrentUser(json) {
     return ref;
 }
 
-/**
- */
 export function getCurrentUser() {
     const authStore = useAuthStore();
     return request('auth/user', {
@@ -979,8 +970,6 @@ export function addCustomTag(data) {
     sharedFeedStore.addTag(data.UserId, data.TagColour);
 }
 
-/**
- */
 export function updateAutoStateChange() {
     const userStore = useUserStore();
     const generalSettingsStore = useGeneralSettingsStore();

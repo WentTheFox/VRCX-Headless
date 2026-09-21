@@ -44,9 +44,6 @@ import ChangelogDialog from '../ChangelogDialog.vue';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-/**
- *
- */
 function mountComponent() {
     return mount(ChangelogDialog, {
         global: {

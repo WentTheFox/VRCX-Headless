@@ -100,7 +100,6 @@ import {
 } from '../../../../stores';
 
 /**
- *
  * @param overrides
  */
 function mountComponent(overrides = {}) {
