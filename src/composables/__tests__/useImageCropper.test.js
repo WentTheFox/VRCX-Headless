@@ -240,7 +240,7 @@ describe('cropImage', () => {
         expect(cropCanvas.height).toBe(600);
     });
 
-    test('fills canvas with white before drawing', async () => {
+    test('does not fill the canvas, so transparency is preserved', async () => {
         const img = makeImage(200, 150);
         const cropResult = makeCropperResult({
             left: 10,
@@ -253,8 +253,8 @@ describe('cropImage', () => {
 
         await cropImage(img, 1, cropResult);
 
-        expect(mockCtx.fillStyle).toBe('#ffffff');
-        expect(mockCtx.fillRect).toHaveBeenCalledWith(0, 0, 50, 50);
+        // Upstream removed the white background fill so cropped output can be transparent.
+        expect(mockCtx.fillRect).not.toHaveBeenCalled();
     });
 
     test('draws image with negative crop offset', async () => {

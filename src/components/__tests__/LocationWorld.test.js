@@ -116,7 +116,7 @@ describe('LocationWorld.vue', () => {
     it('renders translated access type and instance name', () => {
         const wrapper = mountComponent();
 
-        expect(wrapper.text()).toContain('dialog.world.instance.friends #Instance Name');
+        expect(wrapper.text()).toContain('dialog.world.instance.friends ⋅ #Instance Name');
         expect(wrapper.find('.flags.eu').exists()).toBe(true);
     });
 

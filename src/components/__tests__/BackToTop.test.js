@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
+vi.mock('vue-i18n', () => ({
+    useI18n: () => ({ t: (key) => key })
+}));
+
 vi.mock('@/components/ui/tooltip', () => ({
     Tooltip: { template: '<div><slot /></div>' },
     TooltipTrigger: { template: '<div><slot /></div>' },

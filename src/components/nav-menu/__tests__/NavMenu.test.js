@@ -152,6 +152,10 @@ vi.mock('../../../stores', () => ({
     })
 }));
 
+vi.mock('../../../stores/settings/notifications', () => ({
+    useNotificationsSettingsStore: () => ({ notificationLayout: 'table' })
+}));
+
 vi.mock('../../../services/config', () => ({
     default: {
         getString: (...args) => mocks.getString(...args),

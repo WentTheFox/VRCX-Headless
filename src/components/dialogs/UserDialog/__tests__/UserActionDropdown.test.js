@@ -8,6 +8,7 @@ vi.mock('../../../../stores', () => ({
     useUserStore: () => ({
         userDialog: ref({
             ref: { id: 'usr_2', $isModerator: false },
+            theme: { iconColor: 'var(--foreground)' },
             isFriend: false,
             isFavorite: false,
             incomingRequest: false,
@@ -36,6 +37,9 @@ vi.mock('../../../ui/dropdown-menu', () => ({
     DropdownMenuContent: { template: '<div><slot /></div>' },
     DropdownMenuSeparator: { template: '<hr />' },
     DropdownMenuShortcut: { template: '<span><slot /></span>' },
+    DropdownMenuSub: { template: '<div><slot /></div>' },
+    DropdownMenuSubTrigger: { template: '<div><slot /></div>' },
+    DropdownMenuSubContent: { template: '<div><slot /></div>' },
     DropdownMenuItem: {
         emits: ['click'],
         template: '<button data-testid="dd-item" @click="$emit(\'click\')"><slot /></button>'
@@ -50,7 +54,8 @@ vi.mock('@/components/ui/button', () => ({
 vi.mock('../../../ui/tooltip', () => ({
     TooltipWrapper: { template: '<div><slot /></div>' }
 }));
-vi.mock('lucide-vue-next', () => ({
+vi.mock('lucide-vue-next', async (importOriginal) => ({
+    ...(await importOriginal()),
     Check: { template: '<i />' },
     CheckCircle: { template: '<i />' },
     Clock: { template: '<i />' },
