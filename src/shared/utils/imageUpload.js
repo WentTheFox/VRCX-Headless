@@ -1,7 +1,6 @@
 const UPLOAD_TIMEOUT_MS = 30_000;
 
 /**
- *
  * @param promise
  */
 export function withUploadTimeout(promise) {
@@ -13,8 +12,9 @@ export function withUploadTimeout(promise) {
 
 /**
  * File -> base64
- * @param {Blob|File} blob
- * @returns {Promise<string>} base64 encoded string
+ *
+ * @param {Blob | File} blob
+ * @returns {Promise<string>} Base64 encoded string
  */
 export function readFileAsBase64(blob) {
     return new Promise((resolve, reject) => {

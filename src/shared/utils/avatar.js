@@ -1,7 +1,6 @@
 import { replaceBioSymbols } from './base/string';
 
 /**
- *
  * @param {object} args
  * @param {Map} cachedAvatarNames
  * @returns
@@ -27,9 +26,8 @@ function storeAvatarImage(args, cachedAvatarNames) {
 }
 
 /**
- *
  * @param {string} avatar
- * @returns {string|null}
+ * @returns {string | null}
  */
 function parseAvatarUrl(avatar) {
     const url = new URL(avatar);
@@ -42,7 +40,6 @@ function parseAvatarUrl(avatar) {
 }
 
 /**
- *
  * @param {object} unityPackages
  * @returns
  */
@@ -77,9 +74,8 @@ function getPlatformInfo(unityPackages) {
 }
 
 /**
- *
  * @param {string} unitySortNumber
- * @param sdkUnityVersion
+ * @param {string} [sdkUnityVersion]
  * @returns {boolean}
  */
 function compareUnityVersion(unitySortNumber, sdkUnityVersion) {

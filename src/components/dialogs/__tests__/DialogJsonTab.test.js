@@ -99,7 +99,6 @@ const i18n = createI18n({
 });
 
 /**
- *
  * @param props
  * @param storeOverrides
  */

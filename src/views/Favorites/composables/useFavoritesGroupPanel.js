@@ -2,13 +2,13 @@ import { computed, ref } from 'vue';
 
 /**
  * @param {object} options
- * @param {import('vue').Ref<Array>} options.remoteGroups - remote groups ref
- * @param {import('vue').Ref<Array>} options.localGroups - local groups ref (string keys)
- * @param {import('vue').Ref<object>} options.localFavorites - local favorites map { groupKey: items[] }
- * @param {Function} options.clearSelection - callback to clear entity selection
- * @param {Array} [options.placeholders] - placeholder groups when remote data not yet loaded
- * @param {boolean} [options.hasHistory] - whether history group type is supported (Avatar only)
- * @param {import('vue').Ref<Array>} [options.historyItems] - items for history group
+ * @param {import('vue').Ref<Array>} options.remoteGroups - Remote groups ref
+ * @param {import('vue').Ref<Array>} options.localGroups - Local groups ref (string keys)
+ * @param {import('vue').Ref<object>} options.localFavorites - Local favorites map { groupKey: items[] }
+ * @param {Function} options.clearSelection - Callback to clear entity selection
+ * @param {Array} [options.placeholders] - Placeholder groups when remote data not yet loaded
+ * @param {boolean} [options.hasHistory] - Whether history group type is supported (Avatar only)
+ * @param {import('vue').Ref<Array>} [options.historyItems] - Items for history group
  * @returns {object}
  */
 export function useFavoritesGroupPanel(options = {}) {
@@ -57,7 +57,6 @@ export function useFavoritesGroupPanel(options = {}) {
     });
 
     /**
-     *
      * @param key {string}
      * @param visible {boolean}
      */
@@ -72,7 +71,6 @@ export function useFavoritesGroupPanel(options = {}) {
     }
 
     /**
-     *
      * @param type {string}
      * @param key {string}
      * @param options {object}
@@ -90,7 +88,6 @@ export function useFavoritesGroupPanel(options = {}) {
     }
 
     /**
-     *
      * @param type {string}
      * @param key {string}
      * @returns {boolean}
@@ -100,7 +97,6 @@ export function useFavoritesGroupPanel(options = {}) {
     }
 
     /**
-     *
      * @param group {object}
      * @returns {boolean}
      */

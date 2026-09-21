@@ -15,8 +15,9 @@ import { recordRecentAction } from '../../../composables/useRecentActions';
 /**
  * Composable for UserDialog command dispatch.
  * Uses a command map pattern instead of if-else/switch-case chains.
- * @param {import('vue').Ref} userDialog - reactive ref to the user dialog state
- * @param {object} deps - external dependencies
+ *
+ * @param {import('vue').Ref} userDialog - Reactive ref to the user dialog state
+ * @param {object} deps - External dependencies
  * @param deps.t
  * @param deps.toast
  * @param deps.modalStore
@@ -42,7 +43,7 @@ import { recordRecentAction } from '../../../composables/useRecentActions';
  * @param deps.instanceStore
  * @param deps.useNotificationStore
  * @param deps.showEditProfileDialog
- * @returns {object} command composable API
+ * @returns {object} Command composable API
  */
 export function useUserDialogCommands(
     userDialog,
@@ -215,9 +216,6 @@ export function useUserDialogCommands(
     // Direct commands: function
     // Confirmed commands: { confirm: () => ({title, description, ...}), handler: fn }
 
-    /**
-     *
-     */
     function buildCommandMap() {
         const D = () => userDialog.value;
 
@@ -622,6 +620,7 @@ export function useUserDialogCommands(
     /**
      * Register component-level callbacks for string-type commands.
      * These are simple dialog openers that stay in the component.
+     *
      * @param {object} callbacks
      */
     function registerCallbacks(callbacks) {
@@ -630,6 +629,7 @@ export function useUserDialogCommands(
 
     /**
      * Dispatch a user dialog command.
+     *
      * @param {string} command
      */
     function userDialogCommand(command) {

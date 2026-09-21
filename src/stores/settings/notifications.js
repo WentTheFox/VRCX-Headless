@@ -398,7 +398,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     }
 
     /**
-     * @param {number} seconds - timeout in seconds
+     * @param {number} seconds - Timeout in seconds
      */
     function setNotificationTimeout(seconds) {
         const ms = Math.trunc(Number(seconds) * 1000);

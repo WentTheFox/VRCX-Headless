@@ -14,6 +14,7 @@ const userReq = {
     /**
      * Fetch user from API.
      * identifier of registered user
+     *
      * @type {import('../types/api/user').GetUser}
      */
     getUser(params) {
@@ -50,8 +51,8 @@ const userReq = {
     },
 
     /**
-     * @param {{tags: string[]}} params User tags to add
-     * @returns {Promise<{json: any, params: {tags: string[]}}>}
+     * @param {{ tags: string[] }} params User tags to add
+     * @returns {Promise<{ json: any; params: { tags: string[] } }>}
      */
     addUserTags(params) {
         return request(`users/${getCurrentUserId()}/addTags`, {
@@ -68,8 +69,8 @@ const userReq = {
     },
 
     /**
-     * @param {{tags: string[]}} params User tags to remove
-     * @returns {Promise<{json: any, params: {tags: string[]}}>}
+     * @param {{ tags: string[] }} params User tags to remove
+     * @returns {Promise<{ json: any; params: { tags: string[] } }>}
      */
     removeUserTags(params) {
         return request(`users/${getCurrentUserId()}/removeTags`, {
@@ -87,7 +88,7 @@ const userReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: any, params: { userId: string }}>}
+     * @returns {Promise<{ json: any; params: { userId: string } }>}
      */
     getUserFeedback(params) {
         return request(`users/${params.userId}/feedback`, {
@@ -106,6 +107,7 @@ const userReq = {
 
     /**
      * Updates current user's status.
+     *
      * @type {import('../types/api/user').GetCurrentUser}
      */
     saveCurrentUser(params) {
@@ -129,8 +131,8 @@ const userReq = {
     },
 
     /**
-     * @param {{ offset: number, n: number }} params
-     * @returns {Promise<{json: any, params: { offset: number, n: number }}>}
+     * @param {{ offset: number; n: number }} params
+     * @returns {Promise<{ json: any; params: { offset: number; n: number } }>}
      */
     getUserNotes(params) {
         return request(`userNotes`, {
@@ -185,7 +187,7 @@ const userReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: import('../types/api/profile').publicProfile, params: { userId: string }}>}
+     * @returns {Promise<{ json: import('../types/api/profile').publicProfile; params: { userId: string } }>}
      */
     getPublicProfile(params) {
         return request(`profile/${params.userId}`, {
@@ -201,7 +203,7 @@ const userReq = {
 
     /**
      * @param {{ userId: string }} params
-     * @returns {Promise<{json: import('../types/api/profile').privateProfile, params: { userId: string }}>}
+     * @returns {Promise<{ json: import('../types/api/profile').privateProfile; params: { userId: string } }>}
      */
     getPrivateProfile(params) {
         return request(`profile/${params.userId}/private`, {
@@ -216,7 +218,7 @@ const userReq = {
     },
 
     /**
-     * @returns {Promise<{json: import('../types/api/profile').selfProfile, params: {}}>}
+     * @returns {Promise<{ json: import('../types/api/profile').selfProfile; params: {} }>}
      */
     getSelfProfile() {
         return request(`profile/${getCurrentUserId()}`, {
@@ -235,7 +237,10 @@ const userReq = {
 
     /**
      * @param {Partial<import('../types/api/profile').publicProfile>} params
-     * @returns {Promise<{json: import('../types/api/profile').publicProfile, params: Partial<import('../types/api/profile').publicProfile>}>}
+     * @returns {Promise<{
+     *     json: import('../types/api/profile').publicProfile;
+     *     params: Partial<import('../types/api/profile').publicProfile>;
+     * }>}
      */
     saveProfile(params) {
         return request(`profile/${getCurrentUserId()}`, {
@@ -251,7 +256,7 @@ const userReq = {
     },
 
     /**
-     * @param {{ buttonColor: string; iconColor: string; themeId: string; name: string; subtextColor: string; }} params
+     * @param {{ buttonColor: string; iconColor: string; themeId: string; name: string; subtextColor: string }} params
      */
     saveProfileTheme(params) {
         return request(`profile/theme/${params.themeId}`, {
@@ -267,7 +272,7 @@ const userReq = {
     },
 
     /**
-     * @param {{ buttonColor?: string; iconColor?: string; name: string; subtextColor?: string; }} params
+     * @param {{ buttonColor?: string; iconColor?: string; name: string; subtextColor?: string }} params
      */
     createProfileTheme(params) {
         return request(`profile/theme`, {

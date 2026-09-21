@@ -10,7 +10,6 @@ vi.mock('../../../../services/config.js', () => ({
 import { useAvatarCardGrid } from '../useAvatarCardGrid';
 
 /**
- *
  * @param options
  */
 function createGrid(options = {}) {

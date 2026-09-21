@@ -43,8 +43,8 @@ const worldReq = {
         });
     },
     /**
-     * @param {{worldId: string}} params
-     * @returns {Promise<{json: any, params}>}
+     * @param {{ worldId: string }} params
+     * @returns {Promise<{ json: any; params }>}
      */
     deleteWorld(params) {
         return request(`worlds/${params.worldId}`, {
@@ -82,8 +82,8 @@ const worldReq = {
     },
 
     /**
-     * @param {{worldId: string}} params
-     * @returns {Promise<{json: any, params}>}
+     * @param {{ worldId: string }} params
+     * @returns {Promise<{ json: any; params }>}
      */
     publishWorld(params) {
         return request(`worlds/${params.worldId}/publish`, {
@@ -106,8 +106,8 @@ const worldReq = {
     },
 
     /**
-     * @param {{worldId: string}} params
-     * @returns {Promise<{json: any, params}>}
+     * @param {{ worldId: string }} params
+     * @returns {Promise<{ json: any; params }>}
      */
     unpublishWorld(params) {
         return request(`worlds/${params.worldId}/publish`, {

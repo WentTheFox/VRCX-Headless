@@ -1,7 +1,6 @@
 import sqliteService from './sqlite.js';
 
 /**
- *
  * @param key
  */
 function transformKey(key) {

@@ -118,7 +118,6 @@ const MOCK_MUTUAL_FRIENDS = [
 ];
 
 /**
- *
  * @param overrides
  */
 function mountComponent(overrides = {}) {

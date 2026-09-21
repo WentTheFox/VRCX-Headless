@@ -12,19 +12,20 @@ import { removeWorldFromCache } from '../../../coordinators/worldCoordinator';
 
 /**
  * Composable for WorldDialog commands, prompt functions, and image upload.
- * @param {import('vue').Ref} worldDialog - reactive ref to the world dialog state
- * @param {object} deps - external dependencies
- * @param {Function} deps.t - i18n translation function
- * @param {Function} deps.toast - toast notification function
- * @param {object} deps.modalStore - modal store for confirm/prompt dialogs
- * @param {import('vue').Ref} deps.userDialog - reactive ref to the user dialog state
- * @param {Map} deps.cachedWorlds - cached worlds map
- * @param {Function} deps.showWorldDialog - function to show world dialog
- * @param {Function} deps.showFavoriteDialog - function to show favorite dialog
- * @param {Function} deps.newInstanceSelfInvite - function for new instance self invite
- * @param {Function} deps.showPreviousInstancesListDialog - function to show previous instances
- * @param {Function} deps.showFullscreenImageDialog - function to show fullscreen image
- * @returns {object} commands composable API
+ *
+ * @param {import('vue').Ref} worldDialog - Reactive ref to the world dialog state
+ * @param {object} deps - External dependencies
+ * @param {Function} deps.t - I18n translation function
+ * @param {Function} deps.toast - Toast notification function
+ * @param {object} deps.modalStore - Modal store for confirm/prompt dialogs
+ * @param {import('vue').Ref} deps.userDialog - Reactive ref to the user dialog state
+ * @param {Map} deps.cachedWorlds - Cached worlds map
+ * @param {Function} deps.showWorldDialog - Function to show world dialog
+ * @param {Function} deps.showFavoriteDialog - Function to show favorite dialog
+ * @param {Function} deps.newInstanceSelfInvite - Function for new instance self invite
+ * @param {Function} deps.showPreviousInstancesListDialog - Function to show previous instances
+ * @param {Function} deps.showFullscreenImageDialog - Function to show fullscreen image
+ * @returns {object} Commands composable API
  */
 export function useWorldDialogCommands(
     worldDialog,
@@ -53,7 +54,6 @@ export function useWorldDialogCommands(
     const changeWorldImageLoading = ref(false);
 
     /**
-     *
      * @param e
      */
     function onFileChangeWorldImage(e) {
@@ -75,7 +75,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param blob
      */
     async function onCropConfirmWorld(blob) {
@@ -104,7 +103,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param tag
      */
     function showNewInstanceDialog(tag) {
@@ -113,9 +111,6 @@ export function useWorldDialogCommands(
         nextTick(() => (newInstanceDialogLocationTag.value = tag));
     }
 
-    /**
-     *
-     */
     function copyWorldUrl() {
         navigator.clipboard
             .writeText(`https://vrchat.com/home/world/${worldDialog.value.id}`)
@@ -128,9 +123,6 @@ export function useWorldDialogCommands(
             });
     }
 
-    /**
-     *
-     */
     function copyWorldName() {
         navigator.clipboard
             .writeText(worldDialog.value.ref.name)
@@ -143,9 +135,6 @@ export function useWorldDialogCommands(
             });
     }
 
-    /**
-     *
-     */
     function copyWorldId() {
         navigator.clipboard
             .writeText(worldDialog.value.id)
@@ -158,9 +147,6 @@ export function useWorldDialogCommands(
             });
     }
 
-    /**
-     *
-     */
     function showWorldAllowedDomainsDialog() {
         const D = worldAllowedDomainsDialog.value;
         D.worldId = worldDialog.value.id;
@@ -169,7 +155,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param worldRef
      */
     function showPreviousInstancesListDialog(worldRef) {
@@ -177,7 +162,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param world
      */
     function promptRenameWorld(world) {
@@ -207,7 +191,6 @@ export function useWorldDialogCommands(
             .catch(() => {});
     }
     /**
-     *
      * @param world
      */
     function promptChangeWorldDescription(world) {
@@ -238,7 +221,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param world
      */
     function promptChangeWorldCapacity(world) {
@@ -270,7 +252,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param world
      */
     function promptChangeWorldRecommendedCapacity(world) {
@@ -302,7 +283,6 @@ export function useWorldDialogCommands(
     }
 
     /**
-     *
      * @param world
      */
     function promptChangeWorldYouTubePreview(world) {
@@ -356,9 +336,6 @@ export function useWorldDialogCommands(
     // String commands: delegate to component callback
     // Confirmed commands: { confirm: () => ({title, description, ...}), handler: fn }
 
-    /**
-     *
-     */
     function buildCommandMap() {
         const D = () => worldDialog.value;
 
@@ -536,6 +513,7 @@ export function useWorldDialogCommands(
 
     /**
      * Register component-level callbacks for string-type commands.
+     *
      * @param {object} callbacks
      */
     function registerCallbacks(callbacks) {
@@ -544,6 +522,7 @@ export function useWorldDialogCommands(
 
     /**
      * Dispatch a world dialog command.
+     *
      * @param {string} command
      */
     function worldDialogCommand(command) {

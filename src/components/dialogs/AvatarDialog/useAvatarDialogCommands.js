@@ -13,13 +13,13 @@ import { readFileAsBase64, withUploadTimeout } from '../../../shared/utils/image
 /**
  * Composable for AvatarDialog command dispatch.
  * Uses a command map pattern instead of nested switch-case chains.
- * @param {import('vue').Ref} avatarDialog - reactive ref to the avatar dialog state
- * @param {object} deps - external dependencies
+ *
+ * @param {import('vue').Ref} avatarDialog - Reactive ref to the avatar dialog state
+ * @param {object} deps - External dependencies
  * @param deps.t
  * @param deps.toast
  * @param deps.modalStore
  * @param deps.userDialog
- * @param deps.currentUser
  * @param deps.cachedAvatars
  * @param deps.cachedAvatarModerations
  * @param deps.showAvatarDialog
@@ -28,7 +28,7 @@ import { readFileAsBase64, withUploadTimeout } from '../../../shared/utils/image
  * @param deps.applyAvatar
  * @param deps.sortUserDialogAvatars
  * @param deps.uiStore
- * @returns {object} command composable API
+ * @returns {object} Command composable API
  */
 export function useAvatarDialogCommands(
     avatarDialog,
@@ -37,7 +37,6 @@ export function useAvatarDialogCommands(
         toast,
         modalStore,
         userDialog,
-        currentUser,
         cachedAvatars,
         cachedAvatarModerations,
         showAvatarDialog,
@@ -55,9 +54,6 @@ export function useAvatarDialogCommands(
 
     // --- Image upload ---
 
-    /**
-     *
-     */
     function showChangeAvatarImageDialog() {
         document.getElementById('AvatarImageUploadButton').click();
     }
@@ -201,9 +197,6 @@ export function useAvatarDialogCommands(
     // String commands: delegate to component callback
     // Confirmed commands: { confirm: () => ({title, description, ...}), handler: fn }
 
-    /**
-     *
-     */
     function buildCommandMap() {
         const D = () => avatarDialog.value;
 
@@ -427,6 +420,7 @@ export function useAvatarDialogCommands(
 
     /**
      * Register component-level callbacks for string-type commands.
+     *
      * @param {object} callbacks
      */
     function registerCallbacks(callbacks) {
@@ -435,6 +429,7 @@ export function useAvatarDialogCommands(
 
     /**
      * Dispatch an avatar dialog command.
+     *
      * @param {string} command
      */
     function avatarDialogCommand(command) {

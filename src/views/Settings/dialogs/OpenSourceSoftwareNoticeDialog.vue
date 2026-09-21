@@ -197,15 +197,11 @@
         }
     });
 
-    /**
-     *
-     */
     function closeDialog() {
         emit('update:ossDialog', false);
     }
 
     /**
-     *
      * @param relativePath
      */
     function buildAssetUrl(relativePath) {
@@ -213,7 +209,6 @@
     }
 
     /**
-     *
      * @param license
      */
     function getLicenseLabel(license) {
@@ -224,9 +219,6 @@
         return license;
     }
 
-    /**
-     *
-     */
     async function loadLicenses() {
         isLoading.value = true;
         loadError.value = false;

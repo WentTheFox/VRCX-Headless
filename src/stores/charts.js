@@ -116,11 +116,12 @@ export const useChartsStore = defineStore('Charts', () => {
 
     /**
      * Shared helper: fetch mutual friends for a single userId.
+     *
      * @param {string} userId
      * @param {object} [options]
      * @param {{ wait(): Promise<void> }} [options.rateLimiter]
      * @param {() => boolean} [options.isCancelled]
-     * @returns {Promise<Array>} collected mutual friend entries
+     * @returns {Promise<Array>} Collected mutual friend entries
      */
     async function fetchMutualFriendsForUser(userId, options = {}) {
         const { rateLimiter, isCancelled = () => false } = options;
@@ -164,8 +165,9 @@ export const useChartsStore = defineStore('Charts', () => {
 
     /**
      * Fetch mutual friends for a single friend, independent of the full graph fetch.
+     *
      * @param {string} friendId
-     * @returns {Promise<{success: boolean, mutuals: Array, optedOut: boolean}>}
+     * @returns {Promise<{ success: boolean; mutuals: Array; optedOut: boolean }>}
      */
     async function fetchSingleFriendMutuals(friendId) {
         if (!friendId || isOptOut.value) {

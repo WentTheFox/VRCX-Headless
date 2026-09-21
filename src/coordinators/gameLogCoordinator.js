@@ -124,6 +124,7 @@ export async function tryLoadPlayerList() {
 /**
  * Core game log entry processor. Dispatches game log events to the
  * appropriate stores based on type.
+ *
  * @param {object} gameLog
  * @param {string} location
  */
@@ -426,6 +427,7 @@ export function addGameLogEntry(gameLog, location) {
 /**
  * Parses raw game log JSON and delegates to addGameLogEntry.
  * Called from C# / updateLoop.
+ *
  * @param {string} json
  */
 export function addGameLogEvent(json) {
@@ -454,6 +456,7 @@ export async function getGameLogTable() {
 
 /**
  * Fetches all game log entries since dateTill and processes them.
+ *
  * @param {string} dateTill
  */
 async function updateGameLog(dateTill) {

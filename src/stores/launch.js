@@ -33,7 +33,6 @@ export const useLaunchStore = defineStore('Launch', () => {
     }
 
     /**
-     *
      * @param {string} tag
      * @param {string} shortName
      * @returns {Promise<void>}
@@ -50,10 +49,9 @@ export const useLaunchStore = defineStore('Launch', () => {
     }
 
     /**
-     *
      * @param {string} location
      * @param {string} shortName
-     * @returns {Promise<string>} launchUrl
+     * @returns {Promise<string>} LaunchUrl
      */
     async function getLaunchUrl(location, shortName) {
         const L = parseLocation(location);
@@ -81,7 +79,8 @@ export const useLaunchStore = defineStore('Launch', () => {
     }
 
     /**
-     * launch.exe &attach=1
+     * Launch.exe &attach=1
+     *
      * @param {string} location
      * @param {string} shortName
      * @returns {Promise<void>}
@@ -121,7 +120,6 @@ export const useLaunchStore = defineStore('Launch', () => {
     }
 
     /**
-     *
      * @param {string} location
      * @param {string} shortName
      * @param {boolean} desktopMode

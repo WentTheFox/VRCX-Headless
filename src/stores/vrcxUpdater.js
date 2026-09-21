@@ -5,11 +5,7 @@ import { useI18n } from 'vue-i18n';
 
 import { logWebRequest } from '../services/appConfig';
 import { branches } from '../shared/constants';
-import {
-    getLatestWhatsNewRelease,
-    getWhatsNewRelease,
-    normalizeReleaseVersion
-} from '../shared/constants/whatsNewReleases';
+import { getWhatsNewRelease, normalizeReleaseVersion } from '../shared/constants/whatsNewReleases';
 import { changeLogRemoveLinks } from '../shared/utils';
 
 import configRepository from '../services/config';
@@ -159,9 +155,10 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
      * *exactly* like "nothing to update," forever, with no signal anything
      * had changed. A thrown error surfaces through `installForkUpdate`'s own
      * try/catch instead, as a specific, readable failure.
+     *
      * @param {string | undefined} digest GitHub's `asset.digest`, expected `sha256:<64 lowercase hex chars>`
-     * @param {string} assetName only used to make the thrown message useful
-     * @returns {string} the bare hex hash
+     * @param {string} assetName Only used to make the thrown message useful
+     * @returns {string} The bare hex hash
      */
     function parseSha256Digest(digest, assetName) {
         const match = /^sha256:([0-9a-f]{64})$/i.exec(digest ?? '');
@@ -184,9 +181,10 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
      * just not the *same* one. Plain string comparison isn't safe here
      * either once MINOR or PATCH reaches double digits (`"24.10" < "24.9"`
      * as strings) — this compares each dot-separated component as a number.
+     *
      * @param {string} a
      * @param {string} b
-     * @returns {number} negative if `a` is older than `b`, positive if newer, 0 if equal
+     * @returns {number} Negative if `a` is older than `b`, positive if newer, 0 if equal
      */
     function compareForkVersions(a, b) {
         const partsA = a.split('.').map(Number);
@@ -213,10 +211,11 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
      * `Update.Init(appImagePath)` is already wired up by `installVRCX()`
      * (src-electron/main.js) by the time this can ever run — this function
      * only had the wrong suffix to search for.
-     * @param {Array<{name: string, digest?: string, size: number, downloadUrl: string}>} assets
+     *
+     * @param {{ name: string; digest?: string; size: number; downloadUrl: string }[]} assets
      * @param {string} archValue
-     * @returns {{ downloadUrl: string, hashString: string, size: number } | null}
-     * @throws when a matching asset exists but `parseSha256Digest` rejects its digest
+     * @returns {{ downloadUrl: string; hashString: string; size: number } | null}
+     * @throws When a matching asset exists but `parseSha256Digest` rejects its digest
      */
     function getForkAssetOfInterest(assets, archValue) {
         const isRealLinux = navigator.platform.toLowerCase().includes('linux');
@@ -296,7 +295,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     }
 
     /**
-     * @param {{ assets: Array<{name: string, digest?: string, size: number, downloadUrl: string}> }} release
+     * @param {{ assets: { name: string; digest?: string; size: number; downloadUrl: string }[] }} release
      */
     async function installForkUpdate(release) {
         if (updateInProgress.value) {

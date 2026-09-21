@@ -37,7 +37,6 @@ async function deleteVRChatCache(ref) {
 }
 
 /**
- *
  * @param {object} ref
  * @returns
  */
@@ -87,7 +86,6 @@ async function checkVRChatCache(ref) {
 }
 
 /**
- *
  * @param {object} ref
  * @returns {Promise<object>}
  */

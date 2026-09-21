@@ -301,9 +301,6 @@
 
     let unsubscribeStatus = null;
 
-    /**
-     *
-     */
     async function refreshStatus() {
         try {
             status.value = await agent.getServerStatus();
@@ -312,9 +309,6 @@
         }
     }
 
-    /**
-     *
-     */
     async function refreshServers() {
         try {
             servers.value = await agent.listServers();
@@ -333,9 +327,6 @@
         refreshCaCertStatus();
     });
 
-    /**
-     *
-     */
     async function refreshCaCertStatus() {
         try {
             const { imported } = await agent.getCaCertStatus();
@@ -345,9 +336,6 @@
         }
     }
 
-    /**
-     *
-     */
     async function importCaCert() {
         caCertBusy.value = true;
         caCertError.value = '';
@@ -366,9 +354,6 @@
         }
     }
 
-    /**
-     *
-     */
     async function removeCaCert() {
         caCertBusy.value = true;
         try {
@@ -440,9 +425,6 @@
         }
     }
 
-    /**
-     *
-     */
     function startAddServer() {
         addStep.value = 'url';
         addUrl.value = '';
@@ -452,16 +434,10 @@
         addError.value = '';
     }
 
-    /**
-     *
-     */
     function cancelAdd() {
         addStep.value = 'closed';
     }
 
-    /**
-     *
-     */
     async function submitAddUrl() {
         if (!addUrl.value) {
             addError.value = t('status_bar.headless_url_required');
@@ -489,9 +465,6 @@
         }
     }
 
-    /**
-     *
-     */
     async function submitAddCode() {
         busy.value = true;
         addError.value = '';

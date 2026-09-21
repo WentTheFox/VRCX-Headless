@@ -56,66 +56,39 @@ export const useDiscordPresenceSettingsStore = defineStore('DiscordPresenceSetti
     const discordWorldIntegration = ref(true);
     const discordWorldNameAsDiscordStatus = ref(false);
 
-    /**
-     *
-     */
     function setDiscordActive() {
         discordActive.value = !discordActive.value;
         configRepository.setBool('discordActive', discordActive.value);
     }
-    /**
-     *
-     */
     function setDiscordInstance() {
         discordInstance.value = !discordInstance.value;
         configRepository.setBool('discordInstance', discordInstance.value);
     }
-    /**
-     *
-     */
     function setDiscordHideInvite() {
         discordHideInvite.value = !discordHideInvite.value;
         configRepository.setBool('discordHideInvite', discordHideInvite.value);
     }
-    /**
-     *
-     */
     function setDiscordJoinButton() {
         discordJoinButton.value = !discordJoinButton.value;
         configRepository.setBool('discordJoinButton', discordJoinButton.value);
     }
-    /**
-     *
-     */
     function setDiscordHideImage() {
         discordHideImage.value = !discordHideImage.value;
         configRepository.setBool('discordHideImage', discordHideImage.value);
     }
-    /**
-     *
-     */
     function setDiscordShowPlatform() {
         discordShowPlatform.value = !discordShowPlatform.value;
         configRepository.setBool('discordShowPlatform', discordShowPlatform.value);
     }
-    /**
-     *
-     */
     function setDiscordWorldIntegration() {
         discordWorldIntegration.value = !discordWorldIntegration.value;
         configRepository.setBool('discordWorldIntegration', discordWorldIntegration.value);
     }
-    /**
-     *
-     */
     function setDiscordWorldNameAsDiscordStatus() {
         discordWorldNameAsDiscordStatus.value = !discordWorldNameAsDiscordStatus.value;
         configRepository.setBool('discordWorldNameAsDiscordStatus', discordWorldNameAsDiscordStatus.value);
     }
 
-    /**
-     *
-     */
     async function initDiscordPresenceSettings() {
         const [
             discordActiveConfig,
@@ -149,9 +122,6 @@ export const useDiscordPresenceSettingsStore = defineStore('DiscordPresenceSetti
 
     initDiscordPresenceSettings();
 
-    /**
-     *
-     */
     async function updateDiscord() {
         let currentLocation = locationStore.lastLocation.location;
         let startTime = locationStore.lastLocation.date;
@@ -374,7 +344,6 @@ export const useDiscordPresenceSettingsStore = defineStore('DiscordPresenceSetti
     }
 
     /**
-     *
      * @param active
      */
     async function setIsDiscordActive(active) {
@@ -384,10 +353,9 @@ export const useDiscordPresenceSettingsStore = defineStore('DiscordPresenceSetti
     }
 
     /**
-     *
      * @param configLabel
      */
-    async function saveDiscordOption(configLabel = '') {
+    async function saveDiscordOption(_configLabel = '') {
         state.lastLocationDetails.tag = '';
         updateLoopStore.setNextDiscordUpdate(3);
         updateDiscord();

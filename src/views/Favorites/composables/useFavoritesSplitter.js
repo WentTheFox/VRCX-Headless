@@ -25,9 +25,6 @@ export function useFavoritesSplitter(options = {}) {
     const splitterDraggingCount = ref(0);
     let splitterObserver = null;
 
-    /**
-     *
-     */
     async function loadSplitterPreferences() {
         const storedSize = await configRepository.getString(configKey, String(defaultSize));
         const parsedSize = Number(storedSize);

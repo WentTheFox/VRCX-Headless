@@ -917,6 +917,7 @@ const gameLog = {
 
     /**
      * Lookup the game log database for a specific search term
+     *
      * @param {string} search The search term
      * @param {Array} filters The filters to apply
      * @param {Array} [vipList] The list of VIP users
@@ -1303,7 +1304,7 @@ const gameLog = {
 
     /**
      * @param {string} location
-     * @returns {Promise<Array<{created_at: string, display_name: string, user_id: string, time: number}>>}
+     * @returns {Promise<{ created_at: string; display_name: string; user_id: string; time: number }[]>}
      */
     async getPlayerDetailFromInstance(location) {
         const entries = [];
@@ -1371,9 +1372,10 @@ const gameLog = {
      * Get current user's online sessions from gamelog_location
      * Each row has created_at (leave time) and time (duration in ms)
      * Session start = created_at - time, Session end = created_at
-     * @param {number} [fromDays=0] - How many days back to start (0 = all time)
-     * @param {number} [toDays=0] - How many days back to stop (0 = now)
-     * @returns {Promise<Array<{created_at: string, time: number}>>}
+     *
+     * @param {number} [fromDays=0] - How many days back to start (0 = all time). Default is `0`
+     * @param {number} [toDays=0] - How many days back to stop (0 = now). Default is `0`
+     * @returns {Promise<{ created_at: string; time: number }[]>}
      */
     async getCurrentUserOnlineSessions(fromDays = 0, toDays = 0) {
         const data = [];
@@ -1413,9 +1415,10 @@ const gameLog = {
 
     /**
      * Get current user's online sessions after a given timestamp (incremental).
+     *
      * @param {string} afterCreatedAt - Only return rows created after this timestamp
-     * @param {boolean} [inclusive=false] - If true, use >= instead of > to re-read the last record
-     * @returns {Promise<Array<{created_at: string, time: number}>>}
+     * @param {boolean} [inclusive=false] - If true, use >= instead of > to re-read the last record. Default is `false`
+     * @returns {Promise<{ created_at: string; time: number }[]>}
      */
     async getCurrentUserOnlineSessionsAfter(afterCreatedAt, inclusive = false) {
         const data = [];
@@ -1433,11 +1436,12 @@ const gameLog = {
     /**
      * Get current user's top visited worlds from gamelog_location.
      * Groups by world_id and aggregates visit count and total time.
+     *
      * @param {number} [days] - Number of days to look back. Omit or 0 for all time.
-     * @param {number} [limit=5] - Maximum number of worlds to return.
-     * @param {'time'|'count'} [sortBy='time'] - Sort by total time or visit count.
-     * @param {string} [excludeWorldId=''] - Optional world ID to exclude from results.
-     * @returns {Promise<Array<{worldId: string, worldName: string, visitCount: number, totalTime: number}>>}
+     * @param {number} [limit=5] - Maximum number of worlds to return. Default is `5`
+     * @param {'time' | 'count'} [sortBy='time'] - Sort by total time or visit count. Default is `'time'`
+     * @param {string} [excludeWorldId=''] - Optional world ID to exclude from results. Default is `''`
+     * @returns {Promise<{ worldId: string; worldName: string; visitCount: number; totalTime: number }[]>}
      */
     async getMyTopWorlds(days = 0, limit = 5, sortBy = 'time', excludeWorldId = '') {
         const results = [];
@@ -1494,9 +1498,8 @@ const gameLog = {
     },
 
     /**
-     *
-     * @param {string} startDate: utc string of startOfDay
-     * @param {string} endDate: utc string endOfDay
+     * @param {string} startDate: Utc string of startOfDay
+     * @param {string} endDate: Utc string endOfDay
      * @param startDate
      * @param endDate
      * @returns
@@ -1548,6 +1551,7 @@ const gameLog = {
 
     /**
      * Get the All Date of Instance Activity for the current user
+     *
      * @returns {Promise<string[]>}
      */
     async getDateOfInstanceActivity() {
@@ -1664,9 +1668,20 @@ const gameLog = {
 
     /**
      * Get Location segments paginated by cursor (id DESC).
-     * @param {number|null} beforeId - cursor: only return rows with id < beforeId. null = latest.
-     * @param {number} limit - how many segments to fetch.
-     * @returns {Promise<Array<{id: number, created_at: string, location: string, worldId: string, worldName: string, time: number, groupName: string}>>}
+     *
+     * @param {number | null} beforeId - Cursor: only return rows with id < beforeId. null = latest.
+     * @param {number} limit - How many segments to fetch.
+     * @returns {Promise<
+     *     {
+     *         id: number;
+     *         created_at: string;
+     *         location: string;
+     *         worldId: string;
+     *         worldName: string;
+     *         time: number;
+     *         groupName: string;
+     *     }[]
+     * >}
      */
     async getSessionsLocationSegments(beforeId, limit) {
         const data = [];
@@ -1700,10 +1715,11 @@ const gameLog = {
     /**
      * Get join/leave and video_play events for a set of location tags within a date range.
      * Excludes the current user's own join/leave.
-     * @param {string[]} locationTags - location values to match
+     *
+     * @param {string[]} locationTags - Location values to match
      * @param {string} afterDate - ISO date (inclusive lower bound)
      * @param {string} beforeDate - ISO date (inclusive upper bound, with padding)
-     * @returns {Promise<Array<object>>}
+     * @returns {Promise<object[]>}
      */
     async getSessionsEventsForSegments(locationTags, afterDate, beforeDate) {
         if (!locationTags || locationTags.length === 0) return [];
@@ -1773,9 +1789,10 @@ const gameLog = {
     /**
      * Get Location segments from a given date onwards (for anchor jumps).
      * Returns segments with created_at >= sinceDate, capped by limit, ordered id DESC.
+     *
      * @param {string} sinceDate - ISO date string
-     * @param {number} limit - max segments to return
-     * @returns {Promise<Array<object>>}
+     * @param {number} limit - Max segments to return
+     * @returns {Promise<object[]>}
      */
     async getSessionsLocationSegmentsByAnchor(sinceDate, limit) {
         const data = [];

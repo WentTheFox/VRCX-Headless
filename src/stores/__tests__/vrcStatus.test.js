@@ -23,9 +23,6 @@ vi.mock('../../shared/utils', () => ({
     openExternalLink: (...args) => mocks.openExternalLink(...args)
 }));
 
-/**
- *
- */
 function flushPromises() {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }

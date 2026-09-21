@@ -10,7 +10,6 @@ import {
 import { computed, ref, unref, watch } from 'vue';
 
 /**
- *
  * @param str
  */
 export function safeJsonParse(str) {
@@ -25,7 +24,6 @@ export function safeJsonParse(str) {
 }
 
 /**
- *
  * @param fn
  * @param wait
  */
@@ -40,7 +38,6 @@ function debounce(fn, wait) {
 }
 
 /**
- *
  * @param sizing
  * @param columns
  */
@@ -59,7 +56,6 @@ export function filterSizingByColumns(sizing, columns) {
 }
 
 /**
- *
  * @param sorting
  * @param columns
  */
@@ -72,7 +68,6 @@ export function filterSortingByColumns(sorting, columns) {
 }
 
 /**
- *
  * @param order
  * @param columns
  */
@@ -85,7 +80,6 @@ export function filterOrderByColumns(order, columns) {
 }
 
 /**
- *
  * @param visibility
  * @param columns
  */
@@ -104,7 +98,6 @@ export function filterVisibilityByColumns(visibility, columns) {
 }
 
 /**
- *
  * @param col
  */
 export function getColumnId(col) {
@@ -112,7 +105,6 @@ export function getColumnId(col) {
 }
 
 /**
- *
  * @param columns
  */
 export function findStretchColumnId(columns) {
@@ -128,7 +120,6 @@ export function findStretchColumnId(columns) {
 }
 
 /**
- *
  * @param updaterOrValue
  * @param targetRef
  */
@@ -137,7 +128,6 @@ function setRef(updaterOrValue, targetRef) {
 }
 
 /**
- *
  * @param func
  */
 function resolveMaybeGetter(func) {
@@ -145,7 +135,6 @@ function resolveMaybeGetter(func) {
 }
 
 /**
- *
  * @param columns
  * @param enabled
  * @param spacerId
@@ -186,7 +175,6 @@ export function withSpacerColumn(columns, enabled, spacerId, stretchAfterId) {
 }
 
 /**
- *
  * @param options
  */
 export function useVrcxVueTable(options) {
@@ -244,9 +232,6 @@ export function useVrcxVueTable(options) {
 
     const storageKey = persistKey ? `vrcx:table:${persistKey}` : null;
 
-    /**
-     *
-     */
     function readPersisted() {
         if (!storageKey) {
             return null;
@@ -255,7 +240,6 @@ export function useVrcxVueTable(options) {
     }
 
     /**
-     *
      * @param patch
      */
     function writePersisted(patch) {
@@ -318,7 +302,6 @@ export function useVrcxVueTable(options) {
     const extra = {};
 
     /**
-     *
      * @param enabled
      * @param key
      * @param r
@@ -487,8 +470,6 @@ export function useVrcxVueTable(options) {
         });
     }
 
-    /**
-     */
     function resetAll() {
         columnSizing.value = {};
         columnOrder.value = [];

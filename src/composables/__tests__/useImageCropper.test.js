@@ -13,7 +13,6 @@ import { applyTransforms, cropImage, useImageCropper } from '../useImageCropper'
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /**
- *
  * @param width
  * @param height
  */
@@ -22,7 +21,6 @@ function makeImage(width, height) {
 }
 
 /**
- *
  * @param root0
  * @param root0.left
  * @param root0.top
@@ -61,9 +59,6 @@ function makeCropperResult({
 let mockCtx;
 let canvasInstances;
 
-/**
- *
- */
 function setupCanvasMocks() {
     canvasInstances = [];
     mockCtx = {

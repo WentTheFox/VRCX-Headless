@@ -108,7 +108,6 @@ const MOCK_AVATARS = [
 ];
 
 /**
- *
  * @param overrides
  */
 function mountComponent(overrides = {}) {

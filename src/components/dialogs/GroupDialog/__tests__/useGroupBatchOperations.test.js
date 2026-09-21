@@ -6,7 +6,6 @@ vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 import { useGroupBatchOperations } from '../useGroupBatchOperations';
 
 /**
- *
  * @param overrides
  */
 function createDeps({ selectedUsersArray, ...overrides } = {}) {

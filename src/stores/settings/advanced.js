@@ -426,7 +426,7 @@ export const useAdvancedSettingsStore = defineStore('AdvancedSettings', () => {
     }
 
     /**
-     * @param {number|null} days - Number of days to keep. Null means delete all.
+     * @param {number | null} days - Number of days to keep. Null means delete all.
      */
     async function purgeAvatarFeedData(days) {
         let cutoffDate = null;
@@ -462,6 +462,7 @@ export const useAdvancedSettingsStore = defineStore('AdvancedSettings', () => {
      * Run auto-cleanup on startup if configured and enough time has passed.
      * Reads config directly from configRepository to avoid race condition
      * with initAdvancedSettings not having completed yet.
+     *
      * @param {string} userId - Current user ID for per-user cleanup tracking.
      */
     async function runAvatarAutoCleanup(userId) {
@@ -763,7 +764,7 @@ export const useAdvancedSettingsStore = defineStore('AdvancedSettings', () => {
 
             const translated = data?.choices?.[0]?.message?.content;
             return typeof translated === 'string' ? translated.trim() : null;
-        } catch (err) {
+        } catch {
             toast.error(`Translation failed`);
             return null;
         }

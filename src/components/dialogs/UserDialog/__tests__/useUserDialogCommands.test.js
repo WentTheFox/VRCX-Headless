@@ -48,8 +48,7 @@ vi.mock('../../../../composables/useRecentActions', () => ({
 
 // Import mocks after vi.mock
 const { copyToClipboard } = await import('../../../../shared/utils');
-const { favoriteRequest, friendRequest, notificationRequest, playerModerationRequest, miscRequest } =
-    await import('../../../../api');
+const { favoriteRequest, friendRequest, playerModerationRequest, miscRequest } = await import('../../../../api');
 const { database } = await import('../../../../services/database');
 
 function createMockUserDialog() {

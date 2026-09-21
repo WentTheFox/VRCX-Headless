@@ -343,10 +343,10 @@ export function computeOverlapView({
 }
 
 /**
- * @param {Array<{start: number, end: number}>} sessions - sorted sessions
- * @param {number} rangeStartMs - start of the range
- * @param {number} rangeEndMs - end of the range
- * @returns {Array<{date: string, totalMs: number}>} sorted by date ascending
+ * @param {{ start: number; end: number }[]} sessions - Sorted sessions
+ * @param {number} rangeStartMs - Start of the range
+ * @param {number} rangeEndMs - End of the range
+ * @returns {{ date: string; totalMs: number }[]} Sorted by date ascending
  */
 export function buildDailySummary(sessions, rangeStartMs, rangeEndMs = Date.now()) {
     const dayMap = new Map();

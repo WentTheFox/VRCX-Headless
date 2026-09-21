@@ -6,7 +6,6 @@ import {
     useGalleryStore,
     useGroupStore,
     useInstanceStore,
-    useLocationStore,
     useNotificationStore,
     useSharedFeedStore,
     useUiStore,
@@ -40,9 +39,6 @@ export const wsState = reactive({
     bytesReceived: 0
 });
 
-/**
- *
- */
 export function initWebsocket() {
     if (!watchState.isFriendsLoaded || webSocket !== null) {
         return;
@@ -188,11 +184,11 @@ export function reconnectWebSocket() {
  */
 function handlePipeline(args) {
     const userStore = useUserStore();
-    const locationStore = useLocationStore();
+
     const galleryStore = useGalleryStore();
     const notificationStore = useNotificationStore();
     const sharedFeedStore = useSharedFeedStore();
-    const friendStore = useFriendStore();
+
     const groupStore = useGroupStore();
     const uiStore = useUiStore();
     const instanceStore = useInstanceStore();

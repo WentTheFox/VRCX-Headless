@@ -165,7 +165,7 @@ export function showWorldDialog(tag, shortName = null, options = {}) {
 
 /**
  * @param {object} json
- * @returns {object} ref
+ * @returns {object} Ref
  */
 export function applyWorld(json) {
     const worldStore = useWorldStore();

@@ -13,13 +13,14 @@ import * as workerTimers from 'worker-timers';
 
 /**
  * Composable for managing group member loading, searching, sorting, and filtering.
- * @param {import('vue').Ref} groupDialog - reactive ref to the group dialog state
- * @param {object} deps - external dependencies
- * @param {import('vue').Ref} deps.currentUser - reactive ref to the current user
- * @param {Function} deps.applyGroupMember - function to apply group member data
- * @param {Function} deps.handleGroupMember - function to handle group member updates
- * @param {Function} deps.t - i18n translation function
- * @returns {object} members composable API
+ *
+ * @param {import('vue').Ref} groupDialog - Reactive ref to the group dialog state
+ * @param {object} deps - External dependencies
+ * @param {import('vue').Ref} deps.currentUser - Reactive ref to the current user
+ * @param {Function} deps.applyGroupMember - Function to apply group member data
+ * @param {Function} deps.handleGroupMember - Function to handle group member updates
+ * @param {Function} deps.t - I18n translation function
+ * @returns {object} Members composable API
  */
 export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, handleGroupMember, t }) {
     const isGroupMembersDone = ref(false);
@@ -105,9 +106,6 @@ export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, ha
         ].filter((group) => group.items.length);
     });
 
-    /**
-     *
-     */
     function groupMembersSearch() {
         if (groupDialog.value.memberSearch.length < 3) {
             groupDialog.value.memberSearchResults = [];
@@ -117,9 +115,6 @@ export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, ha
         debounce(groupMembersSearchDebounced, 200)();
     }
 
-    /**
-     *
-     */
     function groupMembersSearchDebounced() {
         const D = groupDialog.value;
         const search = D.memberSearch;
@@ -153,9 +148,6 @@ export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, ha
             });
     }
 
-    /**
-     *
-     */
     async function getGroupDialogGroupMembers() {
         const D = groupDialog.value;
         D.members = [];
@@ -194,9 +186,6 @@ export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, ha
         await loadMoreGroupMembers();
     }
 
-    /**
-     *
-     */
     async function loadMoreGroupMembers() {
         if (isGroupMembersDone.value || isGroupMembersLoading.value) {
             return;
@@ -245,9 +234,6 @@ export function useGroupMembers(groupDialog, { currentUser, applyGroupMember, ha
             });
     }
 
-    /**
-     *
-     */
     async function loadAllGroupMembers() {
         if (isGroupMembersLoading.value) {
             return;
