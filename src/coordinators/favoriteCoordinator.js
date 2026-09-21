@@ -20,7 +20,6 @@ import { compareByName, createDefaultFavoriteCachedRef, removeFromArray, replace
 // --- handleFavorite / handleFavoriteAtDelete / handleFavoriteAdd ---
 
 /**
- *
  * @param {object} args
  * @returns {void}
  */
@@ -48,7 +47,6 @@ export function handleFavorite(args) {
 }
 
 /**
- *
  * @param {object} args
  * @returns {void}
  */
@@ -83,7 +81,6 @@ export function handleFavoriteAdd(args) {
 }
 
 /**
- *
  * @param {object} ref
  * @returns {void}
  */
@@ -123,7 +120,6 @@ export function handleFavoriteAtDelete(ref) {
 }
 
 /**
- *
  * @param {string} objectId
  * @returns {void}
  */
@@ -137,7 +133,6 @@ export function handleFavoriteDelete(objectId) {
 }
 
 /**
- *
  * @param {object} args
  * @returns {void}
  */
@@ -155,12 +150,10 @@ export function handleFavoriteGroupClear(args) {
 // --- List handlers ---
 
 /**
- *
  * @param {object} args
  * @returns {void}
  */
 export function handleFavoriteWorldList(args) {
-    const worldStore = useWorldStore();
     for (const json of args.json) {
         if (json.id === '???') {
             continue;
@@ -170,11 +163,9 @@ export function handleFavoriteWorldList(args) {
 }
 
 /**
- *
  * @param {object} args
  */
 export function handleFavoriteAvatarList(args) {
-    const avatarStore = useAvatarStore();
     for (const json of args.json) {
         if (json.releaseStatus === 'hidden') {
             continue;
@@ -186,7 +177,6 @@ export function handleFavoriteAvatarList(args) {
 // --- applyFavoriteCached / applyFavorite ---
 
 /**
- *
  * @param {object} json
  * @returns {object}
  */
@@ -228,7 +218,6 @@ export function applyFavoriteCached(json) {
 }
 
 /**
- *
  * @param {'friend' | 'world' | 'vrcPlusWorld' | 'avatar'} type
  * @param {string} objectId
  * @returns {Promise<void>}
@@ -365,7 +354,6 @@ export async function applyFavorite(type, objectId) {
 // --- Refresh flows ---
 
 /**
- *
  * @returns {void}
  */
 export function refreshFavorites() {
@@ -429,7 +417,6 @@ export function refreshFavorites() {
 }
 
 /**
- *
  * @param {string} tag
  * @returns {Promise<void>}
  */
@@ -531,7 +518,6 @@ export function sortLocalWorldFavorites() {
 // --- Local World Favorites ---
 
 /**
- *
  * @param {string} worldId
  * @param {string} group
  */
@@ -565,7 +551,6 @@ export function addLocalWorldFavorite(worldId, group) {
 }
 
 /**
- *
  * @param {string} worldId
  * @param {string} group
  */
@@ -612,7 +597,6 @@ export function removeLocalWorldFavorite(worldId, group) {
 }
 
 /**
- *
  * @returns {Promise<void>}
  */
 export async function getLocalWorldFavorites() {
@@ -662,7 +646,6 @@ export async function getLocalWorldFavorites() {
 }
 
 /**
- *
  * @param {string} newName
  * @param {string} group
  */
@@ -685,7 +668,6 @@ export function renameLocalWorldFavoriteGroup(newName, group) {
 }
 
 /**
- *
  * @param {string} group
  */
 export function newLocalWorldFavoriteGroup(group) {
@@ -708,7 +690,6 @@ export function newLocalWorldFavoriteGroup(group) {
 // --- Local Avatar Favorites ---
 
 /**
- *
  * @param {string} avatarId
  * @param {string} group
  */
@@ -741,7 +722,6 @@ export function addLocalAvatarFavorite(avatarId, group) {
 }
 
 /**
- *
  * @param {string} avatarId
  * @param {string} group
  */
@@ -790,7 +770,6 @@ export function removeLocalAvatarFavorite(avatarId, group) {
 }
 
 /**
- *
  * @param {string} group
  */
 export function deleteLocalAvatarFavoriteGroup(group) {
@@ -847,7 +826,6 @@ export function deleteLocalAvatarFavoriteGroup(group) {
 }
 
 /**
- *
  * @returns {Promise<void>}
  */
 export async function getLocalAvatarFavorites() {
@@ -897,7 +875,6 @@ export async function getLocalAvatarFavorites() {
 }
 
 /**
- *
  * @param {string} newName
  * @param {string} group
  */
@@ -920,7 +897,6 @@ export function renameLocalAvatarFavoriteGroup(newName, group) {
 }
 
 /**
- *
  * @param {string} group
  */
 export function newLocalAvatarFavoriteGroup(group) {
@@ -942,9 +918,10 @@ export function newLocalAvatarFavoriteGroup(group) {
 
 /**
  * Check invalid local avatar favorites
+ *
  * @param {string | null} targetGroup - Target group to check, null for all groups
  * @param {Function | null} onProgress - Progress callback function, receives (current, total) parameters
- * @returns {Promise<{total: number, invalid: number, invalidIds: string[]}>}
+ * @returns {Promise<{ total: number; invalid: number; invalidIds: string[] }>}
  */
 export async function checkInvalidLocalAvatars(targetGroup = null, onProgress = null) {
     const favoriteStore = useFavoriteStore();
@@ -996,9 +973,10 @@ export async function checkInvalidLocalAvatars(targetGroup = null, onProgress = 
 
 /**
  * Remove invalid avatars from local favorites
+ *
  * @param {string[]} avatarIds - Array of avatar IDs to remove
  * @param {string | null} targetGroup - Target group, null for all groups
- * @returns {Promise<{removed: number, removedIds: string[]}>}
+ * @returns {Promise<{ removed: number; removedIds: string[] }>}
  */
 export async function removeInvalidLocalAvatars(avatarIds, targetGroup = null) {
     const favoriteStore = useFavoriteStore();
@@ -1156,9 +1134,6 @@ export function renameLocalFriendFavoriteGroup(newName, group) {
 
 // --- Sort / Init ---
 
-/**
- *
- */
 export async function saveSortFavoritesOption() {
     const appearanceSettingsStore = useAppearanceSettingsStore();
     getLocalWorldFavorites();
@@ -1166,9 +1141,6 @@ export async function saveSortFavoritesOption() {
     appearanceSettingsStore.setSortFavorites();
 }
 
-/**
- *
- */
 export async function initFavorites() {
     refreshFavorites();
     getLocalWorldFavorites();
@@ -1179,6 +1151,7 @@ export async function initFavorites() {
 /**
  * Called by the favorite store watch when login state changes.
  * Handles cross-store cleanup that can't stay in the store.
+ *
  * @param {boolean} isLoggedIn
  */
 export function onLoginStateChanged(isLoggedIn) {

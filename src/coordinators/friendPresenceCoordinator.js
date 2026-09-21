@@ -116,6 +116,7 @@ export async function runUpdateFriendDelayedCheckFlow(
 
 /**
  * Handles immediate friend presence updates and pending-offline orchestration.
+ *
  * @param {string} id Friend id.
  * @param {string | undefined} stateInput Optional incoming state.
  * @param {object} [options] Test seams.
@@ -240,6 +241,7 @@ export async function runUpdateFriendFlow(
 
 /**
  * Processes pending-offline entries and executes delayed transitions.
+ *
  * @param {object} [options] Test seams.
  * @param {function} [options.now] Timestamp provider.
  * @param {function} [options.nowIso] ISO timestamp provider.

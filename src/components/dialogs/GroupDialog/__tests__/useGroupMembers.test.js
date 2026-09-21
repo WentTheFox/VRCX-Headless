@@ -98,7 +98,6 @@ import { groupRequest, queryRequest } from '../../../../api';
 import { FILTER_EVERYONE } from '../../../../shared/constants';
 
 /**
- *
  * @param overrides
  */
 function createGroupDialog(overrides = {}) {
@@ -117,7 +116,6 @@ function createGroupDialog(overrides = {}) {
 }
 
 /**
- *
  * @param overrides
  */
 function createDeps(overrides = {}) {

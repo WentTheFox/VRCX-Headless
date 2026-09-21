@@ -24,6 +24,7 @@ import * as workerTimers from 'worker-timers';
 
 /**
  * Runs shared side effects when game running state changes.
+ *
  * @param {boolean} isGameRunning Whether VRChat is running.
  */
 export async function runGameRunningChangedFlow(isGameRunning) {
@@ -67,6 +68,7 @@ export async function runGameRunningChangedFlow(isGameRunning) {
 
 /**
  * Orchestrates the game running state update from IPC.
+ *
  * @param {boolean} isGameRunningArg Game running flag from IPC.
  * @param {boolean} isSteamVRRunningArg SteamVR running flag from IPC.
  */
@@ -93,6 +95,7 @@ export async function runUpdateIsGameRunningFlow(isGameRunningArg, isSteamVRRunn
 
 /**
  * Orchestrates the HMD AFK state update from IPC.
+ *
  * @param {boolean} isHmdAfkArg HMD AFK flag from VR polling.
  */
 export function runUpdateIsHmdAfkFlow(isHmdAfkArg) {
@@ -135,6 +138,7 @@ export async function runSweepVRChatCacheFlow() {
 
 /**
  * Deletes VRChat cache for a given ref and refreshes related stores.
+ *
  * @param {object} ref Avatar or world reference payload.
  */
 export async function runDeleteVRChatCacheFlow(ref) {
@@ -211,6 +215,7 @@ export function runCheckIfGameCrashedFlow() {
 
 /**
  * Restarts VRChat after a crash.
+ *
  * @param {string} location Last known location to relaunch.
  */
 function runRestartCrashedGameFlow(location) {

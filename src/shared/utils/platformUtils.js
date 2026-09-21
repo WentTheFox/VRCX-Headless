@@ -1,6 +1,6 @@
 /**
  * @param {object} unityPackages
- * @returns {{ isPC: boolean, isQuest: boolean, isIos: boolean }}
+ * @returns {{ isPC: boolean; isQuest: boolean; isIos: boolean }}
  */
 function getAvailablePlatforms(unityPackages) {
     let isPC = false;

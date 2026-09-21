@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth';
 
 /**
  * Runs the full auto-login orchestration flow.
+ *
  * @param {object} [options] Test seams.
  * @param {function} [options.isOnline] Online-check provider.
  */

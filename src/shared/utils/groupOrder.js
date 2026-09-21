@@ -4,9 +4,9 @@ import { moveArrayItem } from './base/array';
  * Keep valid saved group IDs in their existing order, then append groups that
  * are not present in the saved VRChat registry value.
  *
- * @param {Array<string>} order
- * @param {Array<string>} groupIds
- * @returns {Array<string>}
+ * @param {string[]} order
+ * @param {string[]} groupIds
+ * @returns {string[]}
  */
 export function normalizeGroupOrder(order, groupIds) {
     const validGroupIds = new Set(groupIds);
@@ -30,7 +30,7 @@ export function normalizeGroupOrder(order, groupIds) {
 }
 
 /**
- * @param {Array<string>} order
+ * @param {string[]} order
  * @param {string} groupId
  * @param {number} toIndex
  * @returns {boolean}

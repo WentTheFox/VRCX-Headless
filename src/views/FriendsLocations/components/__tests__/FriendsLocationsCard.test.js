@@ -231,7 +231,6 @@ const stubs = {
 };
 
 /**
- *
  * @param overrides
  */
 function makeFriend(overrides = {}) {
@@ -253,7 +252,6 @@ function makeFriend(overrides = {}) {
 }
 
 /**
- *
  * @param props
  * @param storeState
  */
@@ -296,7 +294,6 @@ function mountCard(props = {}, storeState = {}) {
 }
 
 /**
- *
  * @param wrapper
  */
 function getMenuItems(wrapper) {
@@ -304,7 +301,6 @@ function getMenuItems(wrapper) {
 }
 
 /**
- *
  * @param wrapper
  */
 function getMenuItemTexts(wrapper) {
@@ -312,7 +308,6 @@ function getMenuItemTexts(wrapper) {
 }
 
 /**
- *
  * @param wrapper
  * @param text
  */

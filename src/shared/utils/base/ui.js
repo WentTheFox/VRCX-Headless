@@ -95,7 +95,6 @@ function useThemeColor() {
 }
 
 /**
- *
  * @returns {boolean}
  */
 function systemIsDarkMode() {
@@ -292,7 +291,6 @@ function changeAppThemeStyle(themeMode) {
 }
 
 /**
- *
  * @param {object} trustColor
  */
 function updateTrustColorClasses(trustColor) {
@@ -342,7 +340,6 @@ async function refreshCustomScript() {
 }
 
 /**
- *
  * @param {number} hue
  * @param isDarkMode
  * @returns {string}
@@ -356,7 +353,6 @@ function HueToHex(hue, isDarkMode) {
 }
 
 /**
- *
  * @param {number} h
  * @param {number} s
  * @param {number} v

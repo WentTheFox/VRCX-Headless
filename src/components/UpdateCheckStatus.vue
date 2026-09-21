@@ -47,7 +47,14 @@
     const { t } = useI18n();
 
     const open = ref(false);
-    /** @type {import('vue').Ref<null | { latestVrcxVersion: string, forkReleaseAvailable: boolean, forkReleaseTag: string | null, issueUrl: string | null }>} */
+    /**
+     * @type {import('vue').Ref<null | {
+     *     latestVrcxVersion: string;
+     *     forkReleaseAvailable: boolean;
+     *     forkReleaseTag: string | null;
+     *     issueUrl: string | null;
+     * }>}
+     */
     const status = ref(null);
 
     const tooltipContent = computed(() =>

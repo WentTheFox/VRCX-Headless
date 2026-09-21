@@ -4,14 +4,15 @@ import { queryRequest } from '../../../api';
 
 /**
  * Composable for managing group gallery loading and display state.
- * @param {import('vue').Ref} groupDialog - reactive ref to the group dialog state
+ *
+ * @param {import('vue').Ref} groupDialog - Reactive ref to the group dialog state
  * @returns {{
- *   isGroupGalleryLoading: import('vue').Ref<boolean>,
- *   groupDialogGalleryCurrentName: import('vue').Ref<string>,
- *   groupGalleryTabs: import('vue').ComputedRef<Array>,
- *   groupGalleryStatus: (gallery: Object) => Object,
- *   getGroupGalleries: () => Promise<void>,
- *   getGroupGallery: (groupId: string, galleryId: string) => Promise<void>
+ *     isGroupGalleryLoading: import('vue').Ref<boolean>;
+ *     groupDialogGalleryCurrentName: import('vue').Ref<string>;
+ *     groupGalleryTabs: import('vue').ComputedRef<Array>;
+ *     groupGalleryStatus: (gallery: Object) => Object;
+ *     getGroupGalleries: () => Promise<void>;
+ *     getGroupGallery: (groupId: string, galleryId: string) => Promise<void>;
  * }}
  */
 export function useGroupGalleries(groupDialog) {
@@ -41,7 +42,6 @@ export function useGroupGalleries(groupDialog) {
     }
 
     /**
-     *
      * @param obj
      */
     function updateGroupDialogData(obj) {
@@ -51,9 +51,6 @@ export function useGroupGalleries(groupDialog) {
         };
     }
 
-    /**
-     *
-     */
     async function getGroupGalleries() {
         updateGroupDialogData({ ...groupDialog.value, galleries: {} });
         groupDialogGalleryCurrentName.value = '0';

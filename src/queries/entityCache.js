@@ -1,4 +1,4 @@
-import { AppDebug, logWebRequest, withQueryLog } from '../services/appConfig';
+import { logWebRequest, withQueryLog } from '../services/appConfig';
 import { queryClient } from './client';
 import { queryKeys } from './keys';
 import { toQueryOptions } from './policies';
@@ -17,7 +17,6 @@ const RECENCY_FIELDS = [
 ];
 
 /**
- *
  * @param data
  */
 function getComparableEntity(data) {
@@ -34,7 +33,6 @@ function getComparableEntity(data) {
 }
 
 /**
- *
  * @param value
  */
 function parseTimestamp(value) {
@@ -51,7 +49,6 @@ function parseTimestamp(value) {
 }
 
 /**
- *
  * @param data
  */
 function getRecencyTimestamp(data) {
@@ -71,7 +68,6 @@ function getRecencyTimestamp(data) {
 }
 
 /**
- *
  * @param currentData
  * @param nextData
  */
@@ -95,7 +91,6 @@ function shouldReplaceCurrent(currentData, nextData) {
 }
 
 /**
- *
  * @param data
  */
 function hasCompleteEntityData(data) {
@@ -124,7 +119,7 @@ function hasCompleteEntityData(data) {
 }
 
 /**
- * @param {{queryKey: unknown[], nextData: any}} options
+ * @param {{ queryKey: unknown[]; nextData: any }} options
  */
 export function patchQueryDataWithRecency({ queryKey, nextData }) {
     queryClient.setQueryData(queryKey, (currentData) => {
@@ -136,8 +131,13 @@ export function patchQueryDataWithRecency({ queryKey, nextData }) {
 }
 
 /**
- * @param {{queryKey: unknown[], policy: {staleTime: number, gcTime: number, retry: number, refetchOnWindowFocus: boolean}, queryFn: () => Promise<any>, label?: string}} options
- * @returns {Promise<{data: any, cache: boolean}>}
+ * @param {{
+ *     queryKey: unknown[];
+ *     policy: { staleTime: number; gcTime: number; retry: number; refetchOnWindowFocus: boolean };
+ *     queryFn: () => Promise<any>;
+ *     label?: string;
+ * }} options
+ * @returns {Promise<{ data: any; cache: boolean }>}
  */
 export async function fetchWithEntityPolicy({ queryKey, policy, queryFn, label }) {
     const queryState = queryClient.getQueryState(queryKey);
@@ -177,7 +177,7 @@ export async function refetchActiveEntityQuery(queryKey) {
 }
 
 /**
- * @param {{queryKey: unknown[], nextData: any}} options
+ * @param {{ queryKey: unknown[]; nextData: any }} options
  * @returns {Promise<void>}
  */
 export async function patchAndRefetchActiveQuery({ queryKey, nextData }) {

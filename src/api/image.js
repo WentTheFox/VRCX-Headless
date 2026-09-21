@@ -231,7 +231,6 @@ const imageReq = {
     },
 
     setWorldImage(params) {
-        const worldStore = useWorldStore();
         return request(`worlds/${params.id}`, {
             method: 'PUT',
             params

@@ -11,7 +11,8 @@ import configRepository from '../../../services/config';
 /**
  * Instance builder composable for NewInstanceDialog.
  * Manages instance state, config persistence, and build logic for Normal/Legacy tabs.
- * @param {import('vue').Ref<string>} locationTagRef - reactive location tag from props
+ *
+ * @param {import('vue').Ref<string>} locationTagRef - Reactive location tag from props
  */
 export function useNewInstanceBuilder(locationTagRef) {
     const { cachedGroups } = useGroupStore();
@@ -50,9 +51,6 @@ export function useNewInstanceBuilder(locationTagRef) {
 
     // --- Config persistence ---
 
-    /**
-     *
-     */
     function initializeNewInstanceDialog() {
         configRepository
             .getBool('instanceDialogQueueEnabled', true)
@@ -94,9 +92,6 @@ export function useNewInstanceBuilder(locationTagRef) {
             .getString('instanceDialogMinimumAvatarPerformance', '')
             .then((value) => (newInstanceDialog.value.minimumAvatarPerformance = value));
     }
-    /**
-     *
-     */
     function saveNewInstanceDialog() {
         const {
             accessType,
@@ -126,7 +121,7 @@ export function useNewInstanceBuilder(locationTagRef) {
     // --- Group role loading (shared between buildInstance & buildLegacyInstance) ---
 
     /**
-     * @param {object} D - newInstanceDialog.value
+     * @param {object} D - NewInstanceDialog.value
      */
     function refreshGroupRoles(D) {
         if (D.groupId && D.groupId !== D.lastSelectedGroupId) {
@@ -157,7 +152,6 @@ export function useNewInstanceBuilder(locationTagRef) {
     // --- Build logic ---
 
     /**
-     *
      * @param noChanges
      */
     function updateNewInstanceDialog(noChanges) {
@@ -175,9 +169,6 @@ export function useNewInstanceBuilder(locationTagRef) {
         }
         D.url = getLaunchURL(L);
     }
-    /**
-     *
-     */
     function buildInstance() {
         const D = newInstanceDialog.value;
         D.instanceCreated = false;
@@ -188,9 +179,6 @@ export function useNewInstanceBuilder(locationTagRef) {
         refreshGroupRoles(D);
         saveNewInstanceDialog();
     }
-    /**
-     *
-     */
     function buildLegacyInstance() {
         const D = newInstanceDialog.value;
         D.instanceCreated = false;
@@ -227,7 +215,6 @@ export function useNewInstanceBuilder(locationTagRef) {
     // --- Dialog lifecycle ---
 
     /**
-     *
      * @param tag
      */
     async function initNewInstanceDialog(tag) {
@@ -262,9 +249,6 @@ export function useNewInstanceBuilder(locationTagRef) {
         updateNewInstanceDialog();
         D.visible = true;
     }
-    /**
-     *
-     */
     async function handleCreateNewInstance() {
         const args = await createNewInstance(newInstanceDialog.value.worldId, newInstanceDialog.value);
 
@@ -280,7 +264,6 @@ export function useNewInstanceBuilder(locationTagRef) {
     // --- UI handlers ---
 
     /**
-     *
      * @param tabName
      */
     function newInstanceTabClick(tabName) {
@@ -291,7 +274,6 @@ export function useNewInstanceBuilder(locationTagRef) {
         }
     }
     /**
-     *
      * @param value
      */
     function handleRoleIdsChange(value) {

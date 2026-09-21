@@ -6,7 +6,7 @@ import { i18n } from '../../plugins/i18n';
 
 /**
  * @param {string} fileName
- * @param {*} data
+ * @param {any} data
  */
 function downloadAndSaveJson(fileName, data) {
     if (!fileName || !data) {
@@ -28,7 +28,6 @@ function downloadAndSaveJson(fileName, data) {
 }
 
 /**
- *
  * @param {string} text
  * @param {string} message
  */
@@ -45,7 +44,6 @@ function copyToClipboard(text, message = 'Copied successfully!') {
 }
 
 /**
- *
  * @param {string} link
  */
 function openExternalLink(link) {

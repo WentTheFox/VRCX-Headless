@@ -67,7 +67,9 @@ const feed = {
     /**
      * Purges avatar feed data from the database.
      * !!!!
-     * @param {string|null} cutoffDate - ISO date string. Deletes records older than this date. If null, deletes all records.
+     *
+     * @param {string | null} cutoffDate - ISO date string. Deletes records older than this date. If null, deletes all
+     *   records.
      */
     async purgeAvatarFeedData(cutoffDate) {
         if (cutoffDate) {

@@ -61,9 +61,6 @@ export const useInstanceStore = defineStore('Instance', () => {
 
     let cachedInstances = new Map();
 
-    /**
-     *
-     */
     function cleanInstanceCache() {
         const friendLocationTags = new Set(
             [...friendStore.friends.values()].map((f) => f.$location?.tag).filter(Boolean)
@@ -165,9 +162,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         { flush: 'sync' }
     );
 
-    /**
-     *
-     */
     async function getInstanceJoinHistory() {
         try {
             const data = await database.getInstanceJoinHistory();
@@ -181,7 +175,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param location
      * @param dateTime
      */
@@ -198,9 +191,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         instanceJoinHistory.set(location, epoch);
     }
 
-    /**
-     *
-     */
     function hidePreviousInstancesDialogs() {
         previousInstancesInfoDialog.value.visible = false;
         previousInstancesListDialog.value.visible = false;
@@ -221,7 +211,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param input
      */
     function resolveUserRef(input) {
@@ -234,7 +223,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param input
      */
     function resolveWorldRef(input) {
@@ -247,7 +235,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param input
      */
     function resolveGroupRef(input) {
@@ -260,7 +247,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param accessTypeNameRaw
      */
     function translateAccessType(accessTypeNameRaw) {
@@ -276,7 +262,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param instanceId
      * @param worldNameOverride
      */
@@ -293,7 +278,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param instanceId
      */
     function showPreviousInstancesInfoDialog(instanceId) {
@@ -322,7 +306,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param variant
      * @param targetRef
      */
@@ -353,9 +336,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         });
     }
 
-    /**
-     *
-     */
     function updateCurrentInstanceWorld() {
         let L;
         let instanceId = locationStore.lastLocation.location;
@@ -465,9 +445,8 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {object} json
-     * @returns {object} ref
+     * @returns {object} Ref
      */
     function applyInstance(json) {
         if (!json?.id) {
@@ -521,7 +500,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param location
      */
     async function getInstanceName(location) {
@@ -544,10 +522,9 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {string} worldId
      * @param {any} options
-     * @returns {Promise<{json: *, params}|null>}
+     * @returns {Promise<{ json: any; params } | null>}
      */
     async function createNewInstance(worldId = '', options) {
         let D = options;
@@ -628,16 +605,10 @@ export const useInstanceStore = defineStore('Instance', () => {
         }
     }
 
-    /**
-     *
-     */
     function applyWorldDialogInstances() {
         debounce(applyWorldDialogInstancesDebounced, 100)();
     }
 
-    /**
-     *
-     */
     function applyWorldDialogInstancesDebounced() {
         let ref;
         let instance;
@@ -835,7 +806,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {object} inputInstances
      */
     function applyGroupDialogInstances(inputInstances) {
@@ -998,9 +968,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         D.instances = rooms;
     }
 
-    /**
-     *
-     */
     function removeAllQueuedInstances() {
         queuedInstances.forEach((ref) => {
             toast.info(`Removed instance ${ref.$worldName} from queue`);
@@ -1010,7 +977,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {string} instanceId
      */
     function removeQueuedInstance(instanceId) {
@@ -1022,7 +988,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {string} instanceId
      */
     function applyQueuedInstance(instanceId) {
@@ -1062,7 +1027,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {string} instanceId
      */
     function instanceQueueReady(instanceId) {
@@ -1099,7 +1063,6 @@ export const useInstanceStore = defineStore('Instance', () => {
     }
 
     /**
-     *
      * @param {string} instanceId
      * @param {number} position
      * @param {number} queueSize
@@ -1142,9 +1105,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         // workerTimers.setTimeout(this.instanceQueueTimeout, 3600000);
     }
 
-    /**
-     *
-     */
     function getCurrentInstanceUserList() {
         if (!watchState.isFriendsLoaded) {
             return;
@@ -1162,9 +1122,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         }
     }
 
-    /**
-     *
-     */
     function updatePlayerListExecute() {
         try {
             updatePlayerListDebounce();
@@ -1175,9 +1132,6 @@ export const useInstanceStore = defineStore('Instance', () => {
         state.updatePlayerListPending = false;
     }
 
-    /**
-     *
-     */
     function updatePlayerListDebounce() {
         const users = [];
         const pushUser = function (ref) {

@@ -2,11 +2,12 @@ import { convertYoutubeTime, findUserByDisplayName, isRpcWorld, replaceBioSymbol
 
 /**
  * Creates the media parser functions for the GameLog store.
+ *
  * @param {object} deps
  * @param {import('vue').Ref} deps.nowPlaying
  * @param {Function} deps.setNowPlaying
  * @param {Function} deps.clearNowPlaying
- * @param {object} deps.userStore      – needs `.cachedUsers`
+ * @param {object} deps.userStore – needs `.cachedUsers`
  * @param {object} deps.advancedSettingsStore – needs `.youTubeApi`, `.lookupYouTubeVideo()`
  * @returns {object} The media parser functions
  */

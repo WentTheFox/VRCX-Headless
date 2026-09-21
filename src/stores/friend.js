@@ -41,7 +41,6 @@ export const useFriendStore = defineStore('Friend', () => {
     const dashboardStore = useDashboardStore();
 
     const router = useRouter();
-    const t = i18n.global.t;
 
     const state = reactive({
         friendNumber: 0
@@ -72,6 +71,7 @@ export const useFriendStore = defineStore('Friend', () => {
     /**
      * Tracks recomputes for the hottest friend-derived lists.
      * Guarded by AppDebug.debugRecompute so normal behavior stays unchanged.
+     *
      * @param {keyof typeof derivedDebugCounters} name
      * @param {number} resultSize
      */
@@ -89,9 +89,6 @@ export const useFriendStore = defineStore('Friend', () => {
         });
     }
 
-    /**
-     *
-     */
     function resetDerivedDebugCounters() {
         for (const key in derivedDebugCounters) {
             derivedDebugCounters[key] = 0;
@@ -102,7 +99,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @returns {Record<string, number>}
      */
     function getDerivedDebugCounters() {
@@ -121,7 +117,12 @@ export const useFriendStore = defineStore('Friend', () => {
                 set.add(ref.favoriteId);
             }
         }
-        for (const groupName in favoriteStore.localFriendFavorites) {
+        const groups = generalSettingsStore.localFavoriteFriendsGroups;
+        let localGroups = groups.filter((key) => key.startsWith('local:')).map((key) => key.replace('local:', ''));
+        if (localGroups.length === 0) {
+            localGroups = Object.keys(favoriteStore.localFriendFavorites);
+        }
+        for (const groupName of localGroups) {
             const userIds = favoriteStore.localFriendFavorites[groupName];
             if (userIds) {
                 for (const id of userIds) {
@@ -134,7 +135,6 @@ export const useFriendStore = defineStore('Friend', () => {
     });
 
     /**
-     *
      * @returns {(a: object, b: object) => number}
      */
     function getSortedFriendsComparator() {
@@ -142,7 +142,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param {string} id
      * @returns {number}
      */
@@ -150,24 +149,15 @@ export const useFriendStore = defineStore('Friend', () => {
         return sortedFriends.value.findIndex((friend) => friend.id === id);
     }
 
-    /**
-     *
-     */
     function rebuildSortedFriends() {
         sortedFriends.value = Array.from(friends.values()).sort(getSortedFriendsComparator());
         pendingSortedFriendsRebuild = false;
     }
 
-    /**
-     *
-     */
     function beginSortedFriendsBatch() {
         sortedFriendsBatchDepth += 1;
     }
 
-    /**
-     *
-     */
     function endSortedFriendsBatch() {
         if (sortedFriendsBatchDepth === 0) {
             return;
@@ -179,7 +169,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @template T
      * @param {() => T} fn
      * @returns {T}
@@ -194,7 +183,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param {string} id
      */
     function removeSortedFriend(id) {
@@ -212,7 +200,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param {object | string} input
      */
     function reindexSortedFriend(input) {
@@ -399,9 +386,6 @@ export const useFriendStore = defineStore('Friend', () => {
         { flush: 'sync' }
     );
 
-    /**
-     *
-     */
     async function init() {
         const friendLogTableFiltersValue = JSON.parse(
             await configRepository.getString('VRCX_friendLogTableFilters', '[]')
@@ -411,9 +395,6 @@ export const useFriendStore = defineStore('Friend', () => {
 
     init();
 
-    /**
-     *
-     */
     function updateLocalFavoriteFriends() {
         const favoriteStore = useFavoriteStore();
         localFavoriteFriends.clear();
@@ -425,8 +406,12 @@ export const useFriendStore = defineStore('Friend', () => {
                 localFavoriteFriends.add(ref.favoriteId);
             }
         }
-        // Local favorites: always include all
-        for (const groupName in favoriteStore.localFriendFavorites) {
+        // Local favorites
+        let localGroups = groups.filter((key) => key.startsWith('local:')).map((key) => key.replace('local:', ''));
+        if (localGroups.length === 0) {
+            localGroups = Object.keys(favoriteStore.localFriendFavorites);
+        }
+        for (const groupName of localGroups) {
             const userIds = favoriteStore.localFriendFavorites[groupName];
             if (userIds) {
                 for (let i = 0; i < userIds.length; ++i) {
@@ -437,9 +422,6 @@ export const useFriendStore = defineStore('Friend', () => {
         updateSidebarFavorites();
     }
 
-    /**
-     *
-     */
     function updateSidebarFavorites() {
         runInSortedFriendsBatch(() => {
             for (const ctx of friends.values()) {
@@ -453,9 +435,6 @@ export const useFriendStore = defineStore('Friend', () => {
         });
     }
 
-    /**
-     *
-     */
     async function pendingOfflineWorkerFunction() {
         pendingOfflineWorker = workerTimers.setInterval(() => {
             runPendingOfflineTickFlow();
@@ -475,7 +454,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param ref
      */
     function refreshFriendsStatus(ref) {
@@ -517,7 +495,7 @@ export const useFriendStore = defineStore('Friend', () => {
 
     /**
      * @param {string} id
-     * @param {string?} state_input
+     * @param {string | null} state_input
      */
     function addFriend(id, state_input = undefined) {
         if (friends.has(id)) {
@@ -588,8 +566,7 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
-     * @returns {Promise<*[]>}
+     * @returns {Promise< any []>}
      */
     async function refreshFriends() {
         isRefreshFriendsLoading.value = true;
@@ -616,7 +593,7 @@ export const useFriendStore = defineStore('Friend', () => {
 
     /**
      * @param {object} args
-     * @returns {Promise<*[]>}
+     * @returns {Promise< any []>}
      */
     async function bulkRefreshFriends(args) {
         // API offset limit *was* 5000
@@ -634,7 +611,6 @@ export const useFriendStore = defineStore('Friend', () => {
         });
 
         /**
-         *
          * @param offset
          */
         async function fetchPage(offset) {
@@ -660,9 +636,6 @@ export const useFriendStore = defineStore('Friend', () => {
         let stopFlag = false;
         const friends = [];
 
-        /**
-         *
-         */
         function getNextOffset() {
             if (stopFlag) return null;
             const cur = nextOffset;
@@ -671,9 +644,6 @@ export const useFriendStore = defineStore('Friend', () => {
             return cur;
         }
 
-        /**
-         *
-         */
         async function worker() {
             while (true) {
                 const offset = getNextOffset();
@@ -697,7 +667,7 @@ export const useFriendStore = defineStore('Friend', () => {
 
     /**
      * @param {Array} friendsArray
-     * @returns {Promise<*>}
+     * @returns {Promise< any >}
      */
     async function refetchBrokenFriends(friendsArray) {
         // attempt to fix broken data from bulk friend fetch
@@ -741,7 +711,7 @@ export const useFriendStore = defineStore('Friend', () => {
 
     /**
      * @param {Array} friends
-     * @returns {Promise<*>}
+     * @returns {Promise< any >}
      */
     async function refreshRemainingFriends(friends) {
         const friendsSet = new Set(friends.map((x) => x.id));
@@ -767,7 +737,6 @@ export const useFriendStore = defineStore('Friend', () => {
      * @returns {Promise<void>}
      */
     /**
-     *
      * @param forceUpdate
      */
     function updateOnlineFriendCounter(forceUpdate = false) {
@@ -778,9 +747,6 @@ export const useFriendStore = defineStore('Friend', () => {
         }
     }
 
-    /**
-     *
-     */
     async function getAllUserStats() {
         let ref;
         let item;
@@ -861,9 +827,6 @@ export const useFriendStore = defineStore('Friend', () => {
         });
     }
 
-    /**
-     *
-     */
     async function getAllUserMutualCount() {
         if (!friends.size) {
             return;
@@ -889,9 +852,6 @@ export const useFriendStore = defineStore('Friend', () => {
         });
     }
 
-    /**
-     *
-     */
     async function getAllUserMutualOptedOut() {
         if (!friends.size) {
             return;
@@ -917,17 +877,14 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param {string} id
      */
 
     /**
-     *
      * @param {object} ref
      */
 
     /**
-     *
      * @param {object} currentUser
      * @returns {Promise<void>}
      */
@@ -954,7 +911,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param {string} userId
      * @returns {Promise<void>}
      */
@@ -968,7 +924,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param {object} currentUser
      * @returns {Promise<void>}
      */
@@ -1001,9 +956,6 @@ export const useFriendStore = defineStore('Friend', () => {
         }
     }
 
-    /**
-     *
-     */
     async function initFriendLogHistoryTable() {
         friendLogTable.value.loading = true;
         friendLogTable.value.data = await database.getFriendLogHistory();
@@ -1011,9 +963,9 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     * @returns void
      * @param {number} friendNumber
      * @param {string} userId
+     * @returns Void
      */
     function setFriendNumber(friendNumber, userId) {
         const ref = friendLog.get(userId);
@@ -1030,9 +982,6 @@ export const useFriendStore = defineStore('Friend', () => {
         }
     }
 
-    /**
-     *
-     */
     async function tryApplyFriendOrder() {
         const lastUpdate = await configRepository.getString(`VRCX_lastStoreTime_${userStore.currentUser.id}`);
         if (lastUpdate === '-5') {
@@ -1065,13 +1014,13 @@ export const useFriendStore = defineStore('Friend', () => {
     /**
      * @deprecated We might need this again one day
      */
-    async function tryRestoreFriendNumber() {
+    async function _tryRestoreFriendNumber() {
         const lastUpdate = await configRepository.getString(`VRCX_lastStoreTime_${userStore.currentUser.id}`);
         if (lastUpdate === '-4') {
             // this means the backup was already applied
             return;
         }
-        var status = false;
+        var _status = false;
         state.friendNumber = 0;
         for (const ref of friendLog.values()) {
             ref.friendNumber = 0;
@@ -1079,7 +1028,7 @@ export const useFriendStore = defineStore('Friend', () => {
         try {
             if (lastUpdate) {
                 // backup ready to try apply
-                status = await restoreFriendNumber();
+                _status = await restoreFriendNumber();
             }
             // needs to be in reverse because we don't know the starting number
             applyFriendLogFriendOrderInReverse();
@@ -1105,9 +1054,6 @@ export const useFriendStore = defineStore('Friend', () => {
         await configRepository.setString(`VRCX_lastStoreTime_${userStore.currentUser.id}`, '-4');
     }
 
-    /**
-     *
-     */
     async function restoreFriendNumber() {
         let message;
         let storedData = null;
@@ -1151,9 +1097,6 @@ export const useFriendStore = defineStore('Friend', () => {
         return true;
     }
 
-    /**
-     *
-     */
     function applyFriendLogFriendOrderInReverse() {
         state.friendNumber = friends.size + 1;
         const friendLogTable = getFriendLogFriendOrder();
@@ -1178,9 +1121,6 @@ export const useFriendStore = defineStore('Friend', () => {
         console.log('Applied friend order from friendLog');
     }
 
-    /**
-     *
-     */
     function getFriendLogFriendOrder() {
         const result = [];
         for (let i = 0; i < friendLogTable.value.data.length; i++) {
@@ -1207,7 +1147,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param friendLogTable
      * @param created_at
      * @param backupUserIds
@@ -1232,7 +1171,7 @@ export const useFriendStore = defineStore('Friend', () => {
         let currentMatches = 0;
         let backupIndex = 0;
         for (i = 0; i < friendLogTable.length; i++) {
-            var isMatch = false;
+            var _isMatch = false;
             const ref = friendLogTable[i];
             if (backupIndex <= 0) {
                 backupIndex = backupTable.findIndex((x) => x.id === ref.id);
@@ -1241,7 +1180,7 @@ export const useFriendStore = defineStore('Friend', () => {
                 }
             } else if (backupTable[backupIndex].id === ref.id) {
                 currentMatches++;
-                isMatch = true;
+                _isMatch = true;
             } else {
                 backupIndex = backupTable.findIndex((x) => x.id === ref.id);
                 if (backupIndex !== -1) {
@@ -1274,7 +1213,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param userIdOrder
      */
     function applyFriendOrderBackup(userIdOrder) {
@@ -1297,9 +1235,6 @@ export const useFriendStore = defineStore('Friend', () => {
         }
     }
 
-    /**
-     *
-     */
     function applyFriendLogFriendOrder() {
         const friendLogTable = getFriendLogFriendOrder();
         if (state.friendNumber === 0) {
@@ -1324,7 +1259,6 @@ export const useFriendStore = defineStore('Friend', () => {
     }
 
     /**
-     *
      * @param id
      */
 

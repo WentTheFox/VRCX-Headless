@@ -112,9 +112,6 @@ export const useAuthStore = defineStore('Auth', () => {
         { flush: 'sync' }
     );
 
-    /**
-     *
-     */
     async function init() {
         const [lastUserLoggedIn, savedEnableCustomEndpoint] = await Promise.all([
             configRepository.getString('lastUserLoggedIn', ''),
@@ -126,9 +123,6 @@ export const useAuthStore = defineStore('Auth', () => {
 
     init();
 
-    /**
-     *
-     */
     async function getAllSavedCredentials() {
         let savedCredentials = {};
         try {
@@ -161,7 +155,6 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
      * @param userId
      */
     async function getSavedCredentials(userId) {
@@ -169,15 +162,13 @@ export const useAuthStore = defineStore('Auth', () => {
         return savedCredentials[userId];
     }
 
-    /**
-     *
-     */
     async function handleLogoutEvent() {
         await runLogoutFlow();
     }
 
     /**
      * Automatically logs in the last user after the app is mounted.
+     *
      * @returns {Promise<void>}
      */
     async function autoLoginAfterMounted() {
@@ -214,9 +205,6 @@ export const useAuthStore = defineStore('Auth', () => {
         }
     }
 
-    /**
-     *
-     */
     async function clearCookiesTryLogin() {
         await webApiService.clearCookies();
         if (loginForm.value.lastUserLoggedIn) {
@@ -230,9 +218,6 @@ export const useAuthStore = defineStore('Auth', () => {
         }
     }
 
-    /**
-     *
-     */
     async function resendEmail2fa() {
         if (loginForm.value.lastUserLoggedIn) {
             const user = await getSavedCredentials(loginForm.value.lastUserLoggedIn);
@@ -250,9 +235,6 @@ export const useAuthStore = defineStore('Auth', () => {
         toast.error(t('message.auth.email_2fa_no_credentials'));
     }
 
-    /**
-     *
-     */
     function resetLoginNetworkIssueHintState() {
         if (loginNetworkIssueHintToastId.value) {
             toast.dismiss(loginNetworkIssueHintToastId.value);
@@ -264,8 +246,7 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
-     * @param {{ username?: string, password?: string, endpoint?: string, websocket?: string }} [params]
+     * @param {{ username?: string; password?: string; endpoint?: string; websocket?: string }} [params]
      * @returns {string}
      */
     function buildLoginNetworkIssueAttemptFingerprint(params = {}) {
@@ -275,8 +256,7 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
-     * @param {{ username?: string, password?: string, endpoint?: string, websocket?: string }} params
+     * @param {{ username?: string; password?: string; endpoint?: string; websocket?: string }} params
      */
     function resetLoginNetworkIssueHintStateIfCredentialsChanged(params) {
         const fingerprint = buildLoginNetworkIssueAttemptFingerprint(params);
@@ -290,8 +270,7 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
-     * @param {Error & {status?: number, endpoint?: string}} err
+     * @param {Error & { status?: number; endpoint?: string }} err
      * @returns {boolean}
      */
     function shouldCountLoginFailureForNetworkHint(err) {
@@ -304,9 +283,6 @@ export const useAuthStore = defineStore('Auth', () => {
         return [401].includes(err.status);
     }
 
-    /**
-     *
-     */
     function maybeShowLoginNetworkIssueHint() {
         const now = Date.now();
         loginNetworkIssueHintState.timestamps = loginNetworkIssueHintState.timestamps.filter(
@@ -330,9 +306,6 @@ export const useAuthStore = defineStore('Auth', () => {
         });
     }
 
-    /**
-     *
-     */
     function enablePrimaryPasswordChange() {
         advancedSettingsStore.setEnablePrimaryPassword(!advancedSettingsStore.enablePrimaryPassword);
 
@@ -380,9 +353,6 @@ export const useAuthStore = defineStore('Auth', () => {
                 });
         }
     }
-    /**
-     *
-     */
     async function setPrimaryPassword() {
         await configRepository.setBool('enablePrimaryPassword', advancedSettingsStore.enablePrimaryPassword);
         enablePrimaryPasswordDialog.value.visible = false;
@@ -402,7 +372,6 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
      * @param user
      */
     async function updateStoredUser(user) {
@@ -429,9 +398,6 @@ export const useAuthStore = defineStore('Auth', () => {
         await configRepository.setString('lastUserLoggedIn', user.id);
     }
 
-    /**
-     *
-     */
     async function migrateStoredUsers() {
         const savedCredentials = await getAllSavedCredentials();
         for (const name in savedCredentials) {
@@ -445,7 +411,6 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
      * @param args
      */
     function checkPrimaryPassword(args) {
@@ -472,18 +437,12 @@ export const useAuthStore = defineStore('Auth', () => {
         });
     }
 
-    /**
-     *
-     */
     async function toggleCustomEndpoint() {
         await configRepository.setBool('VRCX_enableCustomEndpoint', enableCustomEndpoint.value);
         loginForm.value.endpoint = '';
         loginForm.value.websocket = '';
     }
 
-    /**
-     *
-     */
     function logout() {
         modalStore
             .confirm({
@@ -502,7 +461,6 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
      * @param user
      */
     async function relogin(user, { shouldTrackLoginNetworkIssueHint = !attemptingAutoLogin.value } = {}) {
@@ -566,7 +524,6 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
      * @param userId
      */
     async function deleteSavedLogin(userId) {
@@ -581,9 +538,6 @@ export const useAuthStore = defineStore('Auth', () => {
         toast.success(t('message.auth.account_removed'));
     }
 
-    /**
-     *
-     */
     async function login() {
         // TODO: remove/refactor saveCredentials & primaryPassword (security)
         await webApiService.clearCookies();
@@ -658,9 +612,6 @@ export const useAuthStore = defineStore('Auth', () => {
         }
     }
 
-    /**
-     *
-     */
     function promptTOTP() {
         if (twoFactorAuthDialogVisible.value) {
             return;
@@ -701,9 +652,6 @@ export const useAuthStore = defineStore('Auth', () => {
             });
     }
 
-    /**
-     *
-     */
     function promptOTP() {
         if (twoFactorAuthDialogVisible.value) {
             return;
@@ -743,9 +691,6 @@ export const useAuthStore = defineStore('Auth', () => {
             });
     }
 
-    /**
-     *
-     */
     function promptEmailOTP() {
         if (twoFactorAuthDialogVisible.value) {
             return;
@@ -787,8 +732,16 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     * @param {{ username: string, password: string, endpoint: string, websocket: string, saveCredentials?: any, cipher?: string }} params credential to login
-     * @returns {Promise<{origin: boolean, json: any}>}
+     * @param {{
+     *     username: string;
+     *     password: string;
+     *     endpoint: string;
+     *     websocket: string;
+     *     saveCredentials?: any;
+     *     cipher?: string;
+     * }} params
+     *   credential to login
+     * @returns {Promise<{ origin: boolean; json: any }>}
      */
     function authLogin(params) {
         let { username, password, endpoint, websocket, saveCredentials, cipher } = params;
@@ -821,7 +774,6 @@ export const useAuthStore = defineStore('Auth', () => {
     }
 
     /**
-     *
      * @param json
      */
     function handleCurrentUserUpdate(json) {
@@ -834,9 +786,6 @@ export const useAuthStore = defineStore('Auth', () => {
         }
     }
 
-    /**
-     *
-     */
     async function handleAutoLogin() {
         const canAutoLogin = await vrcxStore.waitForDatabaseInit();
         if (!canAutoLogin) {
@@ -846,9 +795,6 @@ export const useAuthStore = defineStore('Auth', () => {
         await runHandleAutoLoginFlow();
     }
 
-    /**
-     *
-     */
     async function applyAutoLoginDelay() {
         if (!generalSettingsStore.autoLoginDelayEnabled) {
             return;
@@ -877,9 +823,6 @@ export const useAuthStore = defineStore('Auth', () => {
         }
     }
 
-    /**
-     *
-     */
     async function loginComplete() {
         if (!userStore.currentUser?.id) {
             console.error('No current user after login complete, aborting post-login flow.');

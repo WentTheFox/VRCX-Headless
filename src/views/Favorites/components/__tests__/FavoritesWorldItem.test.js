@@ -143,7 +143,6 @@ vi.mock('../../../../coordinators/favoriteCoordinator', () => ({
 import FavoritesWorldItem from '../FavoritesWorldItem.vue';
 
 /**
- *
  * @param {Record<string, any>} props
  */
 function mountItem(props = {}) {
@@ -168,7 +167,6 @@ function mountItem(props = {}) {
 }
 
 /**
- *
  * @param wrapper
  * @param text
  */

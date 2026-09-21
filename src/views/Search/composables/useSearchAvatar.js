@@ -17,9 +17,6 @@ export function useSearchAvatar() {
     const searchAvatarPage = ref([]);
     const isSearchAvatarLoading = ref(false);
 
-    /**
-     *
-     */
     async function searchAvatar() {
         isSearchAvatarLoading.value = true;
         const avatars = new Map();
@@ -42,7 +39,6 @@ export function useSearchAvatar() {
     }
 
     /**
-     *
      * @param n
      */
     function moreSearchAvatar(n) {
@@ -58,9 +54,6 @@ export function useSearchAvatar() {
         searchAvatarPage.value = searchAvatarResults.value.slice(offset, offset + 10);
     }
 
-    /**
-     *
-     */
     function clearAvatarSearch() {
         searchAvatarResults.value = [];
         searchAvatarPage.value = [];

@@ -17,6 +17,7 @@ export const useSearchIndexStore = defineStore('SearchIndex', () => {
     /**
      * Sync a friend context into the search index.
      * Extracts only the fields needed for searching.
+     *
      * @param {object} ctx - Friend context from friendStore.friends
      */
     function syncFriend(ctx) {
@@ -273,6 +274,7 @@ export const useSearchIndexStore = defineStore('SearchIndex', () => {
     /**
      * Build a snapshot from the internal index maps.
      * Used by quickSearch to send data to the Worker.
+     *
      * @returns {object} Plain object arrays ready for postMessage.
      */
     function getSnapshot() {

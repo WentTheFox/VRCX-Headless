@@ -45,9 +45,6 @@ vi.mock('../../../../coordinators/avatarCoordinator', () => ({
 const { copyToClipboard, openExternalLink } = await import('../../../../shared/utils');
 const { favoriteRequest, avatarRequest, avatarModerationRequest } = await import('../../../../api');
 
-/**
- *
- */
 function createMockAvatarDialog() {
     return ref({
         visible: true,
@@ -74,7 +71,6 @@ function createMockAvatarDialog() {
 }
 
 /**
- *
  * @param overrides
  */
 function createMockDeps(overrides = {}) {
@@ -90,7 +86,6 @@ function createMockDeps(overrides = {}) {
             prompt: vi.fn(() => Promise.resolve({ ok: true, value: 'new_value' }))
         },
         userDialog: ref({ id: 'usr_author' }),
-        currentUser: ref({ id: 'usr_current', currentAvatar: 'avtr_other' }),
         cachedAvatars: new Map([['avtr_test123', { id: 'avtr_test123', authorId: 'usr_author' }]]),
         cachedAvatarModerations: new Map(),
         showAvatarDialog: vi.fn(),

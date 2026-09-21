@@ -83,9 +83,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     const proxyServer = ref('');
     const appStartAt = Date.now();
 
-    /**
-     *
-     */
     async function init() {
         try {
             if (LINUX) {
@@ -170,9 +167,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     resetSearchIndexOnLogin();
     init();
 
-    /**
-     *
-     */
     async function updateDatabaseVersion() {
         // requires dbVars.userPrefix to be already set
         const databaseVersion = 17;
@@ -247,7 +241,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     }
 
     /**
-     *
      * @param data
      */
     function eventVrcxMessage(data) {
@@ -306,9 +299,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         }
     }
 
-    /**
-     *
-     */
     async function saveVRCXWindowOption() {
         if (LINUX) {
             VRCXStorage.Set('VRCX_LocationX', state.locationX.toString());
@@ -320,7 +310,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     }
 
     /**
-     *
      * @param path
      */
     async function processScreenshot(path) {
@@ -378,7 +367,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
 
     // use in C# side
     /**
-     *
      * @param json
      */
     function ipcEvent(json) {
@@ -496,7 +484,9 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     }
 
     /**
-     * This function is called by .NET(CefCustomDragHandler#CefCustomDragHandler) when a file is dragged over a drop zone in the app window.
+     * This function is called by .NET(CefCustomDragHandler#CefCustomDragHandler) when a file is dragged over a drop
+     * zone in the app window.
+     *
      * @param {string} filePath - The full path to the file being dragged into the window
      */
     function dragEnterCef(filePath) {
@@ -514,9 +504,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         { flush: 'sync' }
     );
 
-    /**
-     *
-     */
     async function startupLaunchCommand() {
         const command = await AppApi.GetLaunchCommand();
         if (!command) {
@@ -551,7 +538,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
 
     // called from C#
     /**
-     *
      * @param input
      */
     function eventLaunchCommand(input) {
@@ -646,7 +632,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     }
 
     /**
-     *
      * @param name
      */
     async function backupVrcRegistry(name) {
@@ -677,9 +662,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         // await this.updateRegistryBackupDialog();
     }
 
-    /**
-     *
-     */
     async function checkAutoBackupRestoreVrcRegistry() {
         // Fork addition (VRCX-Headless): the Windows registry doesn't exist
         // in a browser tab at all — not "empty", genuinely absent — so
@@ -724,16 +706,10 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         }
     }
 
-    /**
-     *
-     */
     function showRegistryBackupDialog() {
         isRegistryBackupDialogVisible.value = true;
     }
 
-    /**
-     *
-     */
     async function tryAutoBackupVrcRegistry() {
         if (!advancedSettingsStore.vrcRegistryAutoBackup) {
             return;

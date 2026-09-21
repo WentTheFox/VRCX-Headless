@@ -51,16 +51,10 @@ import LaunchOptionsDialog from '../LaunchOptionsDialog.vue';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-/**
- *
- */
 function flushPromises() {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-/**
- *
- */
 function mountComponent() {
     return mount(LaunchOptionsDialog, {
         global: {

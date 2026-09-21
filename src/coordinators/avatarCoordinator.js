@@ -33,7 +33,7 @@ import webApiService from '../services/webapi';
 
 /**
  * @param {object} json
- * @returns {object} ref
+ * @returns {object} Ref
  */
 export function applyAvatar(json) {
     const avatarStore = useAvatarStore();
@@ -69,7 +69,6 @@ export function applyAvatar(json) {
 }
 
 /**
- *
  * @param {string} avatarId
  * @param options
  * @returns
@@ -163,7 +162,6 @@ export function showAvatarDialog(avatarId, options = {}) {
 }
 
 /**
- *
  * @returns {Promise<void>}
  */
 export async function getAvatarHistory() {
@@ -217,9 +215,6 @@ export function addAvatarToHistory(avatarId) {
         });
 }
 
-/**
- *
- */
 export function promptClearAvatarHistory() {
     const avatarStore = useAvatarStore();
     const modalStore = useModalStore();
@@ -239,9 +234,8 @@ export function promptClearAvatarHistory() {
 }
 
 /**
- *
  * @param {string} imageUrl
- * @returns {Promise<object>}
+ * @returns {Promise<{ ownerId: string; avatarName: string; fileCreatedAt?: string }>}
  */
 export async function getAvatarName(imageUrl) {
     const avatarStore = useAvatarStore();
@@ -258,6 +252,12 @@ export async function getAvatarName(imageUrl) {
     }
     try {
         const args = await miscRequest.getFile({ fileId });
+        if (args.json?.tags?.includes('icon')) {
+            return {
+                ownerId: '',
+                avatarName: '-'
+            };
+        }
         return storeAvatarImage(args, avatarStore.cachedAvatarNames);
     } catch (error) {
         console.error('Failed to get avatar images:', error);
@@ -269,7 +269,6 @@ export async function getAvatarName(imageUrl) {
 }
 
 /**
- *
  * @param type
  * @param search
  */
@@ -336,7 +335,6 @@ export async function lookupAvatars(type, search) {
 }
 
 /**
- *
  * @param authorId
  * @param fileId
  */
@@ -362,7 +360,6 @@ export async function lookupAvatarByImageFileId(authorId, fileId) {
 }
 
 /**
- *
  * @param providerUrl
  * @param fileId
  */
@@ -399,14 +396,13 @@ async function lookupAvatarByFileId(providerUrl, fileId) {
         } else {
             return null;
         }
-    } catch (err) {
+    } catch {
         // ignore errors for now, not all providers support this lookup type
         return null;
     }
 }
 
 /**
- *
  * @param providerUrl
  * @param authorId
  */
@@ -458,7 +454,6 @@ async function lookupAvatarsByAuthor(providerUrl, authorId) {
 }
 
 /**
- *
  * @param id
  */
 export function selectAvatarWithConfirmation(id) {
@@ -478,7 +473,6 @@ export function selectAvatarWithConfirmation(id) {
 }
 
 /**
- *
  * @param id
  */
 export async function selectAvatarWithoutConfirmation(id) {
@@ -499,7 +493,6 @@ export async function selectAvatarWithoutConfirmation(id) {
 }
 
 /**
- *
  * @param fileId
  */
 export function checkAvatarCache(fileId) {
@@ -515,7 +508,6 @@ export function checkAvatarCache(fileId) {
 }
 
 /**
- *
  * @param fileId
  * @param ownerUserId
  */
@@ -540,7 +532,6 @@ export async function checkAvatarCacheRemote(fileId, ownerUserId) {
 }
 
 /**
- *
  * @param refUserId
  * @param ownerUserId
  * @param currentAvatarImageUrl
@@ -582,7 +573,6 @@ export async function showAvatarAuthorDialog(refUserId, ownerUserId, currentAvat
 }
 
 /**
- *
  * @param avatarId
  */
 export function addAvatarWearTime(avatarId) {

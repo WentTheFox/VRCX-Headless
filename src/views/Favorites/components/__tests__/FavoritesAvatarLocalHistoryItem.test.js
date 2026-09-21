@@ -96,7 +96,6 @@ vi.mock('lucide-vue-next', () => ({
 import FavoritesAvatarLocalHistoryItem from '../FavoritesAvatarLocalHistoryItem.vue';
 
 /**
- *
  * @param {Record<string, any>} props
  */
 function mountItem(props = {}) {
@@ -114,7 +113,6 @@ function mountItem(props = {}) {
 }
 
 /**
- *
  * @param wrapper
  * @param text
  */
