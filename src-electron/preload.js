@@ -88,7 +88,8 @@ contextBridge.exposeInMainWorld('electron', {
     onWindowSizeChanged: (callback) => registerManagedListener('setWindowSize', callback),
     onWindowStateChange: (callback) => registerManagedListener('setWindowState', callback),
     onBrowserFocus: (callback) => registerManagedListener('onBrowserFocus', callback),
-    desktopNotification: (title, body, icon) => ipcRenderer.invoke('notification:showNotification', title, body, icon),
+    desktopNotification: (title, body, icon, persistent) =>
+        ipcRenderer.invoke('notification:showNotification', title, body, icon, persistent),
     restartApp: () => ipcRenderer.invoke('app:restart'),
     getOverlayWindow: () => ipcRenderer.invoke('app:getOverlayWindow'),
     updateVr: (active, hmdOverlay, wristOverlay, menuButton, overlayHand) =>

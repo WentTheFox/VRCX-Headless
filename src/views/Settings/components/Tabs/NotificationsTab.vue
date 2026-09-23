@@ -76,6 +76,22 @@
                     "
                     @update:modelValue="setAfkDesktopToast" />
             </SettingsItem>
+
+            <SettingsItem
+                v-if="isLinux"
+                :label="t('view.settings.notifications.notifications.desktop_notifications.persistent_invite_toast')"
+                :description="
+                    t(
+                        'view.settings.notifications.notifications.desktop_notifications.persistent_invite_toast_description'
+                    )
+                ">
+                <Switch
+                    :model-value="persistentInviteToast"
+                    :ariaLabel="
+                        t('view.settings.notifications.notifications.desktop_notifications.persistent_invite_toast')
+                    "
+                    @update:modelValue="setPersistentInviteToast" />
+            </SettingsItem>
         </SettingsGroup>
 
         <SettingsGroup :title="t('view.settings.notifications.notifications.text_to_speech.header')">
@@ -179,6 +195,7 @@
     const {
         desktopToast,
         afkDesktopToast,
+        persistentInviteToast,
         notificationTTS,
         notificationTTSNickName,
         isTestTTSVisible,
@@ -190,6 +207,7 @@
     const {
         setDesktopToast,
         setAfkDesktopToast,
+        setPersistentInviteToast,
         setNotificationTTSNickName,
         getTTSVoiceName,
         changeTTSVoice,
@@ -199,6 +217,8 @@
     } = notificationsSettingsStore;
 
     const { testNotification, markAllAsSeen } = useNotificationStore();
+
+    const isLinux = computed(() => LINUX);
 
     const feedFiltersDialogMode = ref('');
 

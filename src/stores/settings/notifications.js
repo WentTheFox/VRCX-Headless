@@ -24,6 +24,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     const imageNotifications = ref(true);
     const desktopToast = ref('Never');
     const afkDesktopToast = ref(false);
+    const persistentInviteToast = ref(false);
     const notificationTTS = ref('Never');
     const notificationTTSNickName = ref(false);
     const sharedFeedFilters = ref({
@@ -136,6 +137,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             imageNotificationsConfig,
             desktopToastConfig,
             afkDesktopToastConfig,
+            persistentInviteToastConfig,
             notificationTTSConfig,
             notificationTTSNickNameConfig,
             sharedFeedFiltersConfig,
@@ -154,6 +156,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             configRepository.getBool('VRCX_imageNotifications', true),
             configRepository.getString('VRCX_desktopToast', 'Never'),
             configRepository.getBool('VRCX_afkDesktopToast', false),
+            configRepository.getBool('VRCX_persistentInviteToast', false),
             configRepository.getString('VRCX_notificationTTS', 'Never'),
             configRepository.getBool('VRCX_notificationTTSNickName', false),
             configRepository.getString('sharedFeedFilters', JSON.stringify(sharedFeedFiltersDefaults)),
@@ -182,6 +185,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         imageNotifications.value = imageNotificationsConfig;
         desktopToast.value = desktopToastConfig;
         afkDesktopToast.value = afkDesktopToastConfig;
+        persistentInviteToast.value = persistentInviteToastConfig;
         notificationTTS.value = notificationTTSConfig;
         notificationTTSNickName.value = notificationTTSNickNameConfig;
         sharedFeedFilters.value = JSON.parse(sharedFeedFiltersConfig);
@@ -252,6 +256,10 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     function setAfkDesktopToast() {
         afkDesktopToast.value = !afkDesktopToast.value;
         configRepository.setBool('VRCX_afkDesktopToast', afkDesktopToast.value);
+    }
+    function setPersistentInviteToast() {
+        persistentInviteToast.value = !persistentInviteToast.value;
+        configRepository.setBool('VRCX_persistentInviteToast', persistentInviteToast.value);
     }
     /**
      * @param {string} value
@@ -449,6 +457,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         imageNotifications,
         desktopToast,
         afkDesktopToast,
+        persistentInviteToast,
         notificationTTS,
         notificationTTSNickName,
         sharedFeedFilters,
@@ -470,6 +479,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         setImageNotifications,
         setDesktopToast,
         setAfkDesktopToast,
+        setPersistentInviteToast,
         setNotificationTTS,
         setNotificationTTSNickName,
         getTTSVoiceName,

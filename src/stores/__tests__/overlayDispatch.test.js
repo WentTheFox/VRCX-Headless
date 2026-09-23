@@ -164,6 +164,25 @@ describe('displayDesktopToast', () => {
 
         expect(AppApi.DesktopNotification).not.toHaveBeenCalled();
     });
+
+    test('passes the persistent flag through to the Electron bridge', () => {
+        globalThis.WINDOWS = false;
+        globalThis.window.electron = { desktopNotification: vi.fn() };
+        getNotificationMessage.mockReturnValue({
+            title: 'Invite Request',
+            body: 'Alice requested an invite'
+        });
+
+        dispatch.displayDesktopToast({}, 'some message', 'img.jpg', true);
+
+        expect(window.electron.desktopNotification).toHaveBeenCalledWith(
+            'Invite Request',
+            'Alice requested an invite',
+            'img.jpg',
+            true
+        );
+        delete globalThis.window.electron;
+    });
 });
 
 // ─── notySaveImage ───────────────────────────────────────────────────

@@ -191,6 +191,7 @@ const OVERLAY_FRAME_SIZE = OVERLAY_SHARED_WIDTH * OVERLAY_SHARED_HEIGHT * 4;
 const OVERLAY_SHM_PATH = '/dev/shm/vrcx_overlay';
 const overlayFrameBuffer = Buffer.alloc(OVERLAY_FRAME_SIZE + 1);
 let activeNotification = null;
+const persistentNotifications = new Set();
 
 function createOverlayWindowShm() {
     fs.writeFileSync(OVERLAY_SHM_PATH, Buffer.alloc(OVERLAY_FRAME_SIZE + 1));
@@ -1106,7 +1107,11 @@ ipcMain.handle('vrcx-check-update', async () => {
     }
 });
 
-ipcMain.handle('notification:showNotification', (_event, title, body, icon) => {
+ipcMain.handle('notification:showNotification', (_event, title, body, icon, persistent) => {
+    if (persistent) {
+        showPersistentNotification(title, body, icon);
+        return;
+    }
     if (activeNotification) {
         activeNotification.close();
     }
@@ -1125,6 +1130,36 @@ ipcMain.handle('notification:showNotification', (_event, title, body, icon) => {
     activeNotification = notification;
     notification.show();
 });
+
+/**
+ * A notification that stays on screen until the user dismisses it
+ * (`timeoutType: 'never'` on Windows/Linux, `urgency: 'critical'` for Linux
+ * notification daemons that ignore the timeout hint). Unlike the regular
+ * toast above, a newer notification never replaces it — each one is kept
+ * referenced until closed, so several can be pending at once. Clicking one
+ * brings the main window forward.
+ */
+function showPersistentNotification(title, body, icon) {
+    const notification = new ElectronNotification({
+        title,
+        body,
+        icon,
+        timeoutType: 'never',
+        urgency: 'critical'
+    });
+    notification.on('click', () => {
+        if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+    notification.on('close', () => {
+        notification.removeAllListeners();
+        persistentNotifications.delete(notification);
+    });
+    persistentNotifications.add(notification);
+    notification.show();
+}
 
 /**
  * `app.exit()` is documented as immediate and synchronous, but found live

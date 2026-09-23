@@ -50,6 +50,10 @@ import { watchState } from '../../services/watchState';
 
 import configRepository from '../../services/config';
 
+// Invite requests and replies, shown as persistent system notifications while
+// the game is closed (NotificationsSettings.persistentInviteToast).
+const persistentToastTypes = new Set(['requestInvite', 'inviteResponse', 'requestInviteResponse']);
+
 export const useNotificationStore = defineStore('Notification', () => {
     const { t } = useI18n();
     const generalSettingsStore = useGeneralSettingsStore();
@@ -784,7 +788,16 @@ export const useNotificationStore = defineStore('Notification', () => {
         };
 
         const playNotificationTTS = notiConditions[notificationsSettingsStore.notificationTTS]?.();
-        const playDesktopToast = notiConditions[notificationsSettingsStore.desktopToast]?.() || notiConditions['AFK']();
+        // Electron-only: a system notification that stays until dismissed,
+        // replacing the regular desktop toast for this noty.
+        const playPersistentToast =
+            LINUX &&
+            notificationsSettingsStore.persistentInviteToast &&
+            !gameStore.isGameRunning &&
+            persistentToastTypes.has(noty.type);
+        const playDesktopToast =
+            !playPersistentToast &&
+            (notiConditions[notificationsSettingsStore.desktopToast]?.() || notiConditions['AFK']());
 
         const playOverlayToast = notiConditions[notificationsSettingsStore.overlayToast]?.();
         const playOverlayNotification = notificationsSettingsStore.overlayNotifications && playOverlayToast;
@@ -809,6 +822,7 @@ export const useNotificationStore = defineStore('Notification', () => {
         }
         if (
             playDesktopToast ||
+            playPersistentToast ||
             playXSNotification ||
             playOvrtHudNotifications ||
             playOvrtWristNotifications ||
@@ -828,8 +842,8 @@ export const useNotificationStore = defineStore('Notification', () => {
                             image
                         );
                     }
-                    if (playDesktopToast) {
-                        displayDesktopToast(noty, message, image);
+                    if (playDesktopToast || playPersistentToast) {
+                        displayDesktopToast(noty, message, image, playPersistentToast);
                     }
                     if (playOverlayNotification) {
                         displayOverlayNotification(noty, message, image);
@@ -842,8 +856,8 @@ export const useNotificationStore = defineStore('Notification', () => {
                 if (playOvrtHudNotifications || playOvrtWristNotifications) {
                     displayOvrtNotification(playOvrtHudNotifications, playOvrtWristNotifications, noty, message, '');
                 }
-                if (playDesktopToast) {
-                    displayDesktopToast(noty, message, '');
+                if (playDesktopToast || playPersistentToast) {
+                    displayDesktopToast(noty, message, '', playPersistentToast);
                 }
                 if (playOverlayNotification) {
                     displayOverlayNotification(noty, message, '');

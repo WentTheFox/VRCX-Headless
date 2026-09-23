@@ -46,11 +46,12 @@ export function createOverlayDispatch({
      * @param noty
      * @param message
      * @param image
+     * @param {boolean} [persistent] Stay until dismissed (Electron only)
      */
-    function displayDesktopToast(noty, message, image) {
+    function displayDesktopToast(noty, message, image, persistent = false) {
         const result = getNotificationMessage(noty, message);
         if (result) {
-            desktopNotification(result.title, result.body, image);
+            desktopNotification(result.title, result.body, image, persistent);
         }
     }
 
@@ -148,12 +149,13 @@ export function createOverlayDispatch({
      * @param {string} displayName
      * @param {string} message
      * @param {string} image
+     * @param {boolean} [persistent]
      */
-    function desktopNotification(displayName, message, image) {
+    function desktopNotification(displayName, message, image, persistent = false) {
         if (WINDOWS) {
             AppApi.DesktopNotification(displayName, message, image);
         } else {
-            window.electron.desktopNotification(displayName, message, image);
+            window.electron.desktopNotification(displayName, message, image, persistent);
         }
     }
 

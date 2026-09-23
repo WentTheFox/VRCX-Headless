@@ -1064,7 +1064,9 @@
                         "header": "Desktop Notifications",
                         "when_to_display": "Show Desktop Notifications",
                         "when_to_display_vr": "Show VR Notifications",
-                        "desktop_notification_while_afk": "Show Notifications While AFK"
+                        "desktop_notification_while_afk": "Show Notifications While AFK",
+                        "persistent_invite_toast": "Keep Invite Requests Until Dismissed",
+                        "persistent_invite_toast_description": "While VRChat isn't running, invite requests and replies show a system notification that stays until you dismiss it, regardless of the setting above"
                     },
                     "text_to_speech": {
                         "header": "Text-To-Speech",
