@@ -1628,7 +1628,7 @@ async function checkAndInstallForkUpdateInner() {
         clearInterval(progressTimer);
     }
     logFork('Download + hash check complete');
-    updateSplashStatus('Installing update…');
+    updateSplashStatus(isLinuxAppImage ? 'Restarting…' : 'Starting update installer…');
     if (isLinuxAppImage) {
         // Unlike Windows, there's no separate install step to schedule —
         // Update.DownloadUpdate's Linux branch already renamed the old

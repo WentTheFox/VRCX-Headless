@@ -826,7 +826,7 @@
                     "idle": "Not checked yet",
                     "checking": "Checking...",
                     "in_sync": "Up to date with the connected server",
-                    "installing": "Installing update ({progress})",
+                    "installing": "Downloading update ({progress})",
                     "mismatch": "This client ({client}) doesn't match the connected server ({server}) and couldn't be updated automatically — this may cause issues until it's updated manually.",
                     "retry": "Retry",
                     "check_now": "Check Now"
