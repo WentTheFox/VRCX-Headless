@@ -110,6 +110,9 @@
                         class="block truncate text-xs text-muted-foreground">
                         {{ t('view.settings.general.fork_update.installing', { progress: updateProgressText() }) }}
                     </span>
+                    <span v-else-if="forkUpdateStatus === 'unsupported'" class="block text-xs text-muted-foreground">
+                        {{ t('view.settings.general.fork_update.unsupported') }}
+                    </span>
                     <span
                         v-else-if="forkUpdateStatus === 'mismatch-offline'"
                         class="block truncate text-xs text-destructive">
@@ -129,6 +132,7 @@
                     size="sm"
                     variant="outline"
                     class="w-fit"
+                    :disabled="!canSelfUpdate"
                     @click="checkForForkUpdate({ force: true })">
                     {{
                         forkUpdateStatus === 'mismatch-offline'
@@ -268,7 +272,8 @@
         noUpdater,
         forkUpdateStatus,
         forkServerVersion,
-        installedForkVersion
+        installedForkVersion,
+        canSelfUpdate
     } = storeToRefs(vrcxUpdaterStore);
     const {
         setAutoUpdateVRCX,

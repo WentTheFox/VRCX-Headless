@@ -833,7 +833,8 @@
                     "installing": "Downloading update ({progress})",
                     "mismatch": "This client ({client}) doesn't match the connected server ({server}) and couldn't be updated automatically — this may cause issues until it's updated manually.",
                     "retry": "Retry",
-                    "check_now": "Check Now"
+                    "check_now": "Check Now",
+                    "unsupported": "Self-update isn't available: this isn't an installed build (on Linux, it only works when running from the AppImage)."
                 },
                 "application": {
                     "header": "Application",

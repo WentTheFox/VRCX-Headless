@@ -1313,6 +1313,20 @@ ipcMain.handle('app:getNoUpdater', () => {
     return noUpdater;
 });
 
+// Fork (VRCX-Headless): whether this run can install a fork update at all.
+// Dotnet/Update.cs can only swap an AppImage in place on Linux, or run the
+// NSIS installer from a packaged Windows build. A dev/unpacked run has
+// neither, and Settings' Fork Update section says so instead of failing.
+ipcMain.handle('app:getCanSelfUpdate', () => {
+    if (process.platform === 'win32') {
+        return app.isPackaged;
+    }
+    if (process.platform === 'linux') {
+        return Boolean(appImagePath);
+    }
+    return false;
+});
+
 ipcMain.handle('app:setTrayIconNotification', (_event, notify) => {
     setTrayIconNotification(notify);
 });

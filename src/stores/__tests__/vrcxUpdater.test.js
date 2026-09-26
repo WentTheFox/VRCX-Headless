@@ -273,6 +273,25 @@ describe('useVRCXUpdaterStore.checkForForkUpdate', () => {
         expect(mocks.toast.error).toHaveBeenCalled();
     });
 
+    test('reports unsupported and never checks or installs when this run cannot self-update', async () => {
+        // A dev/unpacked run (no AppImage on Linux): Dotnet/Update.cs has
+        // nothing to swap, so the store must not even start a download.
+        window.electron.getCanSelfUpdate = vi.fn().mockResolvedValue(false);
+        setActivePinia(createPinia());
+        const store = useVRCXUpdaterStore();
+        await flushPromises();
+
+        expect(store.canSelfUpdate).toBe(false);
+        expect(store.forkUpdateStatus).toBe('unsupported');
+
+        await store.checkForForkUpdate({ force: true });
+
+        expect(store.forkUpdateStatus).toBe('unsupported');
+        expect(globalThis.updateService.getUpdateInfo).not.toHaveBeenCalled();
+        expect(globalThis.AppApi.DownloadUpdate).not.toHaveBeenCalled();
+        delete window.electron.getCanSelfUpdate;
+    });
+
     test('does nothing outside the Electron build', async () => {
         globalThis.LINUX = false;
         const store = useVRCXUpdaterStore();

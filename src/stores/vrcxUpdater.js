@@ -65,6 +65,11 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
             arch.value = await window.electron.getArch();
             noUpdater.value = await window.electron.getNoUpdater();
             console.log('Architecture:', arch.value);
+            // Fork (VRCX-Headless): see canSelfUpdate.
+            canSelfUpdate.value = (await window.electron.getCanSelfUpdate?.()) ?? true;
+            if (!canSelfUpdate.value) {
+                forkUpdateStatus.value = 'unsupported';
+            }
         }
         if (isMacOS.value) {
             noUpdater.value = true;
@@ -136,7 +141,10 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     // a given install isn't "whatever's newest on GitHub" but "whatever the
     // connected server is running" — see CLAUDE.md's desktop-updater
     // write-up for the full design.
-    const forkUpdateStatus = ref('idle'); // 'idle' | 'checking' | 'in-sync' | 'installing' | 'mismatch-offline'
+    const forkUpdateStatus = ref('idle'); // 'idle' | 'checking' | 'in-sync' | 'installing' | 'mismatch-offline' | 'unsupported'
+    // False for a dev/unpacked run with no installer to update (main.js's
+    // app:getCanSelfUpdate). Settings shows why and disables Check Now.
+    const canSelfUpdate = ref(true);
     const forkServerVersion = ref('');
     const forkUpdateError = ref('');
 
@@ -238,6 +246,10 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         if (!LINUX || typeof updateService === 'undefined') {
             // Web/CefSharp: no desktop install to update, or not this
             // fork's own branded distribution (§1) — nothing to do.
+            return;
+        }
+        if (!canSelfUpdate.value) {
+            forkUpdateStatus.value = 'unsupported';
             return;
         }
         if (!/^\d+\.\d+\.\d+$/.test(installedForkVersion.value)) {
@@ -776,6 +788,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
         forkServerVersion,
         forkUpdateError,
         installedForkVersion,
-        checkForForkUpdate
+        checkForForkUpdate,
+        canSelfUpdate
     };
 });
