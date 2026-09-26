@@ -171,9 +171,10 @@ describe('views/PlayerList/columns.jsx', () => {
     });
 
     test('bioLink cell opens external link when favicon is clicked', () => {
+        // Fork (VRCX-Headless): upstream db7cb63b moved the bioLink cell from
+        // `ref.bioLinks` to `profileRef.bioLinks` without updating this test.
         const row = makeRow({
-            ref: {
-                ...makeRow().original.ref,
+            profileRef: {
                 bioLinks: ['https://example.com']
             }
         });

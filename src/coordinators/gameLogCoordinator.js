@@ -106,8 +106,13 @@ export async function tryLoadPlayerList() {
             }
         }
         locationStore.lastLocation.playerList.forEach((ref1) => {
-            if (ref1.userId && typeof ref1.userId === 'string' && !userStore.cachedUsers.has(ref1.userId)) {
-                userRequest.getUser({ userId: ref1.userId });
+            if (ref1.userId && typeof ref1.userId === 'string') {
+                if (!userStore.cachedUsers.has(ref1.userId)) {
+                    userRequest.getUser({ userId: ref1.userId });
+                }
+                if (!userStore.cachedProfiles.has(ref1.userId)) {
+                    userRequest.getPublicProfile({ userId: ref1.userId });
+                }
             }
         });
 
@@ -234,6 +239,7 @@ export function addGameLogEntry(gameLog, location) {
                     console.log('Fetching user from gameLog:', userId);
                 }
                 userRequest.getUser({ userId });
+                userRequest.getPublicProfile({ userId });
             }
             vrStore.updateVRLastLocation();
             instanceStore.getCurrentInstanceUserList();

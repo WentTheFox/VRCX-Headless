@@ -53,17 +53,15 @@ jobs:
                     - id: linux-x64
                       runs-on: ubuntu-latest
                       csproj: Dotnet/VRCX-Electron.csproj
-                      dotnet-arch: x64
                       dotnet-platform: x64
-                      dotnet-rid: ''
+                      dotnet-rid: linux-x64
                       electron-script: build-electron
                       os-family: linux
                     - id: linux-arm64
                       runs-on: ubuntu-latest
-                      csproj: Dotnet/VRCX-Electron-arm64.csproj
-                      dotnet-arch: arm64
+                      csproj: Dotnet/VRCX-Electron.csproj
                       dotnet-platform: arm64
-                      dotnet-rid: ''
+                      dotnet-rid: linux-arm64
                       electron-script: build-electron-arm64
                       os-family: linux
                     # Windows x64's dotnet build -> pnpm -> build-electron
@@ -74,7 +72,6 @@ jobs:
                     - id: win-x64
                       runs-on: windows-latest
                       csproj: Dotnet/VRCX-Electron.csproj
-                      dotnet-arch: x64
                       dotnet-platform: x64
                       dotnet-rid: win-x64
                       electron-script: build-electron
@@ -88,8 +85,7 @@ jobs:
                     # the fallback is `-r win-arm64` on windows-latest.
                     - id: win-arm64
                       runs-on: windows-11-arm
-                      csproj: Dotnet/VRCX-Electron-arm64.csproj
-                      dotnet-arch: arm64
+                      csproj: Dotnet/VRCX-Electron.csproj
                       dotnet-platform: arm64
                       dotnet-rid: win-arm64
                       electron-script: build-electron-arm64
@@ -118,17 +114,12 @@ jobs:
             - name: Build the .NET side (${{ matrix.id }})
               run: |
                   set -euo pipefail
-                  # -r/--runtime and -a/--arch are mutually exclusive (dotnet
-                  # build errors out if both are passed) -- -r already fully
-                  # specifies the target RID (OS + arch), so it replaces -a
-                  # rather than joining it. -p:Platform/-p:PlatformTarget are
-                  # separate MSBuild properties (matching the csproj's own
-                  # <Platforms>x64;ARM64</Platforms>) and stay in either case.
-                  if [ -n "${{ matrix.dotnet-rid }}" ]; then
-                      dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -r ${{ matrix.dotnet-rid }}
-                  else
-                      dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a ${{ matrix.dotnet-arch }}
-                  fi
+                  # Every leg passes an explicit RID: since upstream consolidated
+                  # onto one csproj (Dotnet/Directory.Build.props), -r picks
+                  # both the target and the output folder,
+                  # build/Electron/<rid>/, which electron-builder.config.js
+                  # packages from.
+                  dotnet build '${{ matrix.csproj }}' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=${{ matrix.dotnet-platform }} -p:PlatformTarget=${{ matrix.dotnet-platform }} -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -r ${{ matrix.dotnet-rid }}
 
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -212,7 +203,7 @@ jobs:
         name: Build (macos-arm64)
         runs-on: macos-latest
         env:
-            CSPROJ: Dotnet/VRCX-Electron-arm64.csproj
+            CSPROJ: Dotnet/VRCX-Electron.csproj
             DOTNET_PLATFORM: arm64
             DOTNET_RID: osx-arm64
         defaults:
