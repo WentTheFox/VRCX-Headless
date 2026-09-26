@@ -1,4 +1,13 @@
 /* eslint-env node */
+
+// Fork (VRCX-Headless): .NET RID OS prefix for the host building this package.
+// Upstream copies from `build/Electron/${os}-${arch}/`, but electron-builder's
+// ${os} macro expands to "mac" on macOS while the .NET output folder is
+// "osx-<arch>" (the RID), so the macOS build would package no .NET backend.
+// Every release leg packages on its own native OS, so the host platform is
+// the target platform. Same mapping as src-electron/main.js's getRid().
+const ridOs = { win32: 'win', darwin: 'osx', linux: 'linux' }[process.platform];
+
 /**
  * @type {import('electron-builder').Configuration}
  * @see https://www.electron.build/configuration/configuration
@@ -33,7 +42,7 @@ module.exports = {
     ],
     extraResources: [
         {
-            from: 'build/Electron/',
+            from: `build/Electron/${ridOs}-\${arch}/`,
             to: 'app.asar.unpacked/build/Electron/'
         },
         {
@@ -87,7 +96,8 @@ module.exports = {
         target: ['dmg'],
         icon: 'images/VRCX.png',
         category: 'public.app-category.utilities',
-        executableName: 'VRCX'
+        executableName: 'VRCX',
+        minimumSystemVersion: '14.0'
     },
     toolsets: {
         appimage: '1.0.3'

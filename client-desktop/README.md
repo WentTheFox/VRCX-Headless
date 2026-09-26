@@ -19,14 +19,16 @@ this fork hasn't adapted.
 This compiles `AppApiElectron`/`Discord`/`LogWatcher`/`AssetBundleManager`/
 `AppApiVrElectron` — the real native-capability bindings phase 5 left
 untouched (only `SQLite`/`WebApi` were dropped). Output goes to
-`build/Electron/`, which the next step expects to already be there.
+`build/Electron/<rid>/` (e.g. `build/Electron/linux-x64/`), which the next
+step expects to already be there. One project covers every OS/arch; the RID
+picks the target.
 
 ```bash
 # x64
-dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
+dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -t:"Restore;Clean;Build" -m -r linux-x64
 
 # arm64, instead
-dotnet build 'Dotnet/VRCX-Electron-arm64.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=arm64 -p:PlatformTarget=arm64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a arm64
+dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=arm64 -t:"Restore;Clean;Build" -m -r linux-arm64
 ```
 
 ## 2. Build the Vue app and package the Electron app

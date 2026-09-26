@@ -58,10 +58,10 @@ jobs:
 
             # Compiles AppApiElectron/Discord/LogWatcher/AssetBundleManager/
             # AppApiVrElectron — the real native-capability bindings phase 5
-            # left untouched. Output goes to build/Electron, which pnpm run
+            # left untouched. Output goes to build/Electron/linux-x64, which pnpm run
             # build-electron below expects to already be there.
             - name: Build the .NET side (VRCX-Electron, x64)
-              run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -a x64
+              run: dotnet build 'Dotnet/VRCX-Electron.csproj' -p:Configuration=Release -p:WarningLevel=0 -p:Platform=x64 -p:PlatformTarget=x64 -p:RestorePackagesConfig=true -t:"Restore;Clean;Build" -m -r linux-x64
 
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 

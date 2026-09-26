@@ -1,6 +1,6 @@
 {
     "name": "VRCX-Headless",
-    "version": "2026.07.18",
+    "version": "20260916.1.4",
     "private": true,
     "description": "Friendship management tool for VRChat (headless server + multi-device client fork)",
     "keywords": [

@@ -8,6 +8,9 @@ indent_style = space
 indent_size = 4
 max_line_length = 120
 
+[*.{cmd,bat,nsi,nsh,cs,sln,slnx,csproj,manifest,resx}]
+end_of_line = crlf
+
 [*.{cs,csx}]
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
@@ -21,12 +24,3 @@ indent_size = 2
 
 [*.md]
 indent_size = 2
-
-[*.{sh,ps1}]
-end_of_line = lf
-
-[*.{js,mjs,cjs,jsx,ts,mts,tsx}]
-end_of_line = lf
-
-[*.{html,vue,css}]
-end_of_line = lf
