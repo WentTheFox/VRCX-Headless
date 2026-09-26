@@ -57,7 +57,19 @@ namespace VRCX
                 File.Delete(VrcxSetupExecutable);
 
             if (File.Exists(UpdateExecutable))
+            {
+                // Fork (VRCX-Headless): update.exe is a Windows installer. Off
+                // Windows, UseShellExecute hands it to xdg-open, which on KDE
+                // fails with "Launching executables is not available in this
+                // context" and the app then exits without coming back.
+                if (!OperatingSystem.IsWindows())
+                {
+                    logger.Warn("Deleting a stray Windows update installer on a non-Windows system");
+                    File.Delete(UpdateExecutable);
+                    return;
+                }
                 InstallUpdate();
+            }
         }
 
         private static void InstallUpdate()
@@ -158,6 +170,13 @@ namespace VRCX
 
         public static async Task DownloadUpdate(string fileUrl, string hashString, int downloadSize)
         {
+            // Fork (VRCX-Headless): an empty AppImagePath below means "stage a
+            // Windows installer". Off Windows that only happens when not running
+            // from an AppImage (a dev or unpacked build), so refuse instead of
+            // staging an update.exe that Check() can't install.
+            if (!OperatingSystem.IsWindows() && string.IsNullOrEmpty(AppImagePath))
+                throw new InvalidOperationException("Can't self-update: not running from an AppImage");
+
             _cancellationToken = CancellationToken.None;
             const int chunkSize = 8192;
 
