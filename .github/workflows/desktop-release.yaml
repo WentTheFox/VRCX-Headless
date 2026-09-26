@@ -343,16 +343,24 @@ jobs:
                       done
                   fi
                   if [ -n "$prev_tag" ]; then
-                      range="${prev_tag}..${tag}"
-                      echo "Diffing $range (previous release: $prev_tag)"
+                      range=("${prev_tag}..${tag}")
+                      echo "Diffing ${range[*]} (previous release: $prev_tag)"
                   else
-                      range="$(git rev-list --max-parents=0 HEAD)..${tag}"
-                      echo "No previous fork release tag found, diffing from repo root: $range"
+                      # No earlier fork release tag at all (e.g. after the
+                      # 2026-09-26 history rewrite, which deleted every tag):
+                      # list only the fork's own commits, i.e. everything not
+                      # in upstream master. Diffing from the repo root instead
+                      # would pull in thousands of upstream commits, and
+                      # `rev-list --max-parents=0` returns several roots here,
+                      # which made a malformed range.
+                      git fetch --quiet https://github.com/vrcx-team/VRCX.git master
+                      range=("${tag}" "^FETCH_HEAD")
+                      echo "No previous fork release tag found, listing fork-only commits: ${range[*]}"
                   fi
                   {
                       echo "## Changes"
                       echo
-                      git log "$range" --no-merges --pretty=format:'- %s (%h)'
+                      git log "${range[@]}" --no-merges --pretty=format:'- %s (%h)'
                       echo
                   } > changelog.md
                   # GitHub rejects release bodies over 125000 characters; cap
