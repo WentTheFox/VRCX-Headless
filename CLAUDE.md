@@ -285,6 +285,8 @@ Every modification to an upstream-owned file, logged per invariant 6. Prefer ali
 
 Upstream's default branch is **`master`**; ours is **`main`**. The `upstream` remote is `https://github.com/vrcx-team/VRCX.git`.
 
+If a checkout is missing it, add it with `git remote add upstream https://github.com/vrcx-team/VRCX.git`, **then immediately run `gh repo set-default WentTheFox/VRCX-Headless`**. Once an `upstream` remote exists, `gh` resolves the default repo to `vrcx-team/VRCX`, so a bare `gh pr create` targets upstream. Found live (2026-09-26): it failed only by luck, because the sync branch didn't exist there.
+
 Sync to either a tagged release or `master` HEAD, deliberately — a tag gives a discrete, reviewable step; `master` gets whatever's landed since the last sync, which is a moving target under an active, UI-heavy project, but is sometimes exactly what's wanted (e.g. testing how well this doc's own procedure holds up against real upstream drift).
 
 ```bash
