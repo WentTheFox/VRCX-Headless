@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 
 import { instanceRequest } from '../api';
 import { parseLocation } from '../shared/utils';
+import { isHostWindows } from '../shared/utils/hostOs.js';
 import { watchState } from '../services/watchState';
 
 import configRepository from '../services/config';
@@ -137,7 +138,10 @@ export const useLaunchStore = defineStore('Launch', () => {
             args.push('--no-vr');
         }
         try {
-            if (vrcLaunchPathOverride && !LINUX) {
+            // Fork (VRCX-Headless): the override is a Windows path, and the
+            // Electron build implements StartGameFromPath on Windows too, so
+            // this is a host-OS check, not a build check (hostOs.js).
+            if (vrcLaunchPathOverride && (!LINUX || isHostWindows())) {
                 const result = await AppApi.StartGameFromPath(vrcLaunchPathOverride, args.join(' '));
                 if (!result) {
                     toast.error('Failed to launch VRChat, invalid custom path set');

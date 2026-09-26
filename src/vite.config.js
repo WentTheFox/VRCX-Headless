@@ -197,6 +197,10 @@ export default defineConfig(({ mode }) => {
             ]
         },
         define: {
+            // Fork note (VRCX-Headless): these name the *shell*, not the host
+            // OS. LINUX = the Electron build (which also runs on Windows and
+            // macOS), WINDOWS = the CefSharp build. For host-OS checks use
+            // src/shared/utils/hostOs.js. See CLAUDE.md §1.
             LINUX: JSON.stringify(process.env.PLATFORM === 'linux'),
             WINDOWS: JSON.stringify(process.env.PLATFORM === 'windows'),
             WEB: JSON.stringify(isWeb),

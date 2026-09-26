@@ -93,9 +93,17 @@ namespace VRCX
         /// (see the Settings page's own startup_linux hint), but this Electron client also runs on
         /// native Windows now, and the Settings toggle silently persisted its config bool there
         /// without ever touching the Run key, so "start with Windows" never actually did anything.
+        /// Linux got the same treatment later (see SetStartupLinux): the manual .desktop-edit hint
+        /// meant the toggle did nothing there either.
         /// </summary>
         public override void SetStartup(bool enabled)
         {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                SetStartupLinux(enabled);
+                return;
+            }
+
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return;
 
@@ -127,6 +135,78 @@ namespace VRCX
             catch (Exception e)
             {
                 logger.Warn(e, "Failed to set startup");
+            }
+        }
+
+        private const string LinuxDesktopFileName = "VRCX-Headless.desktop";
+
+        /// <summary>
+        /// Writes (or removes) an XDG autostart entry. The entry is a copy of the launcher entry
+        /// src-electron/main.js's updateDesktopFile() installs on every startup, with "--startup"
+        /// appended to its Exec= line, so it inherits that line's ozone/NODE_EXTRA_CA_CERTS
+        /// workarounds instead of re-deriving them here. Falls back to a minimal entry pointing at
+        /// $APPIMAGE when no launcher entry exists yet (e.g. --no-desktop). Called on every
+        /// launch by the settings store's reconcile, so the copy never goes stale for long.
+        /// </summary>
+        private static void SetStartupLinux(bool enabled)
+        {
+            try
+            {
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                if (string.IsNullOrEmpty(configHome))
+                    configHome = Path.Combine(home, ".config");
+                var autostartPath = Path.Combine(configHome, "autostart", LinuxDesktopFileName);
+
+                if (!enabled)
+                {
+                    if (File.Exists(autostartPath))
+                        File.Delete(autostartPath);
+                    return;
+                }
+
+                var dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+                if (string.IsNullOrEmpty(dataHome))
+                    dataHome = Path.Combine(home, ".local", "share");
+                var launcherPath = Path.Combine(dataHome, "applications", LinuxDesktopFileName);
+
+                string contents;
+                if (File.Exists(launcherPath))
+                {
+                    var lines = File.ReadAllLines(launcherPath);
+                    var inMainGroup = false;
+                    for (var i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        if (line.StartsWith('['))
+                            inMainGroup = line.Trim() == "[Desktop Entry]";
+                        else if (inMainGroup && line.StartsWith("Exec=") && !line.Contains("--startup"))
+                            lines[i] = line.TrimEnd() + " --startup";
+                    }
+                    contents = string.Join('\n', lines) + "\n";
+                }
+                else
+                {
+                    var appImage = Environment.GetEnvironmentVariable("APPIMAGE");
+                    if (string.IsNullOrEmpty(appImage))
+                    {
+                        logger.Warn("Not running from an AppImage and no launcher entry found, skipping autostart registration");
+                        return;
+                    }
+
+                    contents = "[Desktop Entry]\n" +
+                               "Type=Application\n" +
+                               "Name=VRCX Headless Desktop\n" +
+                               $"Exec=\"{appImage}\" --ozone-platform-hint=auto --startup\n" +
+                               "Terminal=false\n";
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(autostartPath)!);
+                File.WriteAllText(autostartPath, contents);
+            }
+            catch (Exception e)
+            {
+                logger.Warn(e, "Failed to set Linux autostart");
             }
         }
 

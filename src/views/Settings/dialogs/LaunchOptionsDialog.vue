@@ -20,7 +20,7 @@
                 placeholder="e.g. --fps=144 --enable-sdk-log-levels"
                 input-class="resize-none" />
 
-            <template v-if="!isLinux">
+            <template v-if="showPathOverride">
                 <div class="text-sm">
                     {{ t('dialog.launch_options.path_override') }}
                 </div>
@@ -70,6 +70,7 @@
 
     import { Badge } from '../../../components/ui/badge';
     import { openExternalLink } from '../../../shared/utils';
+    import { isHostWindows } from '../../../shared/utils/hostOs.js';
     import { useLaunchStore } from '../../../stores';
 
     import configRepository from '../../../services/config';
@@ -85,6 +86,9 @@
     });
 
     const isLinux = computed(() => LINUX);
+    // Fork (VRCX-Headless): Windows-path override, usable on any Windows host,
+    // including the Electron build (see launch.js).
+    const showPathOverride = computed(() => !isLinux.value || isHostWindows());
 
     function init() {
         configRepository

@@ -7,6 +7,7 @@ import { logWebRequest } from '../services/appConfig';
 import { branches } from '../shared/constants';
 import { getWhatsNewRelease, normalizeReleaseVersion } from '../shared/constants/whatsNewReleases';
 import { changeLogRemoveLinks } from '../shared/utils';
+import { isHostLinux } from '../shared/utils/hostOs.js';
 
 import configRepository from '../services/config';
 
@@ -201,9 +202,8 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
     /**
      * `LINUX` (this store's build flag) only means "this is the Electron
      * build" (CLAUDE.md's "Desktop client OS support"), not the actual host
-     * OS — the Electron client also runs on Windows now. `navigator.platform`
-     * is the same real-host-OS check `SystemTab.vue`'s `isRealLinux` already
-     * uses for the same reason. The Linux suffix matches upstream's own
+     * OS — the Electron client also runs on Windows now, hence `isHostLinux()`
+     * (`src/shared/utils/hostOs.js`). The Linux suffix matches upstream's own
      * `getAssetOfInterest`'s `.AppImage` logic (this file's untouched
      * upstream branch above) — `Dotnet/Update.cs`'s AppImage in-place-swap
      * path and `installForkUpdate`'s `restartVRCX` call below already work
@@ -218,7 +218,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
      * @throws When a matching asset exists but `parseSha256Digest` rejects its digest
      */
     function getForkAssetOfInterest(assets, archValue) {
-        const isRealLinux = navigator.platform.toLowerCase().includes('linux');
+        const isRealLinux = isHostLinux();
         const suffix = isRealLinux ? `${archValue}.AppImage` : `win-${archValue}.exe`;
         const asset = assets.find((a) => a.name.endsWith(suffix));
         if (!asset) {
@@ -315,7 +315,7 @@ export const useVRCXUpdaterStore = defineStore('VRCXUpdater', () => {
             // install failure rather than getting its own copy of it.
             const asset = getForkAssetOfInterest(release.assets, arch.value);
             if (!asset) {
-                const isRealLinux = navigator.platform.toLowerCase().includes('linux');
+                const isRealLinux = isHostLinux();
                 forkUpdateStatus.value = 'mismatch-offline';
                 forkUpdateError.value = isRealLinux
                     ? `No matching installer for ${arch.value}.AppImage`

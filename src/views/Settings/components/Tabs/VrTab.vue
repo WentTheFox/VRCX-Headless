@@ -38,7 +38,7 @@
                 </Select>
             </SettingsItem>
 
-            <template v-if="!isLinux">
+            <template v-if="showWindowsOverlayApps">
                 <SettingsItem
                     :label="
                         t('view.settings.notifications.notifications.steamvr_notifications.xsoverlay_notifications')
@@ -69,7 +69,7 @@
                 </SettingsItem>
             </template>
 
-            <template v-if="!isLinux">
+            <template v-if="showWindowsOverlayApps">
                 <SettingsItem
                     :label="
                         t(
@@ -270,6 +270,7 @@
     import WristOverlaySettings from '../WristOverlaySettings.vue';
     import SettingsGroup from '../SettingsGroup.vue';
     import SettingsItem from '../SettingsItem.vue';
+    import { isHostWindows } from '../../../../shared/utils/hostOs.js';
 
     const { t } = useI18n();
 
@@ -318,6 +319,10 @@
     const feedFiltersDialogMode = ref('');
     const isLinux = computed(() => LINUX);
     const isWeb = computed(() => WEB);
+    // Fork (VRCX-Headless): XSOverlay and OVR Toolkit are Windows apps, and
+    // their notification senders (Dotnet/AppApi/Common) are compiled into the
+    // Electron build too, so this is a host-OS check, not a build check.
+    const showWindowsOverlayApps = computed(() => !isLinux.value || isHostWindows());
 
     const notificationOpacityValue = computed({
         get: () => [notificationOpacity.value],

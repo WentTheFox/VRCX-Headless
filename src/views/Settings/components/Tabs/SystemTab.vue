@@ -140,23 +140,14 @@
         </SettingsGroup>
 
         <SettingsGroup :title="t('view.settings.general.application.header')">
-            <SettingsItem v-if="!isLinux && !isWeb" :label="t('view.settings.general.application.startup')">
+            <SettingsItem v-if="supportsStartup" :label="startupLabel">
                 <Switch
                     :model-value="isStartAtWindowsStartup"
-                    :ariaLabel="t('view.settings.general.application.startup')"
+                    :ariaLabel="startupLabel"
                     @update:modelValue="setIsStartAtWindowsStartup" />
             </SettingsItem>
 
-            <SettingsItem v-if="!isLinux" :label="t('view.settings.general.application.minimized')">
-                <Switch
-                    :model-value="isStartAsMinimizedState"
-                    :ariaLabel="t('view.settings.general.application.minimized')"
-                    @update:modelValue="setIsStartAsMinimizedState" />
-            </SettingsItem>
-            <SettingsItem
-                v-else
-                :label="t('view.settings.general.application.minimized')"
-                :description="isRealLinux ? t('view.settings.general.application.startup_linux') : undefined">
+            <SettingsItem v-if="supportsStartup" :label="t('view.settings.general.application.minimized')">
                 <Switch
                     :model-value="isStartAsMinimizedState"
                     :ariaLabel="t('view.settings.general.application.minimized')"
@@ -242,6 +233,7 @@
     import { useGeneralSettingsStore, useVRCXUpdaterStore } from '@/stores';
     import { links } from '@/shared/constants';
     import { openExternalLink } from '@/shared/utils';
+    import { isHostLinux, isHostMacOS } from '@/shared/utils/hostOs.js';
 
     import SettingsGroup from '../SettingsGroup.vue';
     import SettingsItem from '../SettingsItem.vue';
@@ -299,12 +291,16 @@
     const isMacOS = computed(() => {
         return navigator.platform.indexOf('Mac') > -1;
     });
-    // Fork addition (VRCX-Headless): `LINUX` means "this is the Electron
-    // build," not "running on Linux" (CLAUDE.md's "Desktop client OS
-    // support") — the Electron client also runs on Windows/macOS now. The
-    // `.desktop`-file autostart hint below is a genuinely Linux-only
-    // mechanism, so it needs the real host OS, not the build flag.
-    const isRealLinux = computed(() => !isMacOS.value && navigator.platform.toLowerCase().includes('linux'));
+    // SetStartup is implemented for Windows (CEF and Electron) and Linux
+    // (XDG autostart); macOS has no implementation and a browser tab can't
+    // register anything. "Start minimized" only acts on a `--startup` launch,
+    // which only that registration produces, so it shares the gate.
+    const supportsStartup = computed(() => !isWeb.value && !isHostMacOS());
+    const startupLabel = computed(() =>
+        isHostLinux()
+            ? t('view.settings.general.application.startup_system')
+            : t('view.settings.general.application.startup')
+    );
 
     const OpenSourceSoftwareNoticeDialog = defineAsyncComponent(
         () => import('../../dialogs/OpenSourceSoftwareNoticeDialog.vue')
