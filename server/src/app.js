@@ -75,6 +75,7 @@
 // purpose here; see the header above.
 // eslint-disable-next-line vue/prefer-import-from-vue
 import { createRenderer } from '@vue/runtime-core';
+import { readFileSync } from 'node:fs';
 import { createI18n } from 'vue-i18n';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -83,6 +84,13 @@ import {
     initPiniaPlugins,
     pinia
 } from '../../src/stores/index.js';
+
+const enMessages = JSON.parse(
+    readFileSync(
+        new URL('../../src/localization/en.json', import.meta.url),
+        'utf8'
+    )
+);
 
 /** Every DOM op this component could reach is a no-op — it never renders. */
 const inertNodeOps = {
@@ -124,6 +132,9 @@ export async function mountHeadlessApp() {
         legacy: false,
         locale: 'en',
         fallbackLocale: 'en',
+        // English only: server-composed text (Discord presence's "Private
+        // World", instance access names) is shown to the user verbatim.
+        messages: { en: enMessages },
         missingWarn: false,
         fallbackWarn: false,
         warnHtmlMessage: false
