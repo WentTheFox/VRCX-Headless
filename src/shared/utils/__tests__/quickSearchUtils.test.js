@@ -76,8 +76,8 @@ describe('searchFriends', () => {
             {
                 id,
                 name,
-                memo,
                 ref: {
+                    $memo: memo,
                     currentAvatarThumbnailImageUrl: `img_${id}`,
                     note,
                     $userColour: '#fff'

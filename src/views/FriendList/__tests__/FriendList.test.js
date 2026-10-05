@@ -2,6 +2,16 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
+// Stores self-initialise from configRepository on construction; give them an
+// empty database so those reads fall back to their defaults.
+vi.hoisted(() => {
+    globalThis.SQLite = {
+        Execute: async () => [],
+        ExecuteNonQuery: async () => 0,
+        ExecuteInsert: async () => 0
+    };
+});
+
 const mocks = vi.hoisted(() => ({
     makeRef: (value) => ({ value, __v_isRef: true }),
     route: { path: '/friend-list' },

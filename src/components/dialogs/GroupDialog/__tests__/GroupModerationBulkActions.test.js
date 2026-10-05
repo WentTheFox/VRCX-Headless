@@ -23,6 +23,18 @@ vi.mock('../../../../shared/utils', () => ({
 
 import GroupModerationBulkActions from '../GroupModerationBulkActions.vue';
 
+const member = {
+    id: 'usr_1',
+    userId: 'usr_1',
+    membershipStatus: 'member',
+    user: { displayName: 'Alice' }
+};
+
+function findSelectUserButton(wrapper) {
+    // With no selected users, the only tooltip-wrapped button is the icon-only select-user one.
+    return wrapper.find('.tooltip-stub button');
+}
+
 function mountComponent(props = {}) {
     return mount(GroupModerationBulkActions, {
         props: {
@@ -67,7 +79,9 @@ describe('GroupModerationBulkActions.vue', () => {
     describe('rendering', () => {
         test('renders user ID input field', () => {
             const wrapper = mountComponent();
-            expect(wrapper.text()).toContain('dialog.group_member_moderation.user_id');
+            expect(wrapper.find('input').attributes('placeholder')).toBe(
+                'dialog.group_member_moderation.user_id_placeholder'
+            );
         });
 
         test('renders selected users section', () => {
@@ -77,7 +91,7 @@ describe('GroupModerationBulkActions.vue', () => {
 
         test('renders roles dropdown with available roles', () => {
             const wrapper = mountComponent();
-            expect(wrapper.text()).toContain('dialog.group_member_moderation.selected_roles');
+            expect(wrapper.text()).toContain('dialog.group_member_moderation.roles');
         });
 
         test('renders action buttons', () => {
@@ -175,7 +189,7 @@ describe('GroupModerationBulkActions.vue', () => {
         });
 
         test('add/remove roles enabled when roles are selected', () => {
-            const wrapper = mountComponent({ selectedRoles: ['role_1'] });
+            const wrapper = mountComponent({ selectedRoles: ['role_1'], selectedUsersArray: [member] });
             const addBtn = wrapper
                 .findAll('button')
                 .find((b) => b.text().includes('dialog.group_member_moderation.add_roles'));
@@ -196,17 +210,13 @@ describe('GroupModerationBulkActions.vue', () => {
 
         test('select user button disabled when no user ID entered', () => {
             const wrapper = mountComponent({ selectUserId: '' });
-            const selectBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.group_member_moderation.select_user'));
+            const selectBtn = findSelectUserButton(wrapper);
             expect(selectBtn.attributes('disabled')).toBeDefined();
         });
 
         test('select user button enabled when user ID is entered', () => {
             const wrapper = mountComponent({ selectUserId: 'usr_test' });
-            const selectBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.group_member_moderation.select_user'));
+            const selectBtn = findSelectUserButton(wrapper);
             expect(selectBtn.attributes('disabled')).toBeUndefined();
         });
     });
@@ -246,15 +256,13 @@ describe('GroupModerationBulkActions.vue', () => {
     describe('events', () => {
         test('emits select-user on select button click', async () => {
             const wrapper = mountComponent({ selectUserId: 'usr_test' });
-            const selectBtn = wrapper
-                .findAll('button')
-                .find((b) => b.text().includes('dialog.group_member_moderation.select_user'));
+            const selectBtn = findSelectUserButton(wrapper);
             await selectBtn.trigger('click');
             expect(wrapper.emitted('select-user')).toBeTruthy();
         });
 
         test('emits clear-all on trash button click', async () => {
-            const wrapper = mountComponent();
+            const wrapper = mountComponent({ selectedUsersArray: [member] });
             // The trash button is the rounded-full icon-sm button after "selected_users" label
             const buttons = wrapper.findAll('button');
             const trashBtn = buttons.find((b) => {
@@ -280,7 +288,7 @@ describe('GroupModerationBulkActions.vue', () => {
         });
 
         test('emits ban on ban button click', async () => {
-            const wrapper = mountComponent();
+            const wrapper = mountComponent({ selectedUsersArray: [member] });
             const banBtn = wrapper
                 .findAll('button')
                 .find((b) => b.text().includes('dialog.group_member_moderation.ban'));

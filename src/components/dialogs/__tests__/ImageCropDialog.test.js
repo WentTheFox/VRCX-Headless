@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
+// Stores self-initialise from configRepository on construction; give them an
+// empty database so those reads fall back to their defaults.
+vi.hoisted(() => {
+    globalThis.SQLite = {
+        Execute: async () => [],
+        ExecuteNonQuery: async () => 0,
+        ExecuteInsert: async () => 0
+    };
+});
+
 const mocks = vi.hoisted(() => ({
     resetCropState: vi.fn(),
     loadImageForCrop: vi.fn(),
