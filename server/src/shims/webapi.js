@@ -48,6 +48,35 @@ function parseHeaders(headers) {
     return { ...headers };
 }
 
+/**
+ * Node's `fetch` collapses refused connections, DNS failures, timeouts and TLS
+ * errors into a bare "fetch failed", with the real reason nested in
+ * `err.cause` (often several levels deep, or an AggregateError). Without it the
+ * toast and log say nothing actionable.
+ *
+ * @param {unknown} err
+ * @returns {string}
+ */
+export function describeFetchError(err) {
+    const base = err?.message ?? String(err);
+    const reasons = [];
+    const seen = new Set();
+    let cause = err?.cause;
+    while (cause && !seen.has(cause)) {
+        seen.add(cause);
+        const parts = [cause.code, cause.message]
+            .filter(Boolean)
+            .filter((part, i, all) => all.indexOf(part) === i);
+        if (cause.errors?.length) {
+            parts.push(...cause.errors.map((e) => [e.code, e.message].filter(Boolean).join(' ')));
+        }
+        if (parts.length) reasons.push(parts.join(' '));
+        cause = cause.cause;
+    }
+    const detail = [...new Set(reasons)].join(': ');
+    return detail && !base.includes(detail) ? `${base} (${detail})` : base;
+}
+
 export class WebApiShim {
     /** @type {import('../cookies.js').CookieStore} */
     #cookies;
@@ -79,7 +108,7 @@ export class WebApiShim {
             return await this.#send(options);
         } catch (err) {
             // Mirrors the catch-all at Dotnet/WebApi.cs:499.
-            return { Item1: -1, Item2: err?.message ?? String(err) };
+            return { Item1: -1, Item2: describeFetchError(err) };
         }
     }
 

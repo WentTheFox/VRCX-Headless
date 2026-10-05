@@ -9,7 +9,7 @@ import { createServer } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { CookieStore } from '../src/cookies.js';
-import { WebApiShim } from '../src/shims/webapi.js';
+import { describeFetchError, WebApiShim } from '../src/shims/webapi.js';
 
 /** @type {import('node:http').Server} */
 let server;
@@ -177,5 +177,20 @@ describe('WebApiShim', () => {
             status: 200,
             message: '{"ok":true}'
         });
+    });
+});
+
+describe('describeFetchError', () => {
+    it('surfaces the nested cause behind a bare fetch failed', () => {
+        const cause = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+        const err = new TypeError('fetch failed', { cause });
+        expect(describeFetchError(err)).toBe('fetch failed (ECONNRESET read ECONNRESET)');
+    });
+
+    it('flattens AggregateError causes and passes plain errors through', () => {
+        const agg = new AggregateError([Object.assign(new Error('x'), { code: 'ETIMEDOUT' })], '');
+        expect(describeFetchError(new TypeError('fetch failed', { cause: agg }))).toContain('ETIMEDOUT');
+        expect(describeFetchError(new Error('boom'))).toBe('boom');
+        expect(describeFetchError('str')).toBe('str');
     });
 });
