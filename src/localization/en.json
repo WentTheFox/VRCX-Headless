@@ -495,7 +495,8 @@
                     "report": {
                         "closed": "Moderation Report Closed"
                     },
-                    "contentrestriction": "Moderation Content Restriction"
+                    "contentrestriction": "Moderation Content Restriction",
+                    "sanction": "Moderation Sanction"
                 },
                 "instance": {
                     "closed": "Instance Closed",
@@ -1036,9 +1037,7 @@
             "notifications": {
                 "notifications": {
                     "header": "Notifications",
-                    "layout": "Notification View",
-                    "layout_notification_center": "Notification Center",
-                    "layout_table": "Notifications Page",
+                    "busy_warning": "Notifications are disabled while your status is set to Do Not Disturb.",
                     "notification_filter": "Notification Filters",
                     "test_notification": "Send Test Notification",
                     "test_message": "Test notification.",
@@ -1752,7 +1751,10 @@
                 "memo": "Memo",
                 "memo_placeholder": "Click to add a memo",
                 "listings": "Listings",
-                "gallery": "Gallery"
+                "gallery": "Gallery",
+                "gallery_move_left": "Move Left",
+                "gallery_move_right": "Move Right",
+                "gallery_delete": "Delete Image"
             },
             "json": {
                 "header": "JSON"
@@ -1915,6 +1917,8 @@
                 "create_post": "Create Post",
                 "create_event": "Create Event",
                 "moderation_tools": "Moderation Tools",
+                "manage_roles": "Manage Roles",
+                "view_roles": "View Roles",
                 "transfer": "Transfer Group",
                 "delete": "Delete Group",
                 "leave": "Leave Group",
@@ -1933,9 +1937,9 @@
                 "created": "Created",
                 "links": "Links",
                 "url": "Group URL",
-                "url_tooltip": "Copy URL to clipboard",
                 "id": "Group ID",
-                "id_tooltip": "Copy ID to clipboard",
+                "copy_id": "Copy ID",
+                "copy_url": "Copy URL",
                 "joined_at": "Joined At",
                 "roles": "Roles",
                 "role": "Role:",
@@ -2323,8 +2327,7 @@
             "drone_skin": "Drone Skin",
             "emoji": "Emoji",
             "redeem": "Redeem",
-            "create_animated_emoji": "Animated Emoji Generator",
-            "crop_image": "Confirm Upload"
+            "create_animated_emoji": "Animated Emoji Generator"
         },
         "image_crop": {
             "rotate_left": "Rotate Left",
@@ -2335,7 +2338,8 @@
             "zoom_out": "Zoom Out",
             "mode_fit": "Switch to Fit Mode",
             "mode_free": "Switch to Free Mode",
-            "reset": "Reset"
+            "reset": "Reset",
+            "auto_resize": "Auto fit image"
         },
         "gallery_select": {
             "header": "Select Image",
@@ -2561,6 +2565,36 @@
             "import_bans_placeholder": "Paste CSV or user IDs here (one per line)\nusr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
             "import_bans_start": "Import & Ban",
             "import_bans_clear_errors": "Clear Errors"
+        },
+        "group_roles": {
+            "header": "Manage Group Roles",
+            "view_header": "Group Roles",
+            "new_role": "New Role",
+            "no_roles": "No roles found",
+            "no_role_selected": "Select a role to edit, or create a new one",
+            "name": "Name",
+            "description": "Description",
+            "self_assignable": "Self Assignable",
+            "self_assignable_description": "Members can assign this role to themselves",
+            "added_on_join": "Added On Join",
+            "added_on_join_description": "Automatically given to new members",
+            "requires_two_factor": "Requires 2FA",
+            "requires_two_factor_description": "Members need two-factor authentication enabled to use this role",
+            "permissions": "Permissions",
+            "management_permissions": "Management Permissions",
+            "default_role": "Default Role",
+            "management_roles": "Management Roles",
+            "member_roles": "Member Roles",
+            "assigned_to_you": "Assigned to You",
+            "delete": "Delete Role",
+            "delete_confirm": "Delete role \"{name}\"? This cannot be undone.",
+            "cancel": "Cancel",
+            "create": "Create Role",
+            "save": "Save",
+            "saved": "Role saved",
+            "save_failed": "Failed to save role",
+            "deleted": "Role deleted",
+            "delete_failed": "Failed to delete role"
         },
         "group_post_edit": {
             "header": "Create/Edit Post",
@@ -3165,6 +3199,7 @@
             "language": "Language",
             "bioLink": "Bio Links",
             "note": "Note",
+            "memo": "Memo",
             "date": "Date",
             "user": "User",
             "type": "Type",

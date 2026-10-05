@@ -8,6 +8,7 @@
  *   Execute(sql, args)        -> object[][]  (rows as POSITIONAL arrays)
  *   ExecuteJson(sql, args)    -> string      (JSON of the above)
  *   ExecuteNonQuery(sql, args)-> number      (rows affected)
+ *   ExecuteInsert(sql, args)  -> number      (last_insert_rowid, 0 if no row inserted)
  *
  * Three fidelity requirements, each load-bearing:
  *
@@ -175,6 +176,23 @@ export class SQLiteShim {
         statement.setAllowUnknownNamedParameters(true);
         const result = params ? statement.run(params) : statement.run();
         return Number(result.changes ?? 0);
+    }
+
+    /**
+     * Mirror of `Dotnet/SQLite.cs`'s `ExecuteInsert`: the new row id when a row
+     * was actually inserted, 0 when `INSERT OR IGNORE` skipped it.
+     *
+     * @param {string} sql
+     * @param {Record<string, unknown> | Map<string, unknown> | null} [args]
+     * @returns {number}
+     */
+    ExecuteInsert(sql, args = null) {
+        const db = this.#require();
+        const params = normaliseArgs(args);
+        const statement = db.prepare(sql);
+        statement.setAllowUnknownNamedParameters(true);
+        const result = params ? statement.run(params) : statement.run();
+        return Number(result.changes ?? 0) > 0 ? Number(result.lastInsertRowid) : 0;
     }
 }
 

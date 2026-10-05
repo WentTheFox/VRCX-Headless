@@ -33,7 +33,14 @@ import { rpcCall } from './agent-rpc.js';
  * those. Add a name here only after confirming (like this one) that *every*
  * call site is unreachable except through pipeline processing.
  */
-const pipelineOnlyWrites = new Set(['addOnlineOfflineToDatabase']);
+// Emptied (2026-10-05 upstream sync): upstream's feed/gameLog writes now return the
+// persisted row (with its rowId) and the coordinators feed that into the live
+// feed store, so even `addOnlineOfflineToDatabase` must really round-trip to
+// the server -- a client no-op would never show online/offline entries until a
+// reload. Duplicate writes are absorbed by server/src/feed-dedup.js, which now
+// returns the already-persisted row instead of undefined. Kept as an (empty)
+// allowlist so a future genuinely pipeline-only write has somewhere to go.
+const pipelineOnlyWrites = new Set();
 
 export const dbVars = {
     userId: '',

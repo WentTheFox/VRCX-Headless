@@ -89,6 +89,7 @@ contextBridge.exposeInMainWorld('electron', {
     onWindowSizeChanged: (callback) => registerManagedListener('setWindowSize', callback),
     onWindowStateChange: (callback) => registerManagedListener('setWindowState', callback),
     onBrowserFocus: (callback) => registerManagedListener('onBrowserFocus', callback),
+    onBrowserBlur: (callback) => registerManagedListener('onBrowserBlur', callback),
     desktopNotification: (title, body, icon, persistent) =>
         ipcRenderer.invoke('notification:showNotification', title, body, icon, persistent),
     restartApp: () => ipcRenderer.invoke('app:restart'),

@@ -30,7 +30,6 @@ import { usePhotonStore } from './photon';
 import { useSearchStore } from './search';
 import { useUpdateLoopStore } from './updateLoop';
 import { useUserStore } from './user';
-import { useVrcStatusStore } from './vrcStatus';
 import { clearVRCXCache } from '../coordinators/vrcxCoordinator';
 import { resetSearchIndexOnLogin } from '../coordinators/searchIndexCoordinator';
 import { watchState } from '../services/watchState';
@@ -50,7 +49,6 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     const avatarProviderStore = useAvatarProviderStore();
     const gameLogStore = useGameLogStore();
     const updateLoopStore = useUpdateLoopStore();
-    const vrcStatusStore = useVrcStatusStore();
     const { t } = useI18n();
     const modalStore = useModalStore();
 
@@ -82,6 +80,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     const searchLimit = ref(DEFAULT_SEARCH_LIMIT);
     const proxyServer = ref('');
     const appStartAt = Date.now();
+    const isBrowserFocused = ref(true);
 
     async function init() {
         try {
@@ -111,7 +110,11 @@ export const useVrcxStore = defineStore('Vrcx', () => {
                     });
 
                     window.electron.onBrowserFocus(() => {
-                        vrcStatusStore.onBrowserFocus();
+                        onBrowserFocus();
+                    });
+
+                    window.electron.onBrowserBlur(() => {
+                        onBrowserBlur();
                     });
                 } catch (err) {
                     console.error('Failed to register Linux IPC handlers:', err);
@@ -169,7 +172,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
 
     async function updateDatabaseVersion() {
         // requires dbVars.userPrefix to be already set
-        const databaseVersion = 17;
+        const databaseVersion = 18;
         if (state.databaseVersion < databaseVersion) {
             databaseUpgradeState.value = {
                 visible: state.databaseVersion > 0,
@@ -243,7 +246,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     /**
      * @param data
      */
-    function eventVrcxMessage(data) {
+    async function eventVrcxMessage(data) {
         let entry;
         switch (data.MsgType) {
             case 'CustomTag':
@@ -271,9 +274,11 @@ export const useVrcxStore = defineStore('Vrcx', () => {
                     type: 'Event',
                     data: data.Data
                 };
-                database.addGamelogEventToDatabase(entry);
                 notificationStore.queueGameLogNoty(entry);
-                gameLogStore.addGameLog(entry);
+                const persistedEntry = await database.addGamelogEventToDatabase(entry);
+                if (persistedEntry) {
+                    gameLogStore.addGameLog(persistedEntry);
+                }
                 break;
             case 'External': {
                 const displayName = data.DisplayName ?? '';
@@ -286,11 +291,13 @@ export const useVrcxStore = defineStore('Vrcx', () => {
                     userId: data.UserId,
                     location: locationStore.lastLocation.location
                 };
-                database.addGamelogExternalToDatabase(entry);
                 if (notify) {
                     notificationStore.queueGameLogNoty(entry);
                 }
-                gameLogStore.addGameLog(entry);
+                const persistedEntry = await database.addGamelogExternalToDatabase(entry);
+                if (persistedEntry) {
+                    gameLogStore.addGameLog(persistedEntry);
+                }
                 break;
             }
             default:
@@ -369,7 +376,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     /**
      * @param json
      */
-    function ipcEvent(json) {
+    async function ipcEvent(json) {
         if (!watchState.isLoggedIn) {
             return;
         }
@@ -454,7 +461,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
                 if (AppDebug.debugPhotonLogging || AppDebug.debugIPC) {
                     console.log('VrcxMessage:', data);
                 }
-                eventVrcxMessage(data);
+                await eventVrcxMessage(data);
                 break;
             case 'Ping':
                 if (AppDebug.debugIPC) {
@@ -744,6 +751,17 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         await configRepository.setString('VRCX_VRChatRegistryLastBackupDate', date.toJSON());
     }
 
+    // ran from Cef and Electron when browser is focused
+    function onBrowserFocus() {
+        isBrowserFocused.value = true;
+        console.log('Browser gained focus');
+    }
+
+    function onBrowserBlur() {
+        isBrowserFocused.value = false;
+        console.log('Browser lost focus');
+    }
+
     return {
         state,
 
@@ -773,6 +791,9 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         dragEnterCef,
         backupVrcRegistry,
         updateDatabaseVersion,
-        waitForDatabaseInit
+        waitForDatabaseInit,
+        onBrowserFocus,
+        onBrowserBlur,
+        isBrowserFocused
     };
 });

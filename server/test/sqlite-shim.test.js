@@ -123,3 +123,12 @@ describe('SQLiteShim', () => {
         expect(sqlite.Execute('SELECT 1', {})).toEqual([[1]]);
     });
 });
+
+describe('ExecuteInsert', () => {
+    it('returns the new row id, or 0 when INSERT OR IGNORE skips the row', () => {
+        const sqlite = new SQLiteShim().open(':memory:');
+        sqlite.ExecuteNonQuery('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT UNIQUE)');
+        expect(sqlite.ExecuteInsert('INSERT OR IGNORE INTO t (name) VALUES (@n)', { '@n': 'a' })).toBe(1);
+        expect(sqlite.ExecuteInsert('INSERT OR IGNORE INTO t (name) VALUES (@n)', { '@n': 'a' })).toBe(0);
+    });
+});

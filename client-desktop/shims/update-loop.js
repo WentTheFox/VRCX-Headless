@@ -52,9 +52,7 @@ export const useUpdateLoopStore = defineStore('UpdateLoop', () => {
             if (watchState.isLoggedIn) {
                 const logLines = await LogWatcher.GetLogLines();
                 if (logLines) {
-                    logLines.forEach((logLine) => {
-                        addGameLogEvent(logLine);
-                    });
+                    await Promise.all(logLines.map((logLine) => addGameLogEvent(logLine)));
                 }
                 await runUpdateIsGameRunningFlow(
                     await AppApi.IsGameRunning(),

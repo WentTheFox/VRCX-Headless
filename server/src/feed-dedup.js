@@ -93,7 +93,7 @@ const DEDUP_CONFIGS = {
     }
 };
 
-async function hasRecentDuplicate(table, userPrefix, fields, entry) {
+async function findRecentDuplicate(table, userPrefix, fields, entry) {
     const params = {
         '@created_at': entry.created_at,
         '@user_id': entry.userId
@@ -108,15 +108,15 @@ async function hasRecentDuplicate(table, userPrefix, fields, entry) {
         params[param] = value;
     }
 
-    let count = 0;
+    let existingId = null;
     await sqliteService.execute(
         (row) => {
-            count = row[0];
+            existingId = row[0];
         },
-        `SELECT COUNT(*) FROM ${userPrefix}_${table} WHERE ${clauses.join(' AND ')}`,
+        `SELECT id FROM ${userPrefix}_${table} WHERE ${clauses.join(' AND ')} ORDER BY id LIMIT 1`,
         params
     );
-    return count > 0;
+    return existingId;
 }
 
 /**
@@ -127,14 +127,17 @@ export function installFeedDedup(database, dbVars) {
     for (const [method, config] of Object.entries(DEDUP_CONFIGS)) {
         const original = database[method].bind(database);
         database[method] = async function feedDedupWrapper(entry) {
-            const duplicate = await hasRecentDuplicate(
+            const existingId = await findRecentDuplicate(
                 config.table,
                 dbVars.userPrefix,
                 config.fields(entry),
                 entry
             );
-            if (duplicate) {
-                return;
+            if (existingId !== null) {
+                // Upstream's feed writes return the persisted row (with rowId) and
+                // callers push it into the live feed store, so hand back the row
+                // the other writer already inserted rather than undefined.
+                return config.table.startsWith('feed_') ? { ...entry, rowId: existingId } : undefined;
             }
             return original(entry);
         };
