@@ -196,7 +196,7 @@ The modules where the split happens. On an upstream merge, these are what to ins
 
 | Aliased upstream module | Replaced by | Why |
 |---|---|---|
-| `src/plugins/i18n.js` | `server/src/shims/i18n.js` | Eagerly imports every locale bundle; the data layer only calls `i18n.global.t` |
+| `src/plugins/i18n.js` | `server/src/shims/i18n.js` | Eagerly imports every locale bundle. The shim is a single English-only `createI18n` instance (loaded from `en.json`) that `server/src/app.js` also installs on the headless app, so `useI18n()` and direct `i18n.global.t` callers (`request.js` error text) both translate; it used to echo raw keys, which leaked into API error toasts and logs |
 | `src/plugins/index.js` | `server/src/shims/plugins-index.js` | Re-exports `./components` (raw `.vue`, unparseable under Node) and `./router` |
 | `src/plugins/router.js` | `server/src/shims/router.js` | Imports every view directly to build its route table |
 | `src/stores/ui.js` | `server/src/shims/ui.js` | Dialog bookkeeping only — a headless process has no dialogs |

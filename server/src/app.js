@@ -60,10 +60,10 @@
  * `router.push(...)` do it from inside
  * UI-event handlers, and `router.currentRoute` is a real ref either way.
  *
- * i18n is real (`vue-i18n`'s `createI18n`) for the same reason, with no
- * locale messages loaded — `missingWarn`/`fallbackWarn` off makes `t(key)`
- * return `key` verbatim by default, matching `server/src/shims/i18n.js`'s
- * plain-object behaviour for direct importers.
+ * i18n is real (`vue-i18n`'s `createI18n`) for the same reason, and is the
+ * very instance `server/src/shims/i18n.js` exports (English messages loaded),
+ * so `useI18n()` in stores and direct `i18n.global.t` importers such as
+ * `src/services/request.js` translate identically.
  *
  * `pinia` itself is imported from the real `src/stores/index.js` barrel
  * (which does `export const pinia = createPinia()` at module scope) rather
@@ -75,22 +75,15 @@
 // purpose here; see the header above.
 // eslint-disable-next-line vue/prefer-import-from-vue
 import { createRenderer } from '@vue/runtime-core';
-import { readFileSync } from 'node:fs';
-import { createI18n } from 'vue-i18n';
 import { createMemoryHistory, createRouter } from 'vue-router';
+
+import { i18n } from './shims/i18n.js';
 
 import {
     createGlobalStores,
     initPiniaPlugins,
     pinia
 } from '../../src/stores/index.js';
-
-const enMessages = JSON.parse(
-    readFileSync(
-        new URL('../../src/localization/en.json', import.meta.url),
-        'utf8'
-    )
-);
 
 /** Every DOM op this component could reach is a no-op — it never renders. */
 const inertNodeOps = {
@@ -109,7 +102,7 @@ const inertNodeOps = {
     insertStaticContent: () => [null, null]
 };
 
-/** @type {{ app: import('vue').App, pinia: import('pinia').Pinia, router: import('vue-router').Router, i18n: ReturnType<typeof createI18n>, stores: ReturnType<typeof createGlobalStores> } | null} */
+/** @type {{ app: import('vue').App, pinia: import('pinia').Pinia, router: import('vue-router').Router, i18n: typeof i18n, stores: ReturnType<typeof createGlobalStores> } | null} */
 let instance = null;
 
 /**
@@ -127,17 +120,6 @@ export async function mountHeadlessApp() {
         // Memory history's initial navigation target has no match otherwise,
         // which vue-router logs as a startup warning on every boot.
         routes: [{ path: '/:pathMatch(.*)*', component: {} }]
-    });
-    const i18n = createI18n({
-        legacy: false,
-        locale: 'en',
-        fallbackLocale: 'en',
-        // English only: server-composed text (Discord presence's "Private
-        // World", instance access names) is shown to the user verbatim.
-        messages: { en: enMessages },
-        missingWarn: false,
-        fallbackWarn: false,
-        warnHtmlMessage: false
     });
 
     /** @type {ReturnType<typeof createGlobalStores> | undefined} */
