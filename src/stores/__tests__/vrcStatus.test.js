@@ -23,6 +23,11 @@ vi.mock('../../shared/utils', () => ({
     openExternalLink: (...args) => mocks.openExternalLink(...args)
 }));
 
+vi.mock('../vrcx', async () => {
+    const { ref } = await import('vue');
+    return { useVrcxStore: () => ({ isBrowserFocused: ref(true) }) };
+});
+
 function flushPromises() {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }

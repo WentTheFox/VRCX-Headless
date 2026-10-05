@@ -8,6 +8,16 @@ import { createPinia, setActivePinia } from 'pinia';
 // Mocks
 // ------------------------------------------------------------------
 
+// Stores self-initialise from configRepository on construction; give them an
+// empty database so those reads fall back to their defaults.
+vi.hoisted(() => {
+    globalThis.SQLite = {
+        Execute: async () => [],
+        ExecuteNonQuery: async () => 0,
+        ExecuteInsert: async () => 0
+    };
+});
+
 const getPrints = vi.fn();
 const deletePrint = vi.fn();
 const getPrintFavorites = vi.fn();
@@ -51,15 +61,23 @@ vi.mock('../settings/advanced', () => ({
 
 vi.mock('../modal', () => ({
     useModalStore: () => ({
-        confirm: vi.fn()
+        confirm: vi.fn(),
+        alert: vi.fn()
     })
 }));
 
 vi.mock('vue-i18n', () => ({
     useI18n: () => ({
-        t: (key) => key
+        t: (key) => key,
+        locale: { value: 'en' }
     })
 }));
+
+vi.mock('vue-router', async () => {
+    const { ref } = await import('vue');
+    const currentRoute = ref({ name: 'gallery' });
+    return { useRouter: () => ({ currentRoute, push: vi.fn() }) };
+});
 
 vi.mock('../../plugins/router', () => ({
     router: {
