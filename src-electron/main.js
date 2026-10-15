@@ -1771,11 +1771,6 @@ async function checkAndInstallForkUpdateInner() {
         `echo [%date% %time%] running installer >> "${logPath}"`,
         `"${updateExePath}"`,
         `echo [%date% %time%] installer exit code %errorlevel% >> "${logPath}"`,
-        // The installer runs from update.exe in place, so nothing else removes it.
-        // Left behind, the relaunched app's Update.Check() finds it and re-runs the
-        // installer on every start (an endless update loop).
-        `del /f /q "${updateExePath}"`,
-        `echo [%date% %time%] removed update.exe >> "${logPath}"`,
         `start "" "${execPathBeforeUpdate}"`,
         `echo [%date% %time%] relaunch issued >> "${logPath}"`
     ];

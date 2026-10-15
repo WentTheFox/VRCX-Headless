@@ -13,6 +13,15 @@ const path = require('path');
  * module-resolution hooks.
  */
 function getForkVersion() {
+    // On a release build the pushed tag is the source of truth. Deriving the
+    // version from server/VERSION alone stamped a client-only PATCH release
+    // (tag v20260916.6.3, server/VERSION still 6.0) as 20260916.6.0: the
+    // installed app then kept comparing itself against the newer release and
+    // re-downloaded it forever (issue #2).
+    const tagMatch = /^v(\d{8}\.\d+\.\d+)$/.exec(process.env.GITHUB_REF_NAME ?? '');
+    if (tagMatch) {
+        return tagMatch[1];
+    }
     const rootDir = path.join(__dirname, '..');
     const vrcxVersion = fs
         .readFileSync(path.join(rootDir, 'Version'), 'utf8')
