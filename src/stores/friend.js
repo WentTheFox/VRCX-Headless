@@ -458,7 +458,9 @@ export const useFriendStore = defineStore('Friend', () => {
             for (const friend of map) {
                 const [id, state_input] = friend;
                 if (friends.has(id)) {
-                    runUpdateFriendFlow(id, state_input);
+                    // online/active/offline lists are only a login-time snapshot (a profile save re-applies
+                    // a stale or empty copy); once friends are loaded the pipeline owns each friend's state
+                    runUpdateFriendFlow(id, watchState.isFriendsLoaded ? undefined : state_input);
                 } else {
                     addFriend(id, state_input);
                     added.push(id);
