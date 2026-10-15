@@ -83,7 +83,7 @@ async function extractZip(zipPath, extractDir) {
         // Windows ships bsdtar, which also handles zip archives.
         // The Windows runtime zip has a flat layout (no top-level folder),
         // so no --strip-components is needed.
-        const tar = spawnSync('tar', ['-xf', zipPath, '-C', extractDir], {
+        const tar = spawnSync('tar', ['-xf', zipPath, '-C', extractDir, '--force-local'], {
             stdio: 'inherit'
         });
 
