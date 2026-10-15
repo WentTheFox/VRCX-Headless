@@ -55,8 +55,8 @@ function renameBuild(arch, platform) {
             process.exit(1);
         }
     } else if (platform === 'win32') {
-        const oldSetup = path.join(buildDir, 'VRCX_Version.exe');
-        const newSetup = path.join(buildDir, `VRCX_${version}_Setup_${arch}.exe`);
+        const oldSetup = path.join(buildDir, 'VRCX_Headless_Version.exe');
+        const newSetup = path.join(buildDir, `VRCX_Headless_${version}_Setup_${arch}.exe`);
         try {
             if (fs.existsSync(oldSetup)) {
                 fs.renameSync(oldSetup, newSetup);
