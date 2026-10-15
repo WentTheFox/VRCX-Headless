@@ -59,7 +59,7 @@ async function downloadFile(url, targetPath) {
  */
 async function extractTarGz(tarGzPath, extractDir) {
     return new Promise((resolve, reject) => {
-        const tar = spawnSync('tar', ['-xzf', tarGzPath, '-C', extractDir, '--strip-components=1', '--force-local'], {
+        const tar = spawnSync('tar', ['-xzf', tarGzPath, '-C', extractDir, '--strip-components=1'], {
             stdio: 'inherit'
         });
 
@@ -83,14 +83,20 @@ async function extractZip(zipPath, extractDir) {
         // Windows ships bsdtar, which also handles zip archives.
         // The Windows runtime zip has a flat layout (no top-level folder),
         // so no --strip-components is needed.
-        const tar = spawnSync('tar', ['-xf', zipPath, '-C', extractDir, '--force-local'], {
-            stdio: 'inherit'
-        });
+        const ps = spawnSync(
+            'powershell',
+            [
+                '-NoProfile',
+                '-Command',
+                `Expand-Archive -LiteralPath "${zipPath}" -DestinationPath "${extractDir}" -Force`
+            ],
+            { stdio: 'inherit' }
+        );
 
-        if (tar.status === 0) {
+        if (ps.status === 0) {
             resolve();
         } else {
-            reject(new Error(`zip extraction failed with status ${tar.status}`));
+            reject(new Error(`zip extraction failed with status ${ps.status}`));
         }
     });
 }
