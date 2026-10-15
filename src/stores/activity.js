@@ -296,6 +296,10 @@ export const useActivityStore = defineStore('Activity', () => {
         return view;
     }
 
+    /**
+     * @param {string} userId
+     * @param {{ rangeDays?: number; limit?: number; sortBy?: 'time' | 'count'; excludeWorldId?: string }} options
+     */
     async function loadTopWorlds(userId, { rangeDays = 30, limit = 5, sortBy = 'time', excludeWorldId = '' }) {
         void userId;
         return database.getMyTopWorlds(rangeDays, limit, sortBy, excludeWorldId);
@@ -347,13 +351,21 @@ export const useActivityStore = defineStore('Activity', () => {
         };
     }
 
+    /**
+     * @param {{
+     *     userId: string;
+     *     rangeDays?: number;
+     *     limit?: number;
+     *     sortBy?: 'time' | 'count';
+     *     excludeWorldId?: string;
+     * }} options
+     */
     async function loadTopWorldsView({ userId, rangeDays = 30, limit = 5, sortBy = 'time', excludeWorldId = '' }) {
         return loadTopWorlds(userId, {
             rangeDays,
             limit,
             sortBy,
-            excludeWorldId,
-            isSelf: true
+            excludeWorldId
         });
     }
 

@@ -67,6 +67,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         toVersion: 0
     });
     const databaseReadyForAutoLogin = ref(false);
+    /** @type {(value?: unknown) => void} */
     let resolveDatabaseInit = () => {};
     const databaseInitComplete = new Promise((resolve) => {
         resolveDatabaseInit = resolve;
@@ -754,12 +755,10 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     // ran from Cef and Electron when browser is focused
     function onBrowserFocus() {
         isBrowserFocused.value = true;
-        console.log('Browser gained focus');
     }
 
     function onBrowserBlur() {
         isBrowserFocused.value = false;
-        console.log('Browser lost focus');
     }
 
     return {

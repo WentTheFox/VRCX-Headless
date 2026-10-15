@@ -227,6 +227,7 @@ export async function addGameLogEntry(gameLog, location) {
                 // skip
             } else if (friendStore.friends.has(userId) && typeof ref !== 'undefined') {
                 locationStore.lastLocation.friendList.set(userId, userMap);
+                friendStore.updateFriendLastSeen(userId, gameLog.dt);
                 if (
                     ref.location !== locationStore.lastLocation.location &&
                     ref.travelingToLocation !== locationStore.lastLocation.location
@@ -252,9 +253,10 @@ export async function addGameLogEntry(gameLog, location) {
             if (typeof ref1 === 'undefined') {
                 break;
             }
-            const time = dayjs(gameLog.dt) - ref1.joinTime;
+            const time = dayjs(gameLog.dt).valueOf() - ref1.joinTime;
             locationStore.lastLocation.playerList.delete(userId);
             locationStore.lastLocation.friendList.delete(userId);
+            friendStore.updateFriendLastSeen(userId, gameLog.dt);
             gameLogStore.state.lastLocationAvatarList.delete(gameLog.displayName);
             photonStore.photonLobbyAvatars.delete(userId);
             vrStore.updateVRLastLocation();

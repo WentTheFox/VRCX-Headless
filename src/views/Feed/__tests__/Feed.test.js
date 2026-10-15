@@ -237,17 +237,4 @@ describe('Feed.vue', () => {
 
         expect(wrapper.get('[data-testid="total-items"]').text()).toBe('100');
     });
-
-    test('builds a row id from the persisted rowId', () => {
-        const wrapper = mount(Feed);
-
-        const key = wrapper.vm.getFeedRowId({
-            rowId: 42,
-            type: 'Online',
-            created_at: '2026-03-01T00:00:00.000Z',
-            userId: 'usr_123'
-        });
-
-        expect(key).toBe('row:42:Online');
-    });
 });

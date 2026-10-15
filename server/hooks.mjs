@@ -110,7 +110,11 @@ export async function resolve(specifier, context, nextResolve) {
                 url: pathToFileURL(target).href,
                 // `src/**` is ESM-by-convention but lives under a package.json
                 // with no "type" field, so Node needs to be told explicitly.
-                format: target.startsWith(srcRoot) ? 'module' : undefined,
+                format: target.startsWith(srcRoot)
+                    ? target.endsWith('.ts')
+                        ? 'module-typescript'
+                        : 'module'
+                    : undefined,
                 shortCircuit: true
             };
         }

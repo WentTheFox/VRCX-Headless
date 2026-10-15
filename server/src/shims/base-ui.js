@@ -132,3 +132,6 @@ export const applyAppCjkFontPack = suppressed('applyAppCjkFontPack');
 export const formatJsonVars = (ref) => ref;
 export const changeHtmlLangAttribute = suppressed('changeHtmlLangAttribute');
 export const redirectToToolsTab = suppressed('redirectToToolsTab');
+// Only ever called from appearance.js's `if (LINUX)` Electron-theme branch, which the
+// server (LINUX === false) never takes; exported so the import still links.
+export const setSystemIsDarkMode = suppressed('setSystemIsDarkMode');

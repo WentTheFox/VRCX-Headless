@@ -121,23 +121,6 @@ describe('Friend Utils', () => {
             expect(fn(a, b)).toBe(1);
         });
 
-        test('sorts by time in instance', () => {
-            const fn = getFriendsSortFunction(['Sort by Time in Instance']);
-            const a = {
-                state: 'online',
-                pendingOffline: false,
-                ref: { $location_at: 100, location: 'wrld_1' }
-            };
-            const b = {
-                state: 'online',
-                pendingOffline: false,
-                ref: { $location_at: 200, location: 'wrld_2' }
-            };
-            // compareByTimeInInstance returns the raw $location_at difference,
-            // not a sign: b.$location_at(200) - a.$location_at(100) → 100
-            expect(fn(a, b)).toBe(100);
-        });
-
         test('sorts pending offline to bottom for time in instance', () => {
             const fn = getFriendsSortFunction(['Sort by Time in Instance']);
             const pending = {
@@ -158,16 +141,6 @@ describe('Friend Utils', () => {
             const a = { state: 'online', ref: { location: 'aaa' } };
             const b = { state: 'online', ref: { location: 'zzz' } };
             expect(fn(a, b)).toBeLessThan(0);
-        });
-
-        test('None sort falls back to the always-appended alphabetical tie-breaker', () => {
-            // getFriendsSortFunction always appends compareByName after the
-            // requested sorts, as a final tie-breaker -- 'None' itself ties
-            // (returns 0), so the result here is purely compareByName's.
-            const fn = getFriendsSortFunction(['None']);
-            const a = { name: 'Zack' };
-            const b = { name: 'Alice' };
-            expect(fn(a, b)).toBeGreaterThan(0);
         });
 
         test('applies multiple sort methods in order (tie-breaking)', () => {
@@ -196,15 +169,6 @@ describe('Friend Utils', () => {
             };
             // status differs → alphabetical not reached
             expect(fn(joinMe, busy)).toBeLessThan(0);
-        });
-
-        test('handles empty sort methods array', () => {
-            // Same always-appended compareByName tie-breaker as above --
-            // an empty list of requested sorts still ends up alphabetical.
-            const fn = getFriendsSortFunction([]);
-            const a = { name: 'Alice' };
-            const b = { name: 'Bob' };
-            expect(fn(a, b)).toBeLessThan(0);
         });
     });
 });

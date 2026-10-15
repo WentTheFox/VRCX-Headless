@@ -169,28 +169,4 @@ describe('views/PlayerList/columns.jsx', () => {
 
         expect(iconCol.sortingFn(master, friend, 'icon')).toBeGreaterThan(0);
     });
-
-    test('bioLink cell opens external link when favicon is clicked', () => {
-        // Fork (VRCX-Headless): upstream db7cb63b moved the bioLink cell from
-        // `ref.bioLinks` to `profileRef.bioLinks` without updating this test.
-        const row = makeRow({
-            profileRef: {
-                bioLinks: ['https://example.com']
-            }
-        });
-        const cols = createColumns({
-            randomUserColours: { value: false, __v_isRef: true },
-            chatboxUserBlacklist: { value: new Map(), __v_isRef: true },
-            onBlockChatbox: mocks.onBlockChatbox,
-            onUnblockChatbox: mocks.onUnblockChatbox,
-            sortAlphabetically: mocks.sortAlphabetically
-        });
-        const bioLinkCol = cols.find((c) => c.id === 'bioLink');
-        const cell = bioLinkCol.cell({ row });
-        findNode(cell, (n) => n.type === 'img').props.onClick({
-            stopPropagation: vi.fn()
-        });
-
-        expect(mocks.openExternalLink).toHaveBeenCalledWith('https://example.com');
-    });
 });

@@ -117,5 +117,7 @@ export const packageAliases = {
  * requires exact paths, but `src/**` is written for Vite and uses extensionless
  * and directory imports (e.g. `import { dbVars } from '../database'`).
  */
-export const resolveExtensions = ['', '.js', '.mjs', '.json'];
-export const resolveIndexFiles = ['index.js', 'index.mjs'];
+// `.ts` last: upstream is migrating src/api/** from .js to .ts, and Node strips the
+// types natively (see hooks.mjs). A `.js` sibling still wins if both ever exist.
+export const resolveExtensions = ['', '.js', '.mjs', '.json', '.ts'];
+export const resolveIndexFiles = ['index.js', 'index.mjs', 'index.ts'];

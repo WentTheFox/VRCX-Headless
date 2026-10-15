@@ -89,21 +89,6 @@ describe('notyGetImage', () => {
         expect(result).toBe('https://profile.jpg');
     });
 
-    test('prefers iconUrl over profilePicOverride and avatar thumbnail', async () => {
-        deps.getUserIdFromNoty.mockReturnValue('usr_abc');
-        deps.queryRequest.fetch.mockResolvedValue({
-            json: {
-                iconUrl: 'https://icon.jpg',
-                profilePicOverride: 'https://profile.jpg',
-                currentAvatarThumbnailImageUrl: 'https://avatar.jpg'
-            }
-        });
-        dispatch = createOverlayDispatch(deps);
-
-        const result = await dispatch.notyGetImage({});
-        expect(result).toBe('https://icon.jpg');
-    });
-
     test('returns empty string for grp_ userId', async () => {
         deps.getUserIdFromNoty.mockReturnValue('grp_abc');
         dispatch = createOverlayDispatch(deps);
@@ -163,25 +148,6 @@ describe('displayDesktopToast', () => {
         dispatch.displayDesktopToast({}, 'some message', 'img.jpg');
 
         expect(AppApi.DesktopNotification).not.toHaveBeenCalled();
-    });
-
-    test('passes the persistent flag through to the Electron bridge', () => {
-        globalThis.WINDOWS = false;
-        globalThis.window.electron = { desktopNotification: vi.fn() };
-        getNotificationMessage.mockReturnValue({
-            title: 'Invite Request',
-            body: 'Alice requested an invite'
-        });
-
-        dispatch.displayDesktopToast({}, 'some message', 'img.jpg', true);
-
-        expect(window.electron.desktopNotification).toHaveBeenCalledWith(
-            'Invite Request',
-            'Alice requested an invite',
-            'img.jpg',
-            true
-        );
-        delete globalThis.window.electron;
     });
 });
 

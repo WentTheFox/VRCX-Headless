@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     friends: new Map(),
-    cachedUsers: new Map(),
     setUserDialogMemo: vi.fn(),
     database: {
         getUserMemo: vi.fn(),
@@ -22,32 +21,15 @@ vi.mock('../../../stores', () => ({
         friends: mocks.friends
     }),
     useUserStore: () => ({
-        // saveUserMemo only pushes the memo into userDialog when the dialog
-        // is currently showing the same user -- every test in this file
-        // saves against 'usr_1', so the dialog stub matches that id.
-        get cachedUsers() {
-            return mocks.cachedUsers;
-        },
-        userDialog: { id: 'usr_1' },
         setUserDialogMemo: (...args) => mocks.setUserDialogMemo(...args)
     })
-}));
-
-vi.mock('../../../coordinators/searchIndexCoordinator', () => ({
-    syncFriendSearchIndex: vi.fn()
 }));
 
 vi.mock('../../../services/database', () => ({
     database: mocks.database
 }));
 
-import {
-    getAllUserMemos,
-    getUserMemo,
-    getWorldMemo,
-    migrateMemos,
-    saveUserMemo
-} from '../../../coordinators/memoCoordinator.js';
+import { getUserMemo, getWorldMemo, migrateMemos } from '../../../coordinators/memoCoordinator.js';
 
 describe('memos utils', () => {
     let consoleErrorSpy;
@@ -55,7 +37,6 @@ describe('memos utils', () => {
     beforeEach(() => {
         consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         mocks.friends = new Map();
-        mocks.cachedUsers = new Map();
         mocks.setUserDialogMemo.mockReset();
         mocks.database.getUserMemo.mockReset();
         mocks.database.setUserMemo.mockReset();
@@ -93,82 +74,6 @@ describe('memos utils', () => {
             editedAt: '',
             memo: ''
         });
-    });
-
-    test('saveUserMemo persists memo and syncs friend fields', async () => {
-        const friend = { $nickName: '' };
-        const user = { $memo: '' };
-        mocks.friends.set('usr_1', friend);
-        mocks.cachedUsers.set('usr_1', user);
-
-        await saveUserMemo('usr_1', 'Nick\nmore');
-
-        expect(mocks.database.setUserMemo).toHaveBeenCalledTimes(1);
-        expect(mocks.database.deleteUserMemo).not.toHaveBeenCalled();
-        expect(user.$memo).toBe('Nick\nmore');
-        expect(friend.$nickName).toBe('Nick');
-        expect(mocks.setUserDialogMemo).toHaveBeenCalledWith('Nick\nmore');
-    });
-
-    test('saveUserMemo deletes memo and clears nickname on empty input', async () => {
-        const friend = { $nickName: 'old' };
-        const user = { $memo: 'old' };
-        mocks.friends.set('usr_1', friend);
-        mocks.cachedUsers.set('usr_1', user);
-
-        await saveUserMemo('usr_1', '');
-
-        expect(mocks.database.deleteUserMemo).toHaveBeenCalledWith('usr_1');
-        expect(user.$memo).toBe('');
-        expect(friend.$nickName).toBe('');
-        expect(mocks.setUserDialogMemo).toHaveBeenCalledWith('');
-    });
-
-    test('getAllUserMemos applies memo data to existing cached friends', async () => {
-        const friend1 = { $nickName: '' };
-        const friend2 = { $nickName: '' };
-        const user1 = { $memo: '' };
-        const user2 = { $memo: '' };
-        mocks.cachedUsers.set('usr_1', user1);
-        mocks.cachedUsers.set('usr_2', user2);
-        mocks.friends.set('usr_1', friend1);
-        mocks.friends.set('usr_2', friend2);
-        mocks.database.getAllUserMemos.mockResolvedValue([
-            { userId: 'usr_1', memo: 'Alpha\nline2' },
-            { userId: 'usr_2', memo: '' },
-            { userId: 'usr_missing', memo: 'ignored' }
-        ]);
-
-        await getAllUserMemos();
-
-        expect(user1.$memo).toBe('Alpha\nline2');
-        expect(friend1.$nickName).toBe('Alpha');
-        expect(user2.$memo).toBe('');
-        expect(friend2.$nickName).toBe('');
-    });
-
-    test('migrateMemos moves memo_usr entries to database and storage cleanup', async () => {
-        const friend = { memo: '', $nickName: '' };
-        mocks.friends.set('usr_1', friend);
-        mocks.storage.GetAll.mockResolvedValue(
-            JSON.stringify({
-                memo_usr_1: 'hello',
-                other_key: 'x',
-                memo_usr_2: ''
-            })
-        );
-
-        await migrateMemos();
-
-        expect(mocks.database.setUserMemo).toHaveBeenCalledTimes(1);
-        expect(mocks.database.setUserMemo).toHaveBeenCalledWith(
-            expect.objectContaining({
-                userId: 'usr_1',
-                memo: 'hello'
-            })
-        );
-        expect(mocks.storage.Remove).toHaveBeenCalledWith('memo_usr_1');
-        expect(mocks.storage.Remove).not.toHaveBeenCalledWith('memo_usr_2');
     });
 
     test('migrateMemos rejects for invalid JSON payload', async () => {

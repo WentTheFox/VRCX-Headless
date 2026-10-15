@@ -17,6 +17,13 @@
                     ><Play />{{ t('view.settings.notifications.notifications.test_notification') }}</Button
                 >
             </SettingsItem>
+
+            <SettingsItem :label="t('view.settings.notifications.notifications.inventory_bundle_notifications')" toggle>
+                <Switch
+                    :model-value="inventoryBundleNotifications"
+                    :ariaLabel="t('view.settings.notifications.notifications.inventory_bundle_notifications')"
+                    @update:modelValue="setInventoryBundleNotifications" />
+            </SettingsItem>
         </SettingsGroup>
 
         <SettingsGroup :title="t('view.settings.notifications.notifications.desktop_notifications.header')">
@@ -189,6 +196,7 @@
         persistentInviteToast,
         notificationTTS,
         notificationTTSNickName,
+        inventoryBundleNotifications,
         isTestTTSVisible,
         notificationTTSTest,
         TTSvoices
@@ -199,6 +207,7 @@
         setAfkDesktopToast,
         setPersistentInviteToast,
         setNotificationTTSNickName,
+        setInventoryBundleNotifications,
         getTTSVoiceName,
         changeTTSVoice,
         saveNotificationTTS,

@@ -4,7 +4,14 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip';
 import { ArrowDown, ArrowRight, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-vue-next';
-import { formatDateFilter, getFaviconUrl, openExternalLink, statusClass, timeToText } from '../../shared/utils';
+import {
+    formatDateFilter,
+    getFaviconUrl,
+    openExternalLink,
+    replaceBioSymbols,
+    statusClass,
+    timeToText
+} from '../../shared/utils';
 import { i18n } from '../../plugins/i18n';
 import { useGalleryStore, useFriendStore } from '../../stores';
 import { showUserDialog } from '../../coordinators/userCoordinator';
@@ -153,7 +160,7 @@ const expandedRow = ({ row }) => {
             <div class="pl-5 text-sm">
                 <pre
                     class="text-xs leading-5.5 whitespace-pre-wrap font-[inherit]"
-                    innerHTML={formatDifference(original.previousBio, original.bio)}
+                    innerHTML={formatDifference(replaceBioSymbols(original.previousBio), replaceBioSymbols(original.bio))}
                 ></pre>
                 {links.length ? (
                     <div class="mt-1 flex flex-col gap-0.5 text-xs">
@@ -344,7 +351,7 @@ export const columns = [
             }
 
             if (type === 'Bio') {
-                return <span class="block w-full min-w-0 truncate">{original.bio}</span>;
+                return <span class="block w-full min-w-0 truncate">{replaceBioSymbols(original.bio)}</span>;
             }
 
             return null;
@@ -363,17 +370,14 @@ function getBioLinksDifference(previousLinks = [], links = []) {
 }
 
 /**
- * Function that format the differences between two strings with HTML tags markerStartTag and markerEndTag are optional,
- * if emitted, the differences will be highlighted with yellow and underlined.
+ * Builds an HTML-escaped word diff of two strings, wrapping removed and added words in the given markers.
  *
- * @param {any} s1
- * @param {any} s2
- * @param {any} markerStartTag
- * @param {any} markerEndTag
- * @returns An array that contains both the string 1 and string 2, which the differences are formatted with HTML tags
+ * @param {any} oldString
+ * @param {any} newString
+ * @param {string} [markerAddition] HTML template for added words; `{{text}}` is replaced with the words
+ * @param {string} [markerDeletion] HTML template for removed words; `{{text}}` is replaced with the words
+ * @returns {string} HTML string with newlines converted to `<br>`
  */
-
-//function getWordDifferences
 function formatDifference(
     oldString,
     newString,

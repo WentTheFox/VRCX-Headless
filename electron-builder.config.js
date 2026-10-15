@@ -99,6 +99,15 @@ module.exports = {
         executableName: 'VRCX',
         minimumSystemVersion: '14.0'
     },
+    win: {
+        // Upstream uses 'VRCX_Version.${ext}' here and renames it in rename-builds.js;
+        // the fork keeps electron-builder's own "<productName> Setup <version>" naming,
+        // which desktop-release.yaml then suffixes with the arch (so rename-builds.js's
+        // win32 branch never matches and is a harmless no-op here).
+        artifactName: '${productName} Setup ${version}.${ext}',
+        target: ['nsis'],
+        icon: 'images/VRCX.ico'
+    },
     toolsets: {
         appimage: '1.0.3'
     }

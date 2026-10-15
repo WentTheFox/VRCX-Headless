@@ -10,6 +10,7 @@ declare global {
 
     interface Window {
         $pinia: any;
+        $bridge: any;
         $vr: any;
         $debug: AppDebug;
         AppApi: AppApi;
@@ -39,6 +40,8 @@ declare global {
             getNoUpdater: () => Promise<boolean>;
             getCanSelfUpdate: () => Promise<boolean>;
             setTrayIconNotification: (notify: boolean) => Promise<void>;
+            setThemeSource: (source: 'system' | 'light' | 'dark') => Promise<void>;
+            onSystemThemeChanged: (Function: (event: any, isDark: boolean) => void) => () => void;
             openFileDialog: () => Promise<string>;
             openDirectoryDialog: () => Promise<string>;
             desktopNotification: (displayName: string, body?: string, image?: string) => Promise<void>;
@@ -111,6 +114,7 @@ declare global {
         Execute: (sql: string, args: string) => Promise<any[]>;
         ExecuteJson: (sql: string, args: string) => Promise<string>;
         ExecuteNonQuery: (sql: string, args: string) => Promise<Number>;
+        ExecuteInsert: (sql: string, args: string) => Promise<Number>;
     };
 
     const LogWatcher: {

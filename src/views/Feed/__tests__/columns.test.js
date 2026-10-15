@@ -20,6 +20,7 @@ vi.mock('../../../coordinators/userCoordinator', () => ({
 
 vi.mock('../../../shared/utils', () => ({
     formatDateFilter: (value) => value,
+    replaceBioSymbols: (value) => value,
     statusClass: (value) => value,
     timeToText: (value) => value
 }));

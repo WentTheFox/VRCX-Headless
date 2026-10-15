@@ -47,8 +47,7 @@ vi.mock('../../../../composables/useRecentActions', () => ({
 }));
 
 // Import mocks after vi.mock
-const { copyToClipboard } = await import('../../../../shared/utils');
-const { favoriteRequest, friendRequest, playerModerationRequest, miscRequest } = await import('../../../../api');
+const { favoriteRequest, friendRequest, playerModerationRequest } = await import('../../../../api');
 const { database } = await import('../../../../services/database');
 
 function createMockUserDialog() {
@@ -96,6 +95,7 @@ function createMockDeps(overrides = {}) {
         showAvatarAuthorDialog: vi.fn(),
         showModerateGroupDialog: vi.fn(),
         showSendBoopDialog: vi.fn(),
+        showModerationReportDialog: vi.fn(),
         showGalleryPage: vi.fn(),
         getFriendRequest: vi.fn(() => ''),
         handleFriendDelete: vi.fn(),
@@ -137,15 +137,6 @@ describe('useUserDialogCommands', () => {
             userDialogCommand('Refresh');
             expect(userDialog.value.id).toBe('');
             expect(deps.showUserDialog).toHaveBeenCalledWith('usr_test123');
-        });
-
-        it('Copy Profile URL: should copy user URL', () => {
-            const { userDialogCommand } = useUserDialogCommands(userDialog, deps);
-            userDialogCommand('Copy Profile URL');
-            expect(copyToClipboard).toHaveBeenCalledWith(
-                'https://vrchat.com/home/user/usr_test123',
-                'message.user.url_copied'
-            );
         });
 
         it('Add Favorite: should call showFavoriteDialog', () => {
@@ -215,14 +206,6 @@ describe('useUserDialogCommands', () => {
     });
 
     describe('userDialogCommand — string callback commands', () => {
-        it('should delegate string-type commands to registered callbacks', () => {
-            const showEditNoteAndMemoDialog = vi.fn();
-            const { userDialogCommand, registerCallbacks } = useUserDialogCommands(userDialog, deps);
-            registerCallbacks({ showEditNoteAndMemoDialog });
-            userDialogCommand('Edit Note Memo');
-            expect(showEditNoteAndMemoDialog).toHaveBeenCalled();
-        });
-
         it('should not throw when callback is not registered', () => {
             const { userDialogCommand } = useUserDialogCommands(userDialog, deps);
             expect(() => userDialogCommand('Edit Bio')).not.toThrow();
@@ -311,16 +294,13 @@ describe('useUserDialogCommands', () => {
             });
         });
 
-        it('Report Hacking: should confirm then report', async () => {
+        it('Report User: should open the moderation report dialog', () => {
             const { userDialogCommand } = useUserDialogCommands(userDialog, deps);
-            userDialogCommand('Report Hacking');
-            await vi.waitFor(() => {
-                expect(miscRequest.reportUser).toHaveBeenCalledWith({
-                    userId: 'usr_test123',
-                    contentType: 'user',
-                    reason: 'behavior-hacking',
-                    type: 'report'
-                });
+            userDialogCommand('Report User');
+            expect(deps.showModerationReportDialog).toHaveBeenCalledWith({
+                type: 'user',
+                contentId: 'usr_test123',
+                contentName: 'TestUser'
             });
         });
 

@@ -39,7 +39,8 @@ export const useGroupStore = defineStore('Group', () => {
             value: 'joinedAt:desc'
         },
         postsSearch: '',
-        galleries: {}
+        galleries: {},
+        listings: []
     });
 
     const groupEditDialog = ref({
@@ -52,7 +53,7 @@ export const useGroupStore = defineStore('Group', () => {
         shortCode: '',
         description: '',
         joinState: 'open',
-        privacy: 'public',
+        privacy: 'default',
         roleTemplate: 'default',
         roleTemplates: [],
         languages: [],
@@ -395,7 +396,7 @@ export const useGroupStore = defineStore('Group', () => {
             shortCode: '',
             description: '',
             joinState: 'open',
-            privacy: 'public',
+            privacy: 'default',
             roleTemplate: 'default',
             roleTemplates: [],
             languages: [],
@@ -442,7 +443,7 @@ export const useGroupStore = defineStore('Group', () => {
             shortCode: group.shortCode,
             description: group.description,
             joinState: group.joinState ?? 'open',
-            privacy: group.privacy ?? 'public',
+            privacy: group.privacy ?? 'default',
             roleTemplate: group.roleTemplate ?? 'default',
             roleTemplates: Array.isArray(group.roleTemplates) ? [...group.roleTemplates] : [],
             languages: Array.isArray(group.languages) ? [...group.languages] : [],

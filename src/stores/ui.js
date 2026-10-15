@@ -21,7 +21,6 @@ import { showAvatarDialog } from '../coordinators/avatarCoordinator';
 import { showUserDialog } from '../coordinators/userCoordinator';
 import { useInstanceStore } from './instance';
 import { useNotificationStore } from './notification';
-import { useNotificationsSettingsStore } from './settings/notifications';
 import { useSearchStore } from './search';
 import { useUserStore } from './user';
 import { useWorldStore } from './world';
@@ -215,6 +214,7 @@ export const useUiStore = defineStore('Ui', () => {
      * @param {string} data.id
      * @param {string} [data.tag]
      * @param {string} [data.shortName]
+     * @param {string} [data.label]
      * @returns {boolean}
      */
     function openDialog(data) {

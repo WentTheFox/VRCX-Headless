@@ -27,6 +27,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     const persistentInviteToast = ref(false);
     const notificationTTS = ref('Never');
     const notificationTTSNickName = ref(false);
+    const inventoryBundleNotifications = ref(true);
     const sharedFeedFilters = ref({
         noty: {
             Location: 'Off',
@@ -139,6 +140,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             persistentInviteToastConfig,
             notificationTTSConfig,
             notificationTTSNickNameConfig,
+            inventoryBundleNotificationsConfig,
             sharedFeedFiltersConfig,
             notificationTTSVoiceConfig,
             notificationPositionConfig,
@@ -157,6 +159,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             configRepository.getBool('VRCX_persistentInviteToast', false),
             configRepository.getString('VRCX_notificationTTS', 'Never'),
             configRepository.getBool('VRCX_notificationTTSNickName', false),
+            configRepository.getBool('VRCX_inventoryBundleNotifications', true),
             configRepository.getString('sharedFeedFilters', JSON.stringify(sharedFeedFiltersDefaults)),
             configRepository.getString('VRCX_notificationTTSVoice', '0'),
             configRepository.getString('VRCX_notificationPosition', 'topCenter'),
@@ -185,6 +188,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         persistentInviteToast.value = persistentInviteToastConfig;
         notificationTTS.value = notificationTTSConfig;
         notificationTTSNickName.value = notificationTTSNickNameConfig;
+        inventoryBundleNotifications.value = inventoryBundleNotificationsConfig;
         sharedFeedFilters.value = JSON.parse(sharedFeedFiltersConfig);
         notificationTTSVoice.value = Number(notificationTTSVoiceConfig);
         TTSvoices.value = speechSynthesis.getVoices();
@@ -267,6 +271,10 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     function setNotificationTTSNickName() {
         notificationTTSNickName.value = !notificationTTSNickName.value;
         configRepository.setBool('VRCX_notificationTTSNickName', notificationTTSNickName.value);
+    }
+    function setInventoryBundleNotifications() {
+        inventoryBundleNotifications.value = !inventoryBundleNotifications.value;
+        configRepository.setBool('VRCX_inventoryBundleNotifications', inventoryBundleNotifications.value);
     }
     function initSharedFeedFilters() {
         if (!sharedFeedFilters.value.noty.Blocked) {
@@ -419,13 +427,13 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
                 description: t('prompt.notification_timeout.description'),
                 confirmText: t('prompt.notification_timeout.ok'),
                 cancelText: t('prompt.notification_timeout.cancel'),
-                inputValue: notificationTimeout.value / 1000,
+                inputValue: String(notificationTimeout.value / 1000),
                 pattern: /\d+$/,
                 errorMessage: t('prompt.notification_timeout.input_error')
             })
             .then(async ({ ok, value }) => {
                 if (!ok) return;
-                if (value && !isNaN(value)) {
+                if (value && !isNaN(Number(value))) {
                     notificationTimeout.value = Math.trunc(Number(value) * 1000);
                     await configRepository.setString('VRCX_notificationTimeout', notificationTimeout.value.toString());
                     vrStore.updateVRConfigVars();
@@ -448,6 +456,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         persistentInviteToast,
         notificationTTS,
         notificationTTSNickName,
+        inventoryBundleNotifications,
         sharedFeedFilters,
         isTestTTSVisible,
         notificationTTSVoice,
@@ -469,6 +478,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         setPersistentInviteToast,
         setNotificationTTS,
         setNotificationTTSNickName,
+        setInventoryBundleNotifications,
         getTTSVoiceName,
         changeTTSVoice,
         saveNotificationTTS,

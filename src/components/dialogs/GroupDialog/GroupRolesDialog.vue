@@ -43,7 +43,7 @@
                                 :key="role.id"
                                 :index="index"
                                 :group="section.group"
-                                :draggable="canManage && !isFixedRole(role)"
+                                :draggable="canManage && !isLockedRole(role)"
                                 :disabled="groupRolesDialog.loading"
                                 :class="{ 'bg-accent': form.mode === 'edit' && form.roleId === role.id }"
                                 @click="selectRole(role)">
@@ -77,9 +77,15 @@
                                             class="text-[10px] px-1 py-0">
                                             {{ t('dialog.group_roles.requires_two_factor') }}
                                         </Badge>
+                                        <Badge
+                                            v-if="role.requiresPurchase"
+                                            variant="outline"
+                                            class="text-[10px] px-1 py-0">
+                                            {{ t('dialog.group_roles.requires_purchase') }}
+                                        </Badge>
                                     </div>
                                 </div>
-                                <div v-if="canManage && !isFixedRole(role)" class="flex shrink-0" @click.stop>
+                                <div v-if="canManage && !isLockedRole(role)" class="flex shrink-0" @click.stop>
                                     <TooltipWrapper :content="t('dialog.group_roles.delete')" :delayDuration="500">
                                         <Button
                                             variant="ghost"
@@ -110,7 +116,7 @@
                                         v-model="form.name"
                                         size="sm"
                                         :maxlength="64"
-                                        :disabled="isReadOnly"
+                                        :disabled="isDetailsReadOnly"
                                         show-count />
                                 </FieldContent>
                             </Field>
@@ -122,7 +128,7 @@
                                         v-model="form.description"
                                         :rows="3"
                                         :maxlength="512"
-                                        :disabled="isReadOnly"
+                                        :disabled="isDetailsReadOnly"
                                         show-count />
                                 </FieldContent>
                             </Field>
@@ -130,7 +136,7 @@
                             <div class="flex flex-col gap-0.5">
                                 <label
                                     class="inline-flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50">
-                                    <Checkbox v-model="form.isSelfAssignable" :disabled="isReadOnly" />
+                                    <Checkbox v-model="form.isSelfAssignable" :disabled="isFlagsReadOnly" />
                                     <span class="space-y-1">
                                         <span class="block text-sm">{{ t('dialog.group_roles.self_assignable') }}</span>
                                         <span class="block text-xs text-muted-foreground">
@@ -140,7 +146,7 @@
                                 </label>
                                 <label
                                     class="inline-flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50">
-                                    <Checkbox v-model="form.isAddedOnJoin" :disabled="isReadOnly" />
+                                    <Checkbox v-model="form.isAddedOnJoin" :disabled="isFlagsReadOnly" />
                                     <span class="space-y-1">
                                         <span class="block text-sm">{{ t('dialog.group_roles.added_on_join') }}</span>
                                         <span class="block text-xs text-muted-foreground">
@@ -150,13 +156,25 @@
                                 </label>
                                 <label
                                     class="inline-flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50">
-                                    <Checkbox v-model="form.requiresTwoFactor" :disabled="isReadOnly" />
+                                    <Checkbox v-model="form.requiresTwoFactor" :disabled="isDetailsReadOnly" />
                                     <span class="space-y-1">
                                         <span class="block text-sm">{{
                                             t('dialog.group_roles.requires_two_factor')
                                         }}</span>
                                         <span class="block text-xs text-muted-foreground">
                                             {{ t('dialog.group_roles.requires_two_factor_description') }}
+                                        </span>
+                                    </span>
+                                </label>
+                                <label
+                                    class="inline-flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50">
+                                    <Checkbox v-model="form.requiresPurchase" :disabled="isFlagsReadOnly" />
+                                    <span class="space-y-1">
+                                        <span class="block text-sm">{{
+                                            t('dialog.group_roles.requires_purchase')
+                                        }}</span>
+                                        <span class="block text-xs text-muted-foreground">
+                                            {{ t('dialog.group_roles.requires_purchase_description') }}
                                         </span>
                                     </span>
                                 </label>
@@ -172,7 +190,7 @@
                                             class="inline-flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50">
                                             <Checkbox
                                                 :model-value="hasPermission(permission.name)"
-                                                :disabled="isReadOnly || !permission.allowedToAdd"
+                                                :disabled="isPermissionsReadOnly || !permission.allowedToAdd"
                                                 @update:model-value="togglePermission(permission.name, $event)" />
                                             <span class="space-y-1">
                                                 <span class="block text-sm">
@@ -198,7 +216,7 @@
                                             class="inline-flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50">
                                             <Checkbox
                                                 :model-value="hasPermission(permission.name)"
-                                                :disabled="isReadOnly || !permission.allowedToAdd"
+                                                :disabled="isPermissionsReadOnly || !permission.allowedToAdd"
                                                 @update:model-value="togglePermission(permission.name, $event)" />
                                             <span class="space-y-1">
                                                 <span class="block text-sm">
@@ -217,6 +235,21 @@
                     </div>
 
                     <div class="flex justify-end gap-2 pt-4">
+                        <Button
+                            v-if="selectedRole && canToggleSelfRole(selectedRole)"
+                            class="mr-auto"
+                            variant="outline"
+                            :disabled="groupRolesDialog.loading"
+                            @click="toggleSelfRole(selectedRole)">
+                            <template v-if="isMyRole(selectedRole)">
+                                <UserMinus />
+                                {{ t('dialog.group_roles.remove_self') }}
+                            </template>
+                            <template v-else>
+                                <UserPlus />
+                                {{ t('dialog.group_roles.add_self') }}
+                            </template>
+                        </Button>
                         <Button variant="outline" :disabled="groupRolesDialog.loading" @click="cancelEdit">
                             {{ t('dialog.group_roles.cancel') }}
                         </Button>
@@ -231,7 +264,7 @@
 </template>
 
 <script setup>
-    import { Plus, RefreshCw, Trash2 } from 'lucide-vue-next';
+    import { Plus, RefreshCw, Trash2, UserMinus, UserPlus } from 'lucide-vue-next';
     import { computed, ref, watch } from 'vue';
     import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
     import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -247,7 +280,7 @@
     import { toast } from 'vue-sonner';
     import { useI18n } from 'vue-i18n';
 
-    import { useGroupStore, useModalStore } from '../../../stores';
+    import { useGroupStore, useModalStore, useUserStore } from '../../../stores';
     import { groupRequest } from '../../../api';
     import { hasGroupPermission } from '../../../shared/utils';
     import { loadGroupRolesDialogRoles } from '../../../coordinators/groupCoordinator';
@@ -257,6 +290,7 @@
     const { t } = useI18n();
     const modalStore = useModalStore();
     const { groupRolesDialog } = storeToRefs(useGroupStore());
+    const { currentUser } = storeToRefs(useUserStore());
 
     const form = ref(createBlankForm());
     const listKey = ref(0);
@@ -277,15 +311,27 @@
     );
 
     const canManage = computed(() => hasGroupPermission(groupRolesDialog.value.groupRef, 'group-roles-manage'));
+    const canAssignRoles = computed(() => hasGroupPermission(groupRolesDialog.value.groupRef, 'group-roles-assign'));
     const canManageDefaultRole = computed(() =>
         hasGroupPermission(groupRolesDialog.value.groupRef, 'group-default-role-manage')
     );
+    const myHighestRoleOrder = computed(() => {
+        const roleIds = groupRolesDialog.value.groupRef?.myMember?.roleIds ?? [];
+        const orders = groupRolesDialog.value.roles
+            .filter((role) => roleIds.includes(role.id))
+            .map((role) => role.order);
+        return Math.min(...orders);
+    });
+    const selectedRole = computed(() => groupRolesDialog.value.roles.find((role) => role.id === form.value.roleId));
     const isReadOnly = computed(
         () =>
             (form.value.isDefaultRole ? !canManageDefaultRole.value : !canManage.value) ||
-            form.value.isManagementRole ||
+            (form.value.mode === 'edit' && selectedRole.value && !canModifyRole(selectedRole.value)) ||
             groupRolesDialog.value.loading
     );
+    const isDetailsReadOnly = computed(() => isReadOnly.value || form.value.isDefaultRole);
+    const isFlagsReadOnly = computed(() => isDetailsReadOnly.value || form.value.isOwnerRole);
+    const isPermissionsReadOnly = computed(() => isReadOnly.value || form.value.isOwnerRole);
     const canSave = computed(() => !isReadOnly.value && form.value.name.trim().length > 0);
 
     const assignablePermissions = computed(() =>
@@ -307,8 +353,10 @@
             isSelfAssignable: false,
             isAddedOnJoin: false,
             requiresTwoFactor: false,
+            requiresPurchase: false,
             isManagementRole: false,
             isDefaultRole: false,
+            isOwnerRole: false,
             permissions: []
         };
     }
@@ -329,8 +377,10 @@
             isSelfAssignable: role.isSelfAssignable === true,
             isAddedOnJoin: role.isAddedOnJoin === true,
             requiresTwoFactor: role.requiresTwoFactor === true,
+            requiresPurchase: role.requiresPurchase === true,
             isManagementRole: role.isManagementRole === true,
             isDefaultRole: role.defaultRole === true,
+            isOwnerRole: isOwnerRole(role),
             permissions: Array.isArray(role.permissions) ? [...role.permissions] : []
         };
     }
@@ -381,15 +431,21 @@
             return;
         }
         const D = groupRolesDialog.value;
-        const params = {
-            groupId: D.id,
-            name: form.value.name.trim(),
-            description: form.value.description,
-            isSelfAssignable: form.value.isSelfAssignable,
-            isAddedOnJoin: form.value.isAddedOnJoin,
-            requiresTwoFactor: form.value.requiresTwoFactor,
-            permissions: [...form.value.permissions]
-        };
+        /** @type {any} */
+        const params = { groupId: D.id };
+        if (!isDetailsReadOnly.value) {
+            params.name = form.value.name.trim();
+            params.description = form.value.description;
+            params.requiresTwoFactor = form.value.requiresTwoFactor;
+        }
+        if (!isFlagsReadOnly.value) {
+            params.isSelfAssignable = form.value.isSelfAssignable;
+            params.isAddedOnJoin = form.value.isAddedOnJoin;
+            params.requiresPurchase = form.value.requiresPurchase;
+        }
+        if (!isPermissionsReadOnly.value) {
+            params.permissions = [...form.value.permissions];
+        }
         D.loading = true;
         try {
             let roleId = form.value.roleId;
@@ -447,7 +503,37 @@
      * @returns {boolean}
      */
     function isFixedRole(role) {
-        return role.defaultRole === true || (Array.isArray(role.permissions) && role.permissions.includes('*'));
+        return role.defaultRole === true || isOwnerRole(role);
+    }
+
+    /**
+     * @param {object} role
+     * @returns {boolean}
+     */
+    function isOwnerRole(role) {
+        return Array.isArray(role.permissions) && role.permissions.includes('*');
+    }
+
+    /**
+     * @param {object} role
+     * @returns {boolean}
+     */
+    function canModifyRole(role) {
+        if (role.defaultRole === true) {
+            return true;
+        }
+        if (isOwnerRole(role)) {
+            return isMyRole(role);
+        }
+        return role.order > myHighestRoleOrder.value;
+    }
+
+    /**
+     * @param {object} role
+     * @returns {boolean}
+     */
+    function isLockedRole(role) {
+        return isFixedRole(role) || !canModifyRole(role);
     }
 
     /**
@@ -457,6 +543,46 @@
     function isMyRole(role) {
         const roleIds = groupRolesDialog.value.groupRef?.myMember?.roleIds;
         return Array.isArray(roleIds) && roleIds.includes(role.id);
+    }
+
+    /**
+     * @param {object} role
+     * @returns {boolean}
+     */
+    function canToggleSelfRole(role) {
+        if (role.defaultRole === true || isOwnerRole(role)) {
+            return false;
+        }
+        if (groupRolesDialog.value.groupRef?.myMember?.membershipStatus !== 'member') {
+            return false;
+        }
+        return role.isSelfAssignable === true || (canAssignRoles.value && role.order > myHighestRoleOrder.value);
+    }
+
+    /**
+     * @param {object} role
+     */
+    async function toggleSelfRole(role) {
+        const D = groupRolesDialog.value;
+        const isRemoving = isMyRole(role);
+        const params = { groupId: D.id, userId: currentUser.value.id, roleId: role.id };
+        D.loading = true;
+        try {
+            const args = isRemoving
+                ? await groupRequest.removeGroupMemberRole(params)
+                : await groupRequest.addGroupMemberRole(params);
+            if (D.id === params.groupId && D.groupRef?.myMember) {
+                D.groupRef.myMember.roleIds = args.json;
+            }
+            toast.success(
+                isRemoving ? t('dialog.group_roles.self_role_removed') : t('dialog.group_roles.self_role_added')
+            );
+        } catch (error) {
+            console.error('Failed to update own group role:', error);
+            toast.error(t('dialog.group_roles.self_role_failed'));
+        } finally {
+            D.loading = false;
+        }
     }
 
     /**
@@ -486,7 +612,7 @@
         const reordered = roleSections.value.flatMap((section) =>
             section.group === group ? sectionRoles : section.roles
         );
-        if (reordered.some((role, i) => isFixedRole(role) && role.id !== roles[i].id)) {
+        if (reordered.some((role, i) => isLockedRole(role) && role.id !== roles[i].id)) {
             listKey.value++;
             return;
         }

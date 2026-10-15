@@ -14,9 +14,10 @@ describe('sanitizeUserJson', () => {
             note: 'test＠ note'
         };
         sanitizeUserJson(json, '');
-        // replaceBioSymbols replaces Unicode look-alikes with ASCII
+        // replaceBioSymbols replaces Unicode look-alikes with ASCII; bio is intentionally
+        // left alone here now (upstream applies it at display time, not on ingest)
         expect(json.statusDescription).toContain('?');
-        expect(json.bio).toContain('#');
+        expect(json.bio).toBe('test＃ bio');
         expect(json.note).toContain('@');
     });
 

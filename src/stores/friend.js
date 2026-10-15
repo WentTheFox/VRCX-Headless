@@ -247,7 +247,7 @@ export const useFriendStore = defineStore('Friend', () => {
 
     const friendLogTable = ref({
         data: [],
-        filters: [
+        filters: /** @type {import('@/types/vrcx').TableFilter[]} */ ([
             {
                 prop: 'type',
                 value: []
@@ -261,7 +261,7 @@ export const useFriendStore = defineStore('Friend', () => {
                 value: false,
                 filterFn: (row, filter) => !(filter.value && row.type === 'Unfriend')
             }
-        ],
+        ]),
         pageSizeLinked: true,
         loading: false
     });
@@ -799,6 +799,19 @@ export const useFriendStore = defineStore('Friend', () => {
         });
     }
 
+    /**
+     * @param {string} userId
+     * @param {string} lastSeen
+     */
+    function updateFriendLastSeen(userId, lastSeen) {
+        const ctx = friends.get(userId);
+        if (!ctx?.ref || !lastSeen) {
+            return;
+        }
+        ctx.ref.$lastSeen = lastSeen;
+        reindexSortedFriend(ctx);
+    }
+
     async function getAllUserMutualCount() {
         if (!friends.size) {
             return;
@@ -1279,6 +1292,7 @@ export const useFriendStore = defineStore('Friend', () => {
         refreshFriends,
         updateOnlineFriendCounter,
         getAllUserStats,
+        updateFriendLastSeen,
         getAllUserMutualCount,
         getAllUserMutualOptedOut,
         initFriendLog,

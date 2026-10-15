@@ -7,7 +7,7 @@
             </Button>
             <span class="header">{{ t('dialog.gallery_icons.header') }}</span>
         </div>
-        <TabsUnderline default-value="gallery" :items="galleryTabs" :unmount-on-hide="false">
+        <TabsUnderline v-model="activeTab" :items="galleryTabs" :unmount-on-hide="false">
             <template #label-gallery>
                 <span>
                     {{ t('dialog.gallery_icons.gallery') }}
@@ -616,7 +616,7 @@
         NumberFieldIncrement,
         NumberFieldInput
     } from '@/components/ui/number-field';
-    import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+    import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
     import { Button } from '@/components/ui/button';
     import { ButtonGroup } from '@/components/ui/button-group';
     import { Checkbox } from '@/components/ui/checkbox';
@@ -636,7 +636,7 @@
     import { storeToRefs } from 'pinia';
     import { toast } from 'vue-sonner';
     import { useI18n } from 'vue-i18n';
-    import { useRouter } from 'vue-router';
+    import { useRoute, useRouter } from 'vue-router';
 
     import {
         extractFileId,
@@ -658,6 +658,17 @@
 
     const { t } = useI18n();
     const router = useRouter();
+    const route = useRoute();
+    const activeTab = ref(String(route.query.tab || 'gallery'));
+
+    watch(
+        () => route.query.tab,
+        (tab) => {
+            if (tab) {
+                activeTab.value = String(tab);
+            }
+        }
+    );
     const modalStore = useModalStore();
 
     const {
@@ -1043,9 +1054,12 @@
     }
 
     async function uploadEmoji(base64Body) {
+        /** @type {Omit<NonNullable<import('vrchat').UploadImage['body']>, 'file'>} */
         const params = {
             tag: emojiAnimType.value ? 'emojianimated' : 'emoji',
-            animationStyle: emojiAnimationStyle.value.toLowerCase(),
+            animationStyle: /** @type {import('vrchat').ImageAnimationStyle} */ (
+                emojiAnimationStyle.value.toLowerCase()
+            ),
             maskTag: 'square'
         };
         if (emojiAnimType.value) {
@@ -1090,6 +1104,7 @@
     }
 
     async function uploadSticker(base64Body) {
+        /** @type {Omit<NonNullable<import('vrchat').UploadImage['body']>, 'file'>} */
         const params = {
             tag: 'sticker',
             maskTag: 'square'

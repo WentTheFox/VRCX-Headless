@@ -10,6 +10,12 @@
 # days. Applies to installs, not to what's already pinned in pnpm-lock.yaml.
 minimumReleaseAge: 20160
 
+# `vrchat` is a type-only devDependency (every import is `import type`, so it never
+# runs or ships) that upstream pins to a nightly. Exempted from the age rule only so
+# the 2026-10-15 upstream sync can install; remove this once it is older than 14 days.
+minimumReleaseAgeExclude:
+    - vrchat
+
 # Migrated from package.json's old `allowScripts` field (same 5 packages,
 # all previously `true`) — pnpm blocks a dependency's install/postinstall
 # scripts by default unless explicitly approved here. All five are

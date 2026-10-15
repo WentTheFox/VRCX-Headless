@@ -50,7 +50,7 @@ function applyGroupLanguage(ref) {
 
 /**
  * @param {object} json
- * @returns {object} Ref
+ * @returns {import('@/types/vrcx').VrcxGroup}
  */
 export function applyGroup(json) {
     const groupStore = useGroupStore();
@@ -109,7 +109,6 @@ export function applyGroup(json) {
     if (typeof json.roleIds !== 'undefined') {
         ref.myMember.roleIds = json.roleIds;
     }
-    ref.$url = `https://vrc.group/${ref.shortCode}.${ref.discriminator}`;
     applyGroupLanguage(ref);
 
     const currentUserGroupRef = groupStore.currentUserGroups.get(ref.id);
@@ -155,17 +154,25 @@ export function applyGroupMember(json) {
     if (json?.userId === userStore.currentUser.id) {
         ref = groupStore.cachedGroups.get(json.groupId);
         if (typeof ref !== 'undefined') {
-            const newJson = {
-                id: json.groupId,
-                memberVisibility: json.visibility,
+            /** @type {import('@/types/vrcx').Json<import('vrchat').GroupMyMember>} */
+            const groupMember = {
+                ...ref.myMember,
+                id: json.id,
                 isRepresenting: json.isRepresenting,
                 isSubscribedToAnnouncements: json.isSubscribedToAnnouncements,
                 isSubscribedToEventAnnouncements: json.isSubscribedToEventAnnouncements,
                 joinedAt: json.joinedAt,
+                lastPostReadAt: json.lastPostReadAt,
+                mRoleIds: json.mRoleIds,
+                membershipStatus: json.membershipStatus,
                 roleIds: json.roleIds,
-                membershipStatus: json.membershipStatus
+                userId: json.userId,
+                visibility: json.visibility
             };
-            applyGroup(newJson);
+            applyGroup({
+                id: json.groupId,
+                myMember: groupMember
+            });
         }
     }
 
@@ -297,6 +304,7 @@ export function showGroupDialog(groupId, options = {}) {
     D.memberSearch = '';
     D.memberSearchResults = [];
     D.galleries = {};
+    D.listings = [];
     D.members = [];
     D.memberFilter = FILTER_EVERYONE;
     D.calendar = [];
@@ -564,7 +572,7 @@ export function getGroupDialogGroup(groupId, existingRef) {
     D.isGetGroupDialogGroupLoading = false;
 
     const refPromise = existingRef
-        ? Promise.resolve({ ref: existingRef })
+        ? Promise.resolve({ ref: existingRef, args: undefined })
         : queryRequest
               .fetch('group.dialog', { groupId, includeRoles: true })
               .then((args) => ({ ref: applyGroup(args.json), args }));
@@ -833,7 +841,7 @@ export async function updateInGameGroupOrder() {
         if (!json) {
             return;
         }
-        groupStore.setInGameGroupOrder(JSON.parse(json));
+        groupStore.setInGameGroupOrder(JSON.parse(String(json)));
     } catch (err) {
         console.error(err);
     }

@@ -85,6 +85,7 @@ describe('createDefaultNotificationRef', () => {
         expect(ref).toEqual({
             id: '',
             senderUserId: '',
+            receiverUserId: '',
             senderUsername: '',
             type: '',
             message: '',

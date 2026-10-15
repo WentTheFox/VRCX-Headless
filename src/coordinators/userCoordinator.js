@@ -59,8 +59,8 @@ import { useFeedStore } from '../stores/feed';
 const getRobotUrl = () => `${AppDebug.endpointDomain}/file/file_0e8c4e32-7444-44ea-ade4-313c010d4bae/1/file`;
 
 /**
- * @param {import('../types/api/profile').publicProfile & { $lastFetch?: number }} json
- * @returns {import('../types/api/profile').publicProfile & { $lastFetch?: number }}
+ * @param {import('@/types/vrcx').Json<import('vrchat').PublicProfile> & { $lastFetch?: number }} json
+ * @returns {import('@/types/vrcx').Json<import('vrchat').PublicProfile> & { $lastFetch?: number }}
  */
 export function applyPublicProfile(json) {
     const { cachedProfiles } = useUserStore();
@@ -149,8 +149,8 @@ async function refreshStaleUserProfile(userId) {
 }
 
 /**
- * @param {import('../types/api/user').GetUserResponse} json
- * @returns {import('../types/api/user').VrcxUser}
+ * @param {import('@/types/vrcx').Json<import('vrchat').User>} json
+ * @returns {import('@/types/vrcx').VrcxUser}
  */
 export function applyUser(json) {
     const userStore = useUserStore();
@@ -755,8 +755,8 @@ export function handleConfig(args) {
 }
 
 /**
- * @param {import('../types/api/user').GetCurrentUserResponse} json
- * @returns {import('../types/api/user').VrcxCurrentUser}
+ * @param {import('@/types/vrcx').Json<import('vrchat').CurrentUser>} json
+ * @returns {import('@/types/vrcx').VrcxCurrentUser}
  */
 export function applyCurrentUser(json) {
     const userStore = useUserStore();
@@ -766,7 +766,7 @@ export function applyCurrentUser(json) {
     const locationStore = useLocationStore();
 
     authStore.setAttemptingAutoLogin(false);
-    let ref = /** @type {import('../types/api/user').VrcxCurrentUser} */ (userStore.currentUser);
+    let ref = /** @type {import('@/types/vrcx').VrcxCurrentUser} */ (userStore.currentUser);
     runAvatarSwapFlow({
         json,
         ref,
@@ -779,11 +779,12 @@ export function applyCurrentUser(json) {
             }
         }
     } else {
-        ref = /** @type {import('../types/api/user').VrcxCurrentUser} */ ({
+        ref = /** @type {import('@/types/vrcx').VrcxCurrentUser} */ ({
             acceptedPrivacyVersion: 0,
             acceptedTOSVersion: 0,
             accountDeletionDate: null,
             accountDeletionLog: null,
+            accountStanding: '',
             activeFriends: [],
             ageVerificationStatus: '',
             ageVerified: false,
@@ -1111,9 +1112,11 @@ export function updateAutoStateChange() {
     }
 
     const currentStatus = userStore.currentUser.status;
-    const newStatus = withCompany
-        ? generalSettingsStore.autoStateChangeCompanyStatus
-        : generalSettingsStore.autoStateChangeAloneStatus;
+    const newStatus = /** @type {import('vrchat').UserStatus} */ (
+        withCompany
+            ? generalSettingsStore.autoStateChangeCompanyStatus
+            : generalSettingsStore.autoStateChangeAloneStatus
+    );
 
     if (currentStatus === newStatus) {
         return;

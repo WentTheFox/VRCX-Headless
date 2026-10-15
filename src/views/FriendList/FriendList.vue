@@ -164,7 +164,7 @@
     import { Toggle } from '../../components/ui/toggle';
     import { TooltipWrapper } from '../../components/ui/tooltip';
     import { createColumns } from './columns.jsx';
-    import { localeIncludes } from '../../shared/utils';
+    import { localeIncludes, replaceBioSymbols } from '../../shared/utils';
     import removeConfusables, { removeWhitespace } from '../../services/confusables';
     import { useVrcxVueTable } from '../../lib/table/useVrcxVueTable';
     import { showUserDialog } from '../../coordinators/userCoordinator';
@@ -215,7 +215,7 @@
     const friendProfiles = shallowRef(new Map());
     const FRIEND_LIST_SEARCH_DEBOUNCE_MS = 150;
     const FRIEND_STATS_REFRESH_INTERVAL_MS = 30000;
-    let friendsListSearchTimer = 0;
+    let friendsListSearchTimer = null;
     let friendStatsRefreshInFlight = null;
     let lastFriendStatsRefreshAt = 0;
     let lastFriendStatsRefreshKey = '';
@@ -362,7 +362,7 @@
             clearTimeout(friendsListSearchTimer);
         }
         friendsListSearchTimer = setTimeout(() => {
-            friendsListSearchTimer = 0;
+            friendsListSearchTimer = null;
             applyFriendsListSearchChange();
         }, FRIEND_LIST_SEARCH_DEBOUNCE_MS);
     }
@@ -370,7 +370,7 @@
     function friendsListSearchChange() {
         if (friendsListSearchTimer) {
             clearTimeout(friendsListSearchTimer);
-            friendsListSearchTimer = 0;
+            friendsListSearchTimer = null;
         }
         applyFriendsListSearchChange();
     }
@@ -397,7 +397,7 @@
         }
         const entry = {
             signature,
-            bio: friendProfiles.value.get(ctx.id)?.bio ?? '',
+            bio: replaceBioSymbols(friendProfiles.value.get(ctx.id)?.bio),
             displayName: ctx.ref.displayName ?? '',
             memo: ctx.ref.$memo ?? '',
             normalizedDisplayName: removeConfusables(ctx.ref.displayName ?? ''),
@@ -519,9 +519,15 @@
     }
 
     async function friendsListLoadUsers() {
+        await loadFriendProfiles();
         const toFetch = Array.from(friends.value.values())
-            .filter((ctx) => ctx.ref && !ctx.ref.date_joined)
-            .map((ctx) => ctx.id);
+            .filter((ctx) => ctx.ref)
+            .map((ctx) => ({
+                userId: ctx.id,
+                needsUser: !ctx.ref.date_joined,
+                needsProfile: !friendProfiles.value.has(ctx.id)
+            }))
+            .filter((item) => item.needsUser || item.needsProfile);
         const total = toFetch.length;
         friendsListLoadingTotal.value = total;
         friendsListLoadingCurrent.value = 0;
@@ -532,19 +538,25 @@
         friendsListLoading.value = true;
         friendsListLoadDialogVisible.value = true;
         let cancelled = false;
-        for (const userId of toFetch) {
+        for (const { userId, needsUser, needsProfile } of toFetch) {
             if (!friendsListLoading.value) {
                 cancelled = true;
                 break;
             }
             friendsListLoadingCurrent.value += 1;
             try {
-                await userRequest.getUser({ userId });
+                if (needsUser) {
+                    await userRequest.getUser({ userId });
+                }
+                if (needsProfile) {
+                    await userRequest.getPublicProfile({ userId });
+                }
             } catch (err) {
                 console.error(err);
             }
         }
         friendsListLoading.value = false;
+        loadFriendProfiles();
         friendsListLoadDialogVisible.value = false;
         friendsListLoadingCurrent.value = 0;
         friendsListLoadingTotal.value = 0;
