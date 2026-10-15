@@ -59,7 +59,7 @@ async function downloadFile(url, targetPath) {
  */
 async function extractTarGz(tarGzPath, extractDir) {
     return new Promise((resolve, reject) => {
-        const tar = spawnSync('tar', ['-xzf', tarGzPath, '-C', extractDir, '--strip-components=1'], {
+        const tar = spawnSync('tar', ['-xzf', tarGzPath, '-C', extractDir, '--strip-components=1', '--force-local'], {
             stdio: 'inherit'
         });
 
