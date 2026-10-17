@@ -80,15 +80,18 @@ async function extractTarGz(tarGzPath, extractDir) {
  */
 async function extractZip(zipPath, extractDir) {
     return new Promise((resolve, reject) => {
-        // Windows ships bsdtar, which also handles zip archives.
-        // The Windows runtime zip has a flat layout (no top-level folder),
-        // so no --strip-components is needed.
+        // Not `tar`: on GitHub's Windows runners `tar` resolves to Git's GNU
+        // tar, which can't read zip archives. Expand-Archive always can. The
+        // Windows runtime zip has a flat layout (no top-level folder), so
+        // nothing needs stripping. Paths go in as single-quoted literals
+        // (embedded quotes doubled), so `$` or backticks in them are inert.
+        const quote = (value) => `'${value.replaceAll("'", "''")}'`;
         const ps = spawnSync(
             'powershell',
             [
                 '-NoProfile',
                 '-Command',
-                `Expand-Archive -LiteralPath "${zipPath}" -DestinationPath "${extractDir}" -Force`
+                `Expand-Archive -LiteralPath ${quote(zipPath)} -DestinationPath ${quote(extractDir)} -Force`
             ],
             { stdio: 'inherit' }
         );
