@@ -3201,6 +3201,9 @@
         },
         "registry": {
             "restored": "VRC registry settings restored",
+            "auto_restored": "VRChat settings were missing on this computer and were restored from backup",
+            "backup_too_large": "Backups are using all of their storage budget, delete one first",
+            "backup_limit": "Backup limit reached ({max} manual backups), delete one first",
             "deleted": "VRC registry settings deleted",
             "restore_failed": "Failed to restore VRC registry settings, check console for full error: {error}",
             "invalid_json": "Invalid JSON"

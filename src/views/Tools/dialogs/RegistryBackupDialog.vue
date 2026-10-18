@@ -5,14 +5,6 @@
                 <DialogTitle>{{ t('dialog.registry_backup.header') }}</DialogTitle>
             </DialogHeader>
             <div class="mt-2">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="name mr-6">{{ t('dialog.registry_backup.auto_backup') }}</span>
-                    <Switch :model-value="vrcRegistryAutoBackup" @update:modelValue="setVrcRegistryAutoBackup" />
-                </div>
-                <div class="mt-1.5 flex items-center justify-between text-xs">
-                    <span class="name mr-6">{{ t('dialog.registry_backup.ask_to_restore') }}</span>
-                    <Switch :model-value="vrcRegistryAskRestore" @update:modelValue="setVrcRegistryAskRestore" />
-                </div>
                 <DataTableLayout
                     class="min-w-0 w-full mt-2"
                     :table="table"
@@ -46,18 +38,15 @@
     import { toast } from 'vue-sonner';
     import { useI18n } from 'vue-i18n';
 
-    import { useAdvancedSettingsStore, useModalStore, useVrcxStore } from '../../../stores';
+    import { useModalStore, useVrcxStore } from '../../../stores';
     import { downloadAndSaveJson, removeFromArray } from '../../../shared/utils';
-    import { Switch } from '../../../components/ui/switch';
     import { createColumns } from '../../Settings/dialogs/registryBackupColumns.jsx';
     import { useVrcxVueTable } from '../../../lib/table/useVrcxVueTable';
 
     import configRepository from '../../../services/config';
 
-    const { backupVrcRegistry } = useVrcxStore();
+    const { backupVrcRegistry, restoreVrcRegistryBackupEntry } = useVrcxStore();
     const { isRegistryBackupDialogVisible } = storeToRefs(useVrcxStore());
-    const { vrcRegistryAutoBackup, vrcRegistryAskRestore } = storeToRefs(useAdvancedSettingsStore());
-    const { setVrcRegistryAutoBackup, setVrcRegistryAskRestore } = useAdvancedSettingsStore();
     const modalStore = useModalStore();
 
     const { t } = useI18n();
@@ -119,8 +108,7 @@
                 if (!ok) {
                     return;
                 }
-                const data = JSON.stringify(row.data);
-                AppApi.SetVRChatRegistry(data)
+                restoreVrcRegistryBackupEntry(row, true)
                     .then(() => {
                         toast.success(t('message.registry.restored'));
                     })

@@ -6,6 +6,18 @@ import { useI18n } from 'vue-i18n';
 import { DEFAULT_MAX_TABLE_SIZE, DEFAULT_SEARCH_LIMIT, SEARCH_LIMIT_MAX, SEARCH_LIMIT_MIN } from '../shared/constants';
 import { avatarRequest, queryRequest } from '../api';
 import { debounce, parseLocation } from '../shared/utils';
+import { isHostLinux } from '../shared/utils/hostOs';
+import {
+    MAX_MANUAL_VRC_BACKUPS,
+    canAddVrcBackup,
+    embeddableConfigJson,
+    fitVrcBackupsToBudget,
+    hashVrcBackup,
+    isAutoVrcBackupDue,
+    latestVrcBackup,
+    pruneAutoVrcBackups,
+    verifyVrcBackup
+} from '../shared/utils/vrcBackup';
 import { AppDebug } from '../services/appConfig';
 import { database } from '../services/database';
 import { refreshCustomScript } from '../shared/utils/base/ui';
@@ -642,7 +654,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     /**
      * @param name
      */
-    async function backupVrcRegistry(name) {
+    async function backupVrcRegistry(name, auto = false) {
         let regJson;
         try {
             if (WINDOWS) {
@@ -658,59 +670,99 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         const newBackup = {
             name,
             date: new Date().toJSON(),
-            data: regJson
+            data: regJson,
+            auto
         };
+        // Fork addition: VRChat's config.json rides along in the same entry.
+        // Only that one small file — never the cache folder beside it, which
+        // can be several GB. Skipped if it's missing or implausibly large.
+        try {
+            const configJson = embeddableConfigJson(await AppApi.ReadConfigFile());
+            if (configJson) {
+                newBackup.configJson = configJson;
+            }
+        } catch (e) {
+            console.error('Failed to read VRChat config.json for backup:', e);
+        }
+        newBackup.hash = await hashVrcBackup(newBackup.data, newBackup.configJson);
         let backupsJson = await configRepository.getString('VRCX_VRChatRegistryBackups');
         if (!backupsJson) {
             backupsJson = JSON.stringify([]);
         }
         const backups = JSON.parse(backupsJson);
+        if (!canAddVrcBackup(backups, auto)) {
+            toast.error(t('message.registry.backup_limit', { max: MAX_MANUAL_VRC_BACKUPS }));
+            return;
+        }
         backups.push(newBackup);
-        await configRepository.setString('VRCX_VRChatRegistryBackups', JSON.stringify(backups));
+        const fitted = fitVrcBackupsToBudget(backups, newBackup);
+        if (!fitted) {
+            toast.error(t('message.registry.backup_too_large'));
+            return;
+        }
+        await configRepository.setString('VRCX_VRChatRegistryBackups', JSON.stringify(fitted));
         // await this.updateRegistryBackupDialog();
     }
 
     async function checkAutoBackupRestoreVrcRegistry() {
         // Fork addition (VRCX-Headless): the Windows registry doesn't exist
         // in a browser tab at all — not "empty", genuinely absent — so
-        // this whole flow is meaningless for WEB, not just inapplicable.
-        // Left ungated, it fired on every mount: vrcRegistryAutoBackup/
-        // vrcRegistryAskRestore default to true, VRCX_VRChatRegistryLast-
-        // BackupDate is shared account-wide config (not per-device), so a
-        // desktop client's own routine auto-backups (every few days) kept
-        // moving that date past whatever the browser last acknowledged,
-        // re-triggering the "would you like to restore" popup on every
-        // single web session. AppApi.HasVRChatRegistryFolder() already
-        // (correctly) answers `false` for WEB, but returning `false` here
-        // is exactly what enters the "offer to restore" branch below —
-        // for a real desktop with no local registry that's the right
-        // prompt; for a browser tab that can never have one, it isn't.
+        // this whole flow is meaningless for WEB. Left ungated, a browser
+        // would see the shared, account-wide VRCX_VRChatRegistryLastBackupDate
+        // moved by a desktop client's own auto-backups and re-trigger this
+        // on every session.
         if (WEB) {
             return;
         }
-        if (!advancedSettingsStore.vrcRegistryAutoBackup || !advancedSettingsStore.vrcRegistryAskRestore) {
+        // Fork change: backups are always on, and restoring is automatic and
+        // silent (a toast on success, no modal, no dialog, no window focus).
+        // The old vrcRegistryAutoBackup/vrcRegistryAskRestore switches are
+        // no longer consulted. Restricted to hosts whose registry code is
+        // real: the Electron registry code is Wine-only, so on a Windows
+        // Electron host it can't tell "no settings" from "can't look".
+        if (!WINDOWS && !isHostLinux()) {
             return;
         }
 
-        // check for auto restore
         const hasVRChatRegistryFolder = await AppApi.HasVRChatRegistryFolder();
-        if (!hasVRChatRegistryFolder) {
-            const lastBackupDate = await configRepository.getString('VRCX_VRChatRegistryLastBackupDate');
-            const lastRestoreCheck = await configRepository.getString('VRCX_VRChatRegistryLastRestoreCheck');
-            if (!lastBackupDate || (lastRestoreCheck && lastBackupDate && lastRestoreCheck === lastBackupDate)) {
-                // only ask to restore once and when backup is present
-                return;
-            }
-            // popup message about auto restore
-            modalStore.alert({
-                description: t('dialog.registry_backup.restore_prompt'),
-                title: t('dialog.registry_backup.header')
-            });
-            showRegistryBackupDialog();
-            await AppApi.FocusWindow();
-            await configRepository.setString('VRCX_VRChatRegistryLastRestoreCheck', lastBackupDate);
-        } else {
+        if (hasVRChatRegistryFolder) {
             await tryAutoBackupVrcRegistry();
+            return;
+        }
+        const backups = JSON.parse((await configRepository.getString('VRCX_VRChatRegistryBackups')) || '[]');
+        const latest = latestVrcBackup(backups);
+        if (!latest) {
+            return;
+        }
+        const lastRestoreCheck = await configRepository.getString('VRCX_VRChatRegistryLastRestoreCheck');
+        if (lastRestoreCheck === latest.date) {
+            return;
+        }
+        try {
+            await restoreVrcRegistryBackupEntry(latest, false, true);
+            await configRepository.setString('VRCX_VRChatRegistryLastRestoreCheck', latest.date);
+            toast.success(t('message.registry.auto_restored'));
+        } catch (e) {
+            // Not marked as done, so a later launch retries (e.g. the Wine
+            // prefix wasn't found yet). Deliberately no error popup.
+            console.error('Automatic VRChat settings restore failed:', e);
+        }
+    }
+
+    /**
+     * Restores the registry from a backup entry, plus its config.json if it
+     * has one. An automatic restore never overwrites a config.json that
+     * already exists; a manual one (overwriteConfig) does.
+     *
+     * @param {{ data: any; configJson?: string }} entry
+     * @param {boolean} overwriteConfig
+     * @param {boolean} [requireHash] Refuse entries with no stored hash
+     */
+    async function restoreVrcRegistryBackupEntry(entry, overwriteConfig, requireHash = false) {
+        await verifyVrcBackup(entry, requireHash);
+        await AppApi.SetVRChatRegistry(JSON.stringify(entry.data));
+        if (entry.configJson && (overwriteConfig || !(await AppApi.ReadConfigFile()))) {
+            await AppApi.WriteConfigFile(entry.configJson);
         }
     }
 
@@ -719,36 +771,20 @@ export const useVrcxStore = defineStore('Vrcx', () => {
     }
 
     async function tryAutoBackupVrcRegistry() {
-        if (!advancedSettingsStore.vrcRegistryAutoBackup) {
+        if (WEB) {
             return;
         }
         const date = new Date();
         const lastBackupDate = await configRepository.getString('VRCX_VRChatRegistryLastBackupDate');
-        if (lastBackupDate) {
-            const lastBackup = new Date(lastBackupDate);
-            const diff = date.getTime() - lastBackup.getTime();
-            const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
-            if (diffDays < 3) {
-                return;
-            }
+        if (!isAutoVrcBackupDue(lastBackupDate, date.getTime())) {
+            return;
         }
-        let backupsJson = await configRepository.getString('VRCX_VRChatRegistryBackups');
-        if (!backupsJson) {
-            backupsJson = JSON.stringify([]);
-        }
-        const backups = JSON.parse(backupsJson);
-        for (let i = backups.length - 1; i >= 0; i--) {
-            const backupDate = new Date(backups[i].date);
-            // remove backups older than 2 weeks
-            if (
-                backups[i].name === 'Auto Backup' &&
-                backupDate.getTime() < date.getTime() - 1209600000 // 2 weeks in milliseconds
-            ) {
-                backups.splice(i, 1);
-            }
-        }
+        const backups = pruneAutoVrcBackups(
+            JSON.parse((await configRepository.getString('VRCX_VRChatRegistryBackups')) || '[]'),
+            date.getTime()
+        );
         await configRepository.setString('VRCX_VRChatRegistryBackups', JSON.stringify(backups));
-        backupVrcRegistry('Auto Backup');
+        backupVrcRegistry(`Auto Backup ${date.toLocaleDateString('sv')}`, true);
         await configRepository.setString('VRCX_VRChatRegistryLastBackupDate', date.toJSON());
     }
 
@@ -784,6 +820,7 @@ export const useVrcxStore = defineStore('Vrcx', () => {
         eventLaunchCommand,
         showRegistryBackupDialog,
         checkAutoBackupRestoreVrcRegistry,
+        restoreVrcRegistryBackupEntry,
         tryAutoBackupVrcRegistry,
         processScreenshot,
         ipcEvent,
