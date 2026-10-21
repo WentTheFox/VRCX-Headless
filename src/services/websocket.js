@@ -13,7 +13,9 @@ import {
 import { applyUser, applyCurrentUser } from '../coordinators/userCoordinator';
 import { onGroupLeft, applyGroup, handleGroupMember } from '../coordinators/groupCoordinator';
 import { handleFriendAdd, handleFriendDelete } from '../coordinators/friendRelationshipCoordinator';
-import { debounce, parseLocation } from '../shared/utils';
+import { parseLocation } from '../shared/utils';
+// direct import: the barrel is mid-load in a cycle under Node when the module-scope debounce() below runs
+import { debounce } from '../shared/utils/common';
 import { AppDebug } from './appConfig';
 import { groupRequest } from '../api';
 import { request } from './request';
