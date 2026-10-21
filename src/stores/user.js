@@ -13,9 +13,10 @@ import {
     replaceBioSymbols
 } from '../shared/utils';
 import { getAllUserMemos } from '../coordinators/memoCoordinator';
-import { instanceRequest, userRequest, cosmeticsRequest } from '../api';
+import { instanceRequest, userRequest, cosmeticsRequest, marketplaceRequest } from '../api';
 import { AppDebug } from '../services/appConfig';
 import { database } from '../services/database';
+import { processBulk } from '../services/request';
 import { runUpdateCurrentUserLocationFlow } from '../coordinators/locationCoordinator';
 import { useAppearanceSettingsStore } from './settings/appearance';
 import { useFriendStore } from './friend';
@@ -218,6 +219,7 @@ export const useUserStore = defineStore('User', () => {
         },
         worlds: [],
         avatars: [],
+        licensedAvatars: [],
         isWorldsLoading: false,
         isFavoriteWorldsLoading: false,
         isAvatarsLoading: false,
@@ -342,6 +344,18 @@ export const useUserStore = defineStore('User', () => {
     const cachedIconFrames = shallowReactive(new Map());
     const cachedNameplateEffects = shallowReactive(new Map());
 
+    const cachedPurchases = ref(new Map());
+    const activePurchases = computed(() =>
+        Array.from(cachedPurchases.value.values()).filter(
+            (purchase) => purchase.purchaseActive && purchase.buyerId === currentUser.value.id
+        )
+    );
+    const ownedListingIds = computed(() => new Set(activePurchases.value.map((purchase) => purchase.listingId)));
+    const ownedProductIds = computed(
+        () =>
+            new Set(activePurchases.value.flatMap((purchase) => (purchase.products ?? []).map((product) => product.id)))
+    );
+
     const currentUserClientConfig = ref({
         accessReduceDecorAnim: false,
         configString: ''
@@ -414,6 +428,27 @@ export const useUserStore = defineStore('User', () => {
         cachedUsers.clear();
         cachedProfiles.value.clear();
         cachedUserIdsByDisplayName.clear();
+        cachedPurchases.value.clear();
+    }
+
+    function setCachedPurchases(purchases) {
+        for (const purchase of purchases) {
+            cachedPurchases.value.set(purchase.purchaseId, purchase);
+        }
+    }
+
+    async function getAllProductPurchases() {
+        await processBulk({
+            fn: marketplaceRequest.getProductPurchases,
+            N: 0,
+            params: {
+                buyerId: currentUser.value.id,
+                order: 'desc',
+                sort: 'purchaseDate',
+                n: 50,
+                offset: 0
+            }
+        });
     }
 
     function rebuildCachedUserDisplayNameIndex() {
@@ -610,16 +645,23 @@ export const useUserStore = defineStore('User', () => {
     /**
      * @param array
      */
-    function sortUserDialogAvatars(array) {
-        const D = userDialog.value;
-        if (D.avatarSorting === 'update') {
-            array.sort(compareByUpdatedAt);
-        } else if (D.avatarSorting === 'createdAt') {
-            array.sort(compareByCreatedAt);
-        } else {
-            array.sort(compareByName);
+    function getUserDialogAvatarComparator() {
+        const { avatarSorting } = userDialog.value;
+        if (avatarSorting === 'update') {
+            return compareByUpdatedAt;
         }
-        D.avatars = array;
+        if (avatarSorting === 'createdAt') {
+            return compareByCreatedAt;
+        }
+        return compareByName;
+    }
+
+    function sortUserDialogAvatars(array) {
+        userDialog.value.avatars = array.sort(getUserDialogAvatarComparator());
+    }
+
+    function sortUserDialogLicensedAvatars(array) {
+        userDialog.value.licensedAvatars = array.sort(getUserDialogAvatarComparator());
     }
 
     async function initUserNotes() {
@@ -976,6 +1018,7 @@ export const useUserStore = defineStore('User', () => {
             if (isLoggedIn) {
                 getCosmetics();
                 getClientConfig();
+                getAllProductPurchases();
             }
         },
         { flush: 'sync' }
@@ -1018,17 +1061,23 @@ export const useUserStore = defineStore('User', () => {
         cachedProfileEffects,
         cachedIconFrames,
         cachedNameplateEffects,
+        cachedPurchases,
+        ownedListingIds,
+        ownedProductIds,
         currentUserClientConfig,
         applyUserLanguage,
         applyPresenceLocation,
         applyUserDialogLocation,
         setCachedUser,
+        setCachedPurchases,
+        getAllProductPurchases,
         syncCachedUserDisplayName,
         deleteCachedUser,
         deleteCachedProfile,
         clearCachedUsers,
         rebuildCachedUserDisplayNameIndex,
         sortUserDialogAvatars,
+        sortUserDialogLicensedAvatars,
         initUserNotes,
         showSendBoopDialog,
         showEditProfileDialog,

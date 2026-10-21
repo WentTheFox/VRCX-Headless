@@ -28,6 +28,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     const notificationTTS = ref('Never');
     const notificationTTSNickName = ref(false);
     const inventoryBundleNotifications = ref(true);
+    const freeStoreItemNotifications = ref(true);
     const sharedFeedFilters = ref({
         noty: {
             Location: 'Off',
@@ -141,6 +142,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             notificationTTSConfig,
             notificationTTSNickNameConfig,
             inventoryBundleNotificationsConfig,
+            freeStoreItemNotificationsConfig,
             sharedFeedFiltersConfig,
             notificationTTSVoiceConfig,
             notificationPositionConfig,
@@ -160,6 +162,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             configRepository.getString('VRCX_notificationTTS', 'Never'),
             configRepository.getBool('VRCX_notificationTTSNickName', false),
             configRepository.getBool('VRCX_inventoryBundleNotifications', true),
+            configRepository.getBool('VRCX_freeStoreItemNotifications', true),
             configRepository.getString('sharedFeedFilters', JSON.stringify(sharedFeedFiltersDefaults)),
             configRepository.getString('VRCX_notificationTTSVoice', '0'),
             configRepository.getString('VRCX_notificationPosition', 'topCenter'),
@@ -189,6 +192,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         notificationTTS.value = notificationTTSConfig;
         notificationTTSNickName.value = notificationTTSNickNameConfig;
         inventoryBundleNotifications.value = inventoryBundleNotificationsConfig;
+        freeStoreItemNotifications.value = freeStoreItemNotificationsConfig;
         sharedFeedFilters.value = JSON.parse(sharedFeedFiltersConfig);
         notificationTTSVoice.value = Number(notificationTTSVoiceConfig);
         TTSvoices.value = speechSynthesis.getVoices();
@@ -275,6 +279,10 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
     function setInventoryBundleNotifications() {
         inventoryBundleNotifications.value = !inventoryBundleNotifications.value;
         configRepository.setBool('VRCX_inventoryBundleNotifications', inventoryBundleNotifications.value);
+    }
+    function setFreeStoreItemNotifications() {
+        freeStoreItemNotifications.value = !freeStoreItemNotifications.value;
+        configRepository.setBool('VRCX_freeStoreItemNotifications', freeStoreItemNotifications.value);
     }
     function initSharedFeedFilters() {
         if (!sharedFeedFilters.value.noty.Blocked) {
@@ -457,6 +465,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         notificationTTS,
         notificationTTSNickName,
         inventoryBundleNotifications,
+        freeStoreItemNotifications,
         sharedFeedFilters,
         isTestTTSVisible,
         notificationTTSVoice,
@@ -479,6 +488,7 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         setNotificationTTS,
         setNotificationTTSNickName,
         setInventoryBundleNotifications,
+        setFreeStoreItemNotifications,
         getTTSVoiceName,
         changeTTSVoice,
         saveNotificationTTS,
