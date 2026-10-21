@@ -1,0 +1,50 @@
+# Fork-only workflow: cuts a release tag from the Actions UI, for when tags
+# can't be pushed from a checkout. Nothing upstream touches this file.
+#
+# Pushes made with the default GITHUB_TOKEN don't trigger other workflows, so
+# the tag push below would start neither release build. workflow_dispatch
+# events are exempt from that rule, so the two release workflows are
+# dispatched explicitly on the new tag ref instead (they key off github.ref,
+# so that behaves exactly like a tag push).
+name: Release Tag
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: write
+    actions: write
+
+jobs:
+    tag:
+        name: Create tag and start release builds
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+            # Same scheme as docs/release.md's "Cutting a release", step 2.
+            - name: Compute tag
+              id: tag
+              run: |
+                  set -euo pipefail
+                  tag="v$(tr -d '.\n' < Version).$(tr -d '\n' < server/VERSION)"
+                  echo "name=$tag" >> "$GITHUB_OUTPUT"
+                  if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+                      echo "Tag $tag already exists; bump server/VERSION first." >&2
+                      exit 1
+                  fi
+
+            - name: Create and push tag
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git tag -a "${{ steps.tag.outputs.name }}" -m "Release ${{ steps.tag.outputs.name }}"
+                  git push origin "refs/tags/${{ steps.tag.outputs.name }}"
+
+            - name: Start the release builds on the tag
+              run: |
+                  gh workflow run server-docker.yaml --ref "${{ steps.tag.outputs.name }}"
+                  gh workflow run desktop-release.yaml --ref "${{ steps.tag.outputs.name }}"
