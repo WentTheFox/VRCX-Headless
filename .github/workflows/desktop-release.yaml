@@ -202,6 +202,9 @@ jobs:
     build-macos:
         name: Build (macos-arm64)
         runs-on: macos-latest
+        # Bounded so a never-dispatched macOS runner fails fast; publish-release
+        # below tolerates this job failing/being cancelled.
+        timeout-minutes: 30
         env:
             CSPROJ: Dotnet/VRCX-Electron.csproj
             DOTNET_PLATFORM: arm64
@@ -268,7 +271,10 @@ jobs:
     publish-release:
         name: Publish release
         needs: [build, build-macos]
-        if: startsWith(github.ref, 'refs/tags/v')
+        # macOS runners on this account often never get dispatched (see the
+        # build-macos comment), so a missing dmg must not block the release:
+        # publish whenever every non-macOS build succeeded.
+        if: ${{ !cancelled() && needs.build.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
         runs-on: ubuntu-latest
         permissions:
             contents: write
