@@ -83,6 +83,7 @@ export const useAppearanceSettingsStore = defineStore(
         const navWidth = ref(240);
         const isSidebarGroupByInstance = ref(true);
         const isHideFriendsInSameInstance = ref(false);
+        const isShowStatusInsteadOfPrivate = ref(false);
         const isSameInstanceAboveFavorites = ref(false);
         const isSidebarDivideByFriendGroup = ref(false);
         const sidebarFavoriteGroups = ref([]);
@@ -156,6 +157,7 @@ export const useAppearanceSettingsStore = defineStore(
                 navWidthConfig,
                 isSidebarGroupByInstanceConfig,
                 isHideFriendsInSameInstanceConfig,
+                isShowStatusInsteadOfPrivateConfig,
                 isSameInstanceAboveFavoritesConfig,
                 isSidebarDivideByFriendGroupConfig,
                 sidebarFavoriteGroupsConfig,
@@ -201,6 +203,7 @@ export const useAppearanceSettingsStore = defineStore(
                 configRepository.getInt('VRCX_navPanelWidth', 240),
                 configRepository.getBool('VRCX_sidebarGroupByInstance', true),
                 configRepository.getBool('VRCX_hideFriendsInSameInstance', false),
+                configRepository.getBool('VRCX_showStatusInsteadOfPrivate', false),
                 configRepository.getBool('VRCX_sameInstanceAboveFavorites', false),
                 configRepository.getBool('VRCX_sidebarDivideByFriendGroup', true),
                 configRepository.getString('VRCX_sidebarFavoriteGroups', '[]'),
@@ -285,6 +288,7 @@ export const useAppearanceSettingsStore = defineStore(
             navWidth.value = clampInt(navWidthConfig, 64, 480);
             isSidebarGroupByInstance.value = isSidebarGroupByInstanceConfig;
             isHideFriendsInSameInstance.value = isHideFriendsInSameInstanceConfig;
+            isShowStatusInsteadOfPrivate.value = isShowStatusInsteadOfPrivateConfig;
             isSameInstanceAboveFavorites.value = isSameInstanceAboveFavoritesConfig;
             isSidebarDivideByFriendGroup.value = isSidebarDivideByFriendGroupConfig;
             sidebarFavoriteGroups.value = JSON.parse(sidebarFavoriteGroupsConfig);
@@ -674,6 +678,11 @@ export const useAppearanceSettingsStore = defineStore(
             isSidebarGroupByInstance.value = !isSidebarGroupByInstance.value;
             configRepository.setBool('VRCX_sidebarGroupByInstance', isSidebarGroupByInstance.value);
         }
+        function setIsShowStatusInsteadOfPrivate() {
+            isShowStatusInsteadOfPrivate.value = !isShowStatusInsteadOfPrivate.value;
+            configRepository.setBool('VRCX_showStatusInsteadOfPrivate', isShowStatusInsteadOfPrivate.value);
+        }
+
         function setIsHideFriendsInSameInstance() {
             isHideFriendsInSameInstance.value = !isHideFriendsInSameInstance.value;
             configRepository.setBool('VRCX_hideFriendsInSameInstance', isHideFriendsInSameInstance.value);
@@ -938,6 +947,7 @@ export const useAppearanceSettingsStore = defineStore(
             navWidth,
             isSidebarGroupByInstance,
             isHideFriendsInSameInstance,
+            isShowStatusInsteadOfPrivate,
             isSameInstanceAboveFavorites,
             isSidebarDivideByFriendGroup,
             sidebarFavoriteGroups,
@@ -985,6 +995,7 @@ export const useAppearanceSettingsStore = defineStore(
             setNavWidth,
             setIsSidebarGroupByInstance,
             setIsHideFriendsInSameInstance,
+            setIsShowStatusInsteadOfPrivate,
             setIsSameInstanceAboveFavorites,
             setIsSidebarDivideByFriendGroup,
             setSidebarFavoriteGroups,

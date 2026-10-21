@@ -40,6 +40,7 @@ vi.mock('../../../stores', () => ({
         sidebarSortMethod3: ref(''),
         isSidebarGroupByInstance: ref(false),
         isHideFriendsInSameInstance: ref(false),
+        isShowStatusInsteadOfPrivate: ref(false),
         isSameInstanceAboveFavorites: ref(false),
         isSidebarDivideByFriendGroup: ref(false),
         sidebarFavoriteGroups: ref([]),
@@ -48,6 +49,7 @@ vi.mock('../../../stores', () => ({
         setSidebarSortMethod3: vi.fn(),
         setIsSidebarGroupByInstance: vi.fn(),
         setIsHideFriendsInSameInstance: vi.fn(),
+        setIsShowStatusInsteadOfPrivate: vi.fn(),
         setIsSameInstanceAboveFavorites: vi.fn(),
         setIsSidebarDivideByFriendGroup: vi.fn(),
         setSidebarFavoriteGroups: vi.fn()

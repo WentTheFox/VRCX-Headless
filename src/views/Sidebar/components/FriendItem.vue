@@ -44,6 +44,9 @@
                                 " />
                         </div>
                     </template>
+                    <span v-else-if="showStatusInsteadOfPrivate" class="extra block truncate text-xs">{{
+                        friend.ref.statusDescription
+                    }}</span>
                     <Location
                         v-else
                         class="extra block truncate text-xs!"
@@ -93,7 +96,7 @@
         isFavorite: Boolean
     });
 
-    const { hideNicknames, sidebarCosmetics } = storeToRefs(useAppearanceSettingsStore());
+    const { hideNicknames, sidebarCosmetics, isShowStatusInsteadOfPrivate } = storeToRefs(useAppearanceSettingsStore());
     const { isRefreshFriendsLoading } = storeToRefs(useFriendStore());
     const { userImage, userStatusClass } = useUserDisplay();
 
@@ -101,6 +104,13 @@
 
     const isFriendTraveling = computed(() => props.friend.ref?.location === 'traveling');
     const isFriendActiveOrOffline = computed(() => props.friend.state === 'active' || props.friend.state === 'offline');
+
+    const showStatusInsteadOfPrivate = computed(
+        () =>
+            isShowStatusInsteadOfPrivate.value &&
+            props.friend.ref?.location === 'private' &&
+            Boolean(props.friend.ref?.statusDescription)
+    );
 
     const friendStatusClass = computed(() => {
         return userStatusClass(props.friend.ref, props.friend.pendingOffline);

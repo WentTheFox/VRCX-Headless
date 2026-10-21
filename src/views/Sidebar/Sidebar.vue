@@ -88,6 +88,13 @@
                                     :ariaLabel="t('side_panel.settings.hide_friends_in_same_instance')"
                                     @update:modelValue="setIsHideFriendsInSameInstance" />
                             </Field>
+                            <Field orientation="horizontal">
+                                <FieldLabel>{{ t('side_panel.settings.show_status_instead_of_private') }}</FieldLabel>
+                                <Switch
+                                    :model-value="isShowStatusInsteadOfPrivate"
+                                    :ariaLabel="t('side_panel.settings.show_status_instead_of_private')"
+                                    @update:modelValue="setIsShowStatusInsteadOfPrivate" />
+                            </Field>
                             <Field v-if="isSidebarGroupByInstance" orientation="horizontal">
                                 <FieldLabel>{{ t('side_panel.settings.same_instance_above_favorites') }}</FieldLabel>
                                 <Switch
@@ -398,6 +405,7 @@
         sidebarSortMethod3,
         isSidebarGroupByInstance,
         isHideFriendsInSameInstance,
+        isShowStatusInsteadOfPrivate,
         isSameInstanceAboveFavorites,
         isSidebarDivideByFriendGroup,
         sidebarFavoriteGroups,
@@ -409,6 +417,7 @@
         setSidebarSortMethod3,
         setIsSidebarGroupByInstance,
         setIsHideFriendsInSameInstance,
+        setIsShowStatusInsteadOfPrivate,
         setIsSameInstanceAboveFavorites,
         setIsSidebarDivideByFriendGroup,
         setSidebarFavoriteGroups,

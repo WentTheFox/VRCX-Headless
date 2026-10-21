@@ -3,7 +3,8 @@ import { mount } from '@vue/test-utils';
 
 const mocks = vi.hoisted(() => ({
     appearanceStore: {
-        hideNicknames: false
+        hideNicknames: false,
+        isShowStatusInsteadOfPrivate: { value: false }
     },
     friendStore: {
         isRefreshFriendsLoading: false,
@@ -131,6 +132,7 @@ function mountItem(props = {}) {
 describe('FriendItem.vue', () => {
     beforeEach(() => {
         mocks.appearanceStore.hideNicknames = false;
+        mocks.appearanceStore.isShowStatusInsteadOfPrivate.value = false;
         mocks.friendStore.isRefreshFriendsLoading = false;
         mocks.friendStore.allFavoriteFriendIds = new Set();
         mocks.confirmDeleteFriend.mockReset();
@@ -151,5 +153,35 @@ describe('FriendItem.vue', () => {
         await button.trigger('click');
         expect(mocks.confirmDeleteFriend).toHaveBeenCalledWith('usr_orphan');
         expect(mocks.showUserDialog).not.toHaveBeenCalled();
+    });
+
+    describe('showStatusInsteadOfPrivate', () => {
+        const privateFriend = (statusDescription) =>
+            makeFriend({
+                state: 'online',
+                ref: { ...makeFriend().ref, location: 'private', statusDescription }
+            });
+
+        test('shows the status description instead of the location when enabled', () => {
+            mocks.appearanceStore.isShowStatusInsteadOfPrivate.value = true;
+            const wrapper = mountItem({ friend: privateFriend('Busy coding') });
+
+            expect(wrapper.text()).toContain('Busy coding');
+            expect(wrapper.find('[data-testid="location"]').exists()).toBe(false);
+        });
+
+        test('falls back to the location when the status description is empty', () => {
+            mocks.appearanceStore.isShowStatusInsteadOfPrivate.value = true;
+            const wrapper = mountItem({ friend: privateFriend('') });
+
+            expect(wrapper.find('[data-testid="location"]').exists()).toBe(true);
+        });
+
+        test('keeps the location when disabled', () => {
+            const wrapper = mountItem({ friend: privateFriend('Busy coding') });
+
+            expect(wrapper.find('[data-testid="location"]').exists()).toBe(true);
+            expect(wrapper.text()).not.toContain('Busy coding');
+        });
     });
 });
