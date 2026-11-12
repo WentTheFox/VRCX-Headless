@@ -1,73 +1,57 @@
 using System;
-using System.IO;
-using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 
 namespace VRCX
 {
     /// <summary>
-    /// Fork-only (CLAUDE.md §5): the Windows half of the Electron VR overlay. Upstream's overlay is Linux-only
-    /// (OpenGL textures through libGL/X11/Wayland/EGL, frames in /dev/shm). On Windows the frames travel through
-    /// a plain file in the temp folder instead, and are uploaded with OpenVR's <c>SetOverlayRaw</c> (a CPU
-    /// buffer), so no graphics-API interop is needed. This file is deliberately free of OpenVR and Electron
-    /// types so the pixel and path logic can be unit tested on any OS (<c>tests/dotnet</c>).
+    /// Fork-only (CLAUDE.md §5): the Windows half of the Electron VR overlay's frame transport. Upstream's overlay
+    /// is Linux-only (frames in a /dev/shm file). On Windows, Electron's main process runs .NET in-process
+    /// (node-api-dotnet), so each paint is handed over directly (<c>OverlayFrameSinkElectron.Submit</c>) and
+    /// parked here until the overlay thread takes it: no file I/O, which matters because the overlay repaints at up
+    /// to 48 fps and a frame is 6 MB. Upload then goes through the same OpenGL texture path as on Linux, on a WGL
+    /// context (<see cref="GLContextWindows"/>). Free of OpenVR and Electron types so it can be unit tested
+    /// (<c>tests/dotnet</c>).
     /// </summary>
-    public static class OverlayFrame
+    public sealed class OverlayFrameMailbox
     {
-        public const int BytesPerPixel = 4;
+        private readonly object _lock = new object();
+        private readonly byte[] _frame;
+        private bool _ready;
 
-        /// <summary>
-        /// Where Electron writes frames and .NET reads them. Must match <c>src-electron/overlayShm.js</c>.
-        /// </summary>
-        public static string GetSharedMemoryPath(bool windows, string tempPath)
+        public OverlayFrameMailbox(int frameSize)
         {
-            return windows ? Path.Combine(tempPath, "vrcx_overlay") : "/dev/shm/vrcx_overlay";
+            _frame = new byte[frameSize];
         }
 
-        /// <summary>
-        /// Maps the frame file. Node writes it with ordinary file I/O while this mapping is open, so the file
-        /// must be opened with sharing enabled (the plain <c>CreateFromFile(path, ...)</c> overload denies it).
-        /// </summary>
-        public static MemoryMappedFile OpenMapping(string path, long capacity)
+        public int FrameSize => _frame.Length;
+
+        /// <summary>Stores the newest frame, replacing one not taken yet. Returns false for a short buffer.</summary>
+        public bool Post(ReadOnlySpan<byte> frame)
         {
-            var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite,
-                FileShare.ReadWrite | FileShare.Delete);
-            return MemoryMappedFile.CreateFromFile(stream, null, capacity, MemoryMappedFileAccess.ReadWrite,
-                HandleInheritability.None, false);
-        }
-
-        /// <summary>
-        /// Copies a rectangle out of a top-down BGRA frame (Chromium's bitmap order) into a tightly packed
-        /// RGBA buffer, the format <c>SetOverlayRaw</c> expects. Unlike the OpenGL path no vertical flip is
-        /// needed: both the frame and the raw upload are top-down.
-        /// </summary>
-        public static void CropBgraToRgba(byte[] source, int sourceWidth, int x, int y, int width, int height,
-            byte[] destination)
-        {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (destination == null) throw new ArgumentNullException(nameof(destination));
-            if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > sourceWidth)
-                throw new ArgumentOutOfRangeException(nameof(x), "Crop rectangle is outside the frame.");
-
-            var sourceStride = sourceWidth * BytesPerPixel;
-            if (source.Length < (y + height) * sourceStride)
-                throw new ArgumentException("Source is smaller than the crop rectangle needs.", nameof(source));
-            if (destination.Length < width * height * BytesPerPixel)
-                throw new ArgumentException("Destination is too small.", nameof(destination));
-
-            var destinationIndex = 0;
-            for (var row = 0; row < height; row++)
+            if (frame.Length < _frame.Length)
+                return false;
+            lock (_lock)
             {
-                var sourceIndex = (y + row) * sourceStride + x * BytesPerPixel;
-                for (var column = 0; column < width; column++)
-                {
-                    destination[destinationIndex] = source[sourceIndex + 2]; // R
-                    destination[destinationIndex + 1] = source[sourceIndex + 1]; // G
-                    destination[destinationIndex + 2] = source[sourceIndex]; // B
-                    destination[destinationIndex + 3] = source[sourceIndex + 3]; // A
-                    sourceIndex += BytesPerPixel;
-                    destinationIndex += BytesPerPixel;
-                }
+                frame[.._frame.Length].CopyTo(_frame);
+                _ready = true;
+            }
+
+            return true;
+        }
+
+        /// <summary>Copies the newest frame into <paramref name="destination"/> if one arrived since the last take.</summary>
+        public bool TryTake(byte[] destination)
+        {
+            if (destination == null) throw new ArgumentNullException(nameof(destination));
+            if (destination.Length < _frame.Length)
+                throw new ArgumentException("Destination is smaller than a frame.", nameof(destination));
+            lock (_lock)
+            {
+                if (!_ready)
+                    return false;
+                Buffer.BlockCopy(_frame, 0, destination, 0, _frame.Length);
+                _ready = false;
+                return true;
             }
         }
     }

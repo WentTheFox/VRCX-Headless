@@ -40,14 +40,7 @@ namespace VRCX
         private bool _wristOverlayActive;
         private bool _wristOverlayWasActive;
 
-        // Fork-only: /dev/shm on Linux, a temp-folder file on Windows (see WindowsOverlay.cs)
-        private static readonly string OVERLAY_SHM_PATH =
-            OverlayFrame.GetSharedMemoryPath(OperatingSystem.IsWindows(), Path.GetTempPath());
-        // Fork-only: the in-VR overlays are skipped on Windows (crashed at SteamVR startup); device and battery
-        // tracking (UpdateDevices) is unaffected
-        private static readonly bool OverlaysSupported = !OperatingSystem.IsWindows();
-        private bool _useRawUpload;
-        private byte[] _rawFrameBuffer;
+        private const string OVERLAY_SHM_PATH = "/dev/shm/vrcx_overlay";
         private const int WRIST_FRAME_WIDTH = 512;
         private const int WRIST_FRAME_HEIGHT = 512;
         private const int WRIST_FRAME_SIZE = WRIST_FRAME_WIDTH * WRIST_FRAME_HEIGHT * 4; // RGBA
@@ -59,6 +52,10 @@ namespace VRCX
         private const int SHARED_FRAME_WIDTH = 1024;
         private const int SHARED_FRAME_HEIGHT = WRIST_FRAME_HEIGHT + HMD_FRAME_HEIGHT;
         private byte[] frameBuffer = new byte[SHARED_FRAME_SIZE];
+
+        // Fork-only: Windows frame transport, filled by OverlayFrameSinkElectron.Commit (see WindowsOverlay.cs).
+        // Static so it survives Restart() replacing the instance.
+        internal static readonly OverlayFrameMailbox FrameMailbox = new OverlayFrameMailbox(SHARED_FRAME_SIZE);
 
         private MemoryMappedFile _overlayMMF;
         private MemoryMappedViewAccessor _overlayAccessor;
@@ -114,46 +111,24 @@ namespace VRCX
             //MainForm.Instance.Browser.ExecuteScriptAsync("console.log('VRCXVR Restarted');");
         }
 
-        private MemoryMappedFile OpenOverlayMapping()
-        {
-            return OperatingSystem.IsWindows()
-                ? OverlayFrame.OpenMapping(OVERLAY_SHM_PATH, SHARED_FRAME_SIZE + 1)
-                : MemoryMappedFile.CreateFromFile(OVERLAY_SHM_PATH, FileMode.Open, null, SHARED_FRAME_SIZE + 1);
-        }
-
-        /// <summary>
-        /// Windows: uploads one region of the shared frame with SetOverlayRaw instead of an OpenGL texture.
-        /// </summary>
-        private EVROverlayError UploadRawFrame(CVROverlay overlay, ulong overlayHandle, byte[] frame, int x, int y,
-            int width, int height)
-        {
-            var size = width * height * OverlayFrame.BytesPerPixel;
-            if (_rawFrameBuffer == null || _rawFrameBuffer.Length != size)
-                _rawFrameBuffer = new byte[size];
-
-            OverlayFrame.CropBgraToRgba(frame, SHARED_FRAME_WIDTH, x, y, width, height, _rawFrameBuffer);
-
-            var bounds = new VRTextureBounds_t { uMin = 0f, uMax = 1f, vMin = 0f, vMax = 1f };
-            overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
-
-            var pin = GCHandle.Alloc(_rawFrameBuffer, GCHandleType.Pinned);
-            try
-            {
-                return overlay.SetOverlayRaw(overlayHandle, pin.AddrOfPinnedObject(), (uint)width, (uint)height,
-                    (uint)OverlayFrame.BytesPerPixel);
-            }
-            finally
-            {
-                pin.Free();
-            }
-        }
-
         private void SetupTextures()
         {
             if (OperatingSystem.IsWindows())
             {
-                // no GL context on Windows: frames go up as raw RGBA buffers (UploadRawFrame)
-                _useRawUpload = true;
+                // Windows: same OpenGL texture path as Linux, on a WGL context owned by this (the overlay) thread.
+                // Not SetOverlayRaw: every call makes SteamVR allocate a shared memory block, and at the overlay's
+                // frame rate they pile up until vrclient refuses more ("201 blocks are already outstanding") and
+                // every upload fails with RequestFailed. Never throw here: a null texture writer just means no
+                // overlays, while device and battery tracking keep working.
+                if (!GLContextWindows.Initialise())
+                {
+                    logger.Error("Failed to initialise a WGL context; VR overlays stay off");
+                    return;
+                }
+
+                _overlayTextureWriter?.Dispose(); // SteamVR restarted: replace the previous texture
+                _overlayTextureWriter = new GLTextureWriter(SHARED_FRAME_WIDTH, SHARED_FRAME_HEIGHT);
+                _overlayTextureWriter.UpdateTexture();
                 return;
             }
 
@@ -192,6 +167,9 @@ namespace VRCX
 
         public byte[] GetLatestOverlayFrame()
         {
+            if (OperatingSystem.IsWindows())
+                return FrameMailbox.TryTake(frameBuffer) ? frameBuffer : null;
+
             if (_overlayAccessor == null) return null;
             byte ready = _overlayAccessor.ReadByte(0);
             if (ready == 1)
@@ -234,6 +212,7 @@ namespace VRCX
 
             while (_thread != null)
             {
+                GLContextWindows.PumpMessages(); // no-op unless the Windows WGL window exists
                 try
                 {
                     if (_active)
@@ -315,7 +294,7 @@ namespace VRCX
                                 //    logger.Error(err);
                                 //}
 
-                                if (_wristOverlayActive && OverlaysSupported)
+                                if (_wristOverlayActive)
                                 {
                                     var err = ProcessOverlay1(overlay, ref _wristOverlayHandle, ref overlayVisible1,
                                         dashboardVisible, overlayIndex);
@@ -328,7 +307,7 @@ namespace VRCX
                                     }
                                 }
 
-                                if (_hmdOverlayActive && OverlaysSupported)
+                                if (_hmdOverlayActive)
                                 {
                                     var err = ProcessOverlay2(overlay, ref _hmdOverlayHandle, ref overlayVisible2,
                                         dashboardVisible);
@@ -375,6 +354,7 @@ namespace VRCX
 
             GLContextX11.Cleanup();
             GLContextWayland.Cleanup();
+            GLContextWindows.Cleanup(); // WGL objects are thread-affine, so released here on the overlay thread
         }
 
         public override void SetActive(bool active, bool hmdOverlay, bool wristOverlay, bool menuButton, int overlayHand)
@@ -695,8 +675,11 @@ namespace VRCX
                         return err;
                     }
 
-                    _overlayMMF = OpenOverlayMapping();
-                    _overlayAccessor = _overlayMMF.CreateViewAccessor();
+                    if (!OperatingSystem.IsWindows()) // Windows frames arrive in-process (FrameMailbox)
+                    {
+                        _overlayMMF = MemoryMappedFile.CreateFromFile(OVERLAY_SHM_PATH, FileMode.Open, null, SHARED_FRAME_SIZE + 1);
+                        _overlayAccessor = _overlayMMF.CreateViewAccessor();
+                    }
                 }
             }
 
@@ -734,33 +717,25 @@ namespace VRCX
             if (!dashboardVisible &&
                 DateTime.UtcNow.CompareTo(_nextOverlayUpdate) <= 0)
             {
-                if (_overlayTextureWriter != null || _useRawUpload)
+                if (_overlayTextureWriter != null)
                 {
                     byte[] imageData = GetLatestOverlayFrame();
                     if (imageData != null)
                     {
-                        if (_useRawUpload)
-                        {
-                            err = UploadRawFrame(overlay, overlayHandle, imageData, 0, 0, WRIST_FRAME_WIDTH,
-                                WRIST_FRAME_HEIGHT);
-                        }
-                        else
-                        {
-                            FlipImageVertically(ref imageData, SHARED_FRAME_WIDTH, SHARED_FRAME_HEIGHT);
-                            _overlayTextureWriter.WriteImageToBuffer(imageData);
-                            _overlayTextureWriter.UpdateTexture();
+                        FlipImageVertically(ref imageData, SHARED_FRAME_WIDTH, SHARED_FRAME_HEIGHT);
+                        _overlayTextureWriter.WriteImageToBuffer(imageData);
+                        _overlayTextureWriter.UpdateTexture();
 
-                            Texture_t texture = _overlayTextureWriter.AsTextureT();
-                            var bounds = new VRTextureBounds_t
-                            {
-                                uMin = 0f,
-                                uMax = 0.5f,
-                                vMin = 0f,
-                                vMax = (float)WRIST_FRAME_HEIGHT / SHARED_FRAME_HEIGHT
-                            };
-                            overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
-                            err = OpenVR.Overlay.SetOverlayTexture(overlayHandle, ref texture);
-                        }
+                        Texture_t texture = _overlayTextureWriter.AsTextureT();
+                        var bounds = new VRTextureBounds_t
+                        {
+                            uMin = 0f,
+                            uMax = 0.5f,
+                            vMin = 0f,
+                            vMax = (float)WRIST_FRAME_HEIGHT / SHARED_FRAME_HEIGHT
+                        };
+                        overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
+                        err = OpenVR.Overlay.SetOverlayTexture(overlayHandle, ref texture);
                         if (err != EVROverlayError.None)
                         {
                             return err;
@@ -855,40 +830,35 @@ namespace VRCX
                         return err;
                     }
 
-                    _overlayMMF = OpenOverlayMapping();
-                    _overlayAccessor = _overlayMMF.CreateViewAccessor();
+                    if (!OperatingSystem.IsWindows()) // Windows frames arrive in-process (FrameMailbox)
+                    {
+                        _overlayMMF = MemoryMappedFile.CreateFromFile(OVERLAY_SHM_PATH, FileMode.Open, null, SHARED_FRAME_SIZE + 1);
+                        _overlayAccessor = _overlayMMF.CreateViewAccessor();
+                    }
                 }
             }
 
             if (!dashboardVisible)
             {
-                if (_overlayTextureWriter != null || _useRawUpload)
+                if (_overlayTextureWriter != null)
                 {
                     byte[] imageData = GetLatestOverlayFrame();
                     if (imageData != null)
                     {
-                        if (_useRawUpload)
-                        {
-                            err = UploadRawFrame(overlay, overlayHandle, imageData, 0,
-                                SHARED_FRAME_HEIGHT - HMD_FRAME_HEIGHT, HMD_FRAME_WIDTH, HMD_FRAME_HEIGHT);
-                        }
-                        else
-                        {
-                            FlipImageVertically(ref imageData, SHARED_FRAME_WIDTH, SHARED_FRAME_HEIGHT);
-                            _overlayTextureWriter.WriteImageToBuffer(imageData);
-                            _overlayTextureWriter.UpdateTexture();
+                        FlipImageVertically(ref imageData, SHARED_FRAME_WIDTH, SHARED_FRAME_HEIGHT);
+                        _overlayTextureWriter.WriteImageToBuffer(imageData);
+                        _overlayTextureWriter.UpdateTexture();
 
-                            Texture_t texture = _overlayTextureWriter.AsTextureT();
-                            var bounds = new VRTextureBounds_t
-                            {
-                                uMin = 0f,
-                                uMax = 1f,
-                                vMin = (float)(SHARED_FRAME_HEIGHT - HMD_FRAME_HEIGHT) / SHARED_FRAME_HEIGHT,
-                                vMax = 1f
-                            };
-                            overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
-                            err = OpenVR.Overlay.SetOverlayTexture(overlayHandle, ref texture);
-                        }
+                        Texture_t texture = _overlayTextureWriter.AsTextureT();
+                        var bounds = new VRTextureBounds_t
+                        {
+                            uMin = 0f,
+                            uMax = 1f,
+                            vMin = (float)(SHARED_FRAME_HEIGHT - HMD_FRAME_HEIGHT) / SHARED_FRAME_HEIGHT,
+                            vMax = 1f
+                        };
+                        overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
+                        err = OpenVR.Overlay.SetOverlayTexture(overlayHandle, ref texture);
                         if (err != EVROverlayError.None)
                         {
                             return err;

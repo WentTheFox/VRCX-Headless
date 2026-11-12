@@ -53,7 +53,7 @@ What's actually OS-tested inside `Dotnet/AppApi/Electron/**`, verified live (202
 | `GetClipboard`/`CopyImageToClipboard` | tested (`xclip`) | **implemented, not yet run on Windows** (2026-11-12): PowerShell STA, in `WindowsNative.cs` |
 | `TryOpenInstanceInVrc` (attach a deeplink to an already-running client) | tested (`nsenter`+`wine`) | tested (2026-11-12): uses `VRCIPC` (`VRChatURLLaunchPipe`), as the CefSharp client did |
 | Auto-launch apps with VRChat (`ProcessMonitor` + `AutoAppLaunchManager`) | not started (WinApi-based) | tested (2026-11-12): started in `Program.Init()` on Windows only |
-| VR overlay (`VRCXVRElectron.cs`) | tested (OpenGL via libGL/X11/Wayland/EGL, frames in `/dev/shm`) | **implemented, not yet run in SteamVR** (2026-11-12): frames in `%TEMP%\vrcx_overlay`, uploaded with `SetOverlayRaw` (no GL); `WindowsOverlay.cs`, `src-electron/overlayShm.js`. The crop/channel-swap maths is unit tested; the wrist/HMD placement (assumes `SetOverlayTextureBounds` is top-down) is not verified in a headset |
+| VR overlay (`VRCXVRElectron.cs`) | tested (OpenGL via libGL/X11/Wayland/EGL, frames in `/dev/shm`) | **tested in SteamVR** (2026-11-12): frames handed to .NET in-process (no file), same OpenGL texture path on a WGL context (`GLContextWindows.cs`, `WindowsOverlay.cs` `OverlayFrameMailbox`, `src-electron/overlayShm.js`); paint bitmaps are resized when display scaling enlarges them. Not `SetOverlayRaw`: it exhausts SteamVR's shared memory blocks at overlay frame rates |
 | System monitor (`SystemMonitorElectron.cs`, overlay CPU/uptime) | tested (`/proc`) | **implemented, not yet run on Windows** (2026-11-12): `GetSystemTimes` + `Environment.TickCount64` |
 | Discord RPC, LogWatcher, screenshots | Linux-tested only | untested |
 
