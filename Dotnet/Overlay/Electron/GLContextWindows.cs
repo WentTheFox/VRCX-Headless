@@ -93,6 +93,9 @@ public static class GLContextWindows
     private static readonly object ResolverLock = new object();
     private static bool _resolverRegistered;
 
+    /// <summary>Why the last <see cref="Initialise"/> returned false (also printed to the console).</summary>
+    public static string LastError { get; private set; }
+
     private static IntPtr _window;
     private static IntPtr _dc;
     private static IntPtr _context;
@@ -132,7 +135,8 @@ public static class GLContextWindows
                 IntPtr.Zero, IntPtr.Zero, GetModuleHandleW(null), IntPtr.Zero);
             if (_window == IntPtr.Zero)
             {
-                Console.WriteLine($"GLContextWindows: CreateWindowEx failed ({Marshal.GetLastWin32Error()})");
+                LastError = $"CreateWindowEx failed ({Marshal.GetLastWin32Error()})";
+                Console.WriteLine($"GLContextWindows: {LastError}");
                 return false;
             }
 
@@ -151,7 +155,8 @@ public static class GLContextWindows
             var format = ChoosePixelFormat(_dc, ref pfd);
             if (format == 0 || !SetPixelFormat(_dc, format, ref pfd))
             {
-                Console.WriteLine($"GLContextWindows: pixel format failed ({Marshal.GetLastWin32Error()})");
+                LastError = $"pixel format failed ({Marshal.GetLastWin32Error()})";
+                Console.WriteLine($"GLContextWindows: {LastError}");
                 Cleanup();
                 return false;
             }
@@ -159,7 +164,8 @@ public static class GLContextWindows
             _context = wglCreateContext(_dc);
             if (_context == IntPtr.Zero || !wglMakeCurrent(_dc, _context))
             {
-                Console.WriteLine($"GLContextWindows: WGL context failed ({Marshal.GetLastWin32Error()})");
+                LastError = $"WGL context failed ({Marshal.GetLastWin32Error()})";
+                Console.WriteLine($"GLContextWindows: {LastError}");
                 Cleanup();
                 return false;
             }
@@ -168,7 +174,8 @@ public static class GLContextWindows
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GLContextWindows: {ex.Message}");
+            LastError = ex.ToString();
+            Console.WriteLine($"GLContextWindows: {LastError}");
             Cleanup();
             return false;
         }

@@ -62,7 +62,7 @@ namespace VRCX.Tests
             // SteamVR restarting makes the overlay thread initialise again
             for (var i = 0; i < 2; i++)
             {
-                Assert.True(GLContextWindows.Initialise());
+                Assert.True(GLContextWindows.Initialise(), GLContextWindows.LastError);
                 using var writer = new GLTextureWriter(16, 16);
                 writer.UpdateTexture();
                 Assert.NotEqual(IntPtr.Zero, writer.AsTextureT().handle);
@@ -73,7 +73,7 @@ namespace VRCX.Tests
         [WindowsFact]
         public void Rejects_a_frame_of_the_wrong_size()
         {
-            Assert.True(GLContextWindows.Initialise());
+            Assert.True(GLContextWindows.Initialise(), GLContextWindows.LastError);
             try
             {
                 using var writer = new GLTextureWriter(16, 16);
