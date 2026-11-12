@@ -118,7 +118,18 @@ public static class GLContextWindows
         return IntPtr.Zero; // default probing for everything else
     }
 
+    /// <summary>
+    /// Creates the context, retrying once: the first attempt in a fresh process failed on a hosted Windows CI
+    /// runner with wglCreateContext error 2000 (ERROR_INVALID_PIXEL_FORMAT), and the next attempt, with the same
+    /// code, succeeded. The cause is not understood. The overlay thread never retries a failed setup by itself,
+    /// so one in-place retry keeps a transient failure from leaving the overlays off until SteamVR restarts.
+    /// </summary>
     public static bool Initialise()
+    {
+        return InitialiseOnce() || InitialiseOnce();
+    }
+
+    private static bool InitialiseOnce()
     {
         if (!OperatingSystem.IsWindows())
             return false;
