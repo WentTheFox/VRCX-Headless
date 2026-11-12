@@ -17,6 +17,9 @@
     <Compile Include="..\..\..\Dotnet\AppApi\Electron\WindowsRegistry.cs" Link="Linked\WindowsRegistry.cs" />
     <Compile Include="..\..\..\Dotnet\AppApi\Electron\WindowsShell.cs" Link="Linked\WindowsShell.cs" />
     <Compile Include="..\..\..\Dotnet\Overlay\Electron\WindowsOverlay.cs" Link="Linked\WindowsOverlay.cs" />
+    <Compile Include="..\..\..\Dotnet\Overlay\Electron\GLContextWindows.cs" Link="Linked\GLContextWindows.cs" />
+    <Compile Include="..\..\..\Dotnet\Overlay\Electron\GLTextureWriter.cs" Link="Linked\GLTextureWriter.cs" />
+    <Compile Include="..\..\..\Dotnet\Overlay\OpenVR\openvr_api.cs" Link="Linked\openvr_api.cs" />
   </ItemGroup>
 
   <ItemGroup>
