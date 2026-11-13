@@ -34,7 +34,7 @@ Everything here is on top of upstream VRCX, which keeps working as before. This 
   - Endpoints for your profile, time spent together (single and batch), user lookups, your friends list, notes and Discord ids, with an OpenAPI spec at `/api/v1/openapi.json`.
   - Strictly read-only. Keys can't reach the web client, the RPC channel or key management, and the API can optionally run on its own separate port so none of that is exposed.
   - Key management page, embedded in the web and desktop status bar. See [`docs/external-api.md`](./docs/external-api.md).
-- **Server CLI**: `login`, `whoami`, `pipeline`, `serve`, `migrate`, `query`, `tables`, `setup-totp`, `check-update`, `reset-activity-cache`, `dedupe-group-changes`.
+- **Server CLI** for logging in, inspecting and querying the database, running migrations and maintenance tasks, and starting the server. See [Commands in `server/README.md`](./server/README.md#commands).
 - **Seen-avatars index** (`seen_avatars`), shown on a user's Avatars tab ahead of the external avatar database.
 - **avtrDB lookups** done server-side with a compliant User-Agent (`AVTRDB_CONTACT`), with readable errors when the provider blocks a request.
 - **Game log as a second notification source**, so notifications still arrive when the VRChat pipeline is down.

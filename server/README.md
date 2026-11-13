@@ -108,6 +108,9 @@ pnpm run server -- login
 | `migrate [--user=usr_…]` | Runs VRCX's own migration layer against the database        |
 | `tables`                 | Row counts per table                                        |
 | `query "SELECT …"`       | Read-only query, printed as positional rows                 |
+| `reset-activity-cache [--force]` | Wipes the cached Activity/Overlap tables; they rebuild from the game log and feed. Refuses while `serve`/`pipeline` hold the write lock |
+| `dedupe-group-changes [--apply] [--force]` | Removes duplicate `groupChange` notifications (same group and message within 10s). Dry run unless `--apply`, which writes a `.pre-dedupe-<timestamp>.bak` copy first |
+| `check-update [--force] [--json]` | Checks GitHub for a newer upstream VRCX release and whether this fork has a matching one. Exits 1 when a sync is needed and no fork release exists yet; `--force` bypasses the 6h cache |
 | `login`                  | Logs in to VRChat, prompting for credentials and 2FA        |
 | `whoami`                 | Shows the logged-in account                                 |
 | `logout`                 | Clears the session (keeps saved credentials)                |
@@ -115,7 +118,7 @@ pnpm run server -- login
 | `setup-totp`             | Sets the TOTP secret that protects `serve`'s HTTP/WS server  |
 | `serve`                  | Starts the HTTP/WS server and the `updateLoop` daemon        |
 
-Options: `--db=PATH`, `--user=ID`, `--create`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`, `--tls-cert=PATH`, `--tls-key=PATH`.
+Options: `--db=PATH`, `--user=ID`, `--create`, `--force`, `--apply`, `--json`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`, `--tls-cert=PATH`, `--tls-key=PATH`.
 
 `--user` is only needed to create per-user tables for an account the database has never seen; `login` does it for you, and existing accounts are discovered through `sqlite_schema`.
 
