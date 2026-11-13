@@ -29,8 +29,11 @@ Everything here is on top of upstream VRCX, which keeps working as before. This 
 
 ### Server features
 
-- **External read-only API** (opt-in, `VRCX_API_ENABLED`) with scoped, expiring API keys: profile, time together (single and batch), user lookups, friends, notes and Discord ids. OpenAPI spec included. See [`docs/external-api.md`](./docs/external-api.md).
-- **API key management page**, embedded in the web and desktop status bar.
+- **Local read-only API (optional, off by default).** Let your own tools (a stream overlay, a Discord bot, a personal site) read your VRChat data straight from the server's local cache, without needing a VRChat login of their own. Enable it with `VRCX_API_ENABLED=1`; until then it doesn't exist, and `/api/v1/*` returns 404.
+  - Scoped, expiring API keys (`profile:read`, `playtime:read`, `users:read`, `friends:read`, `notes:read`), shown once and revocable instantly.
+  - Endpoints for your profile, time spent together (single and batch), user lookups, your friends list, notes and Discord ids, with an OpenAPI spec at `/api/v1/openapi.json`.
+  - Strictly read-only. Keys can't reach the web client, the RPC channel or key management, and the API can optionally run on its own separate port so none of that is exposed.
+  - Key management page, embedded in the web and desktop status bar. See [`docs/external-api.md`](./docs/external-api.md).
 - **Server CLI**: `login`, `whoami`, `pipeline`, `serve`, `migrate`, `query`, `tables`, `setup-totp`, `check-update`, `reset-activity-cache`, `dedupe-group-changes`.
 - **Seen-avatars index** (`seen_avatars`), shown on a user's Avatars tab ahead of the external avatar database.
 - **avtrDB lookups** done server-side with a compliant User-Agent (`AVTRDB_CONTACT`), with readable errors when the provider blocks a request.
