@@ -9,6 +9,8 @@ Upstream is a fast-moving, UI-heavy project, and `.github/CONTRIBUTING.md` says 
 
 **Layout of this guide:** §1–§4, §6–§8 live here; the big reference sections are split out and loaded on demand — §5 → [`docs/patch-inventory.md`](docs/patch-inventory.md), §9 → [`docs/known-limitations.md`](docs/known-limitations.md), §10 → [`docs/release.md`](docs/release.md). Section numbers are stable, so `§5`/`§9`/`§10` references anywhere still resolve.
 
+**Keep the README's "What this fork adds" list current.** Whenever you add, remove or materially change a user-visible feature, setting, server capability, platform support or release behaviour, update that section of `README.md` in the same change (one short bullet, user-facing wording, in the matching sub-list). List new user-facing features only: no bug fixes, and nothing the fork broke and then repaired. It is separate from §5, which logs *how* upstream files were edited.
+
 **If you are an agent or contributor about to change something: read "Invariants" first. They are the whole reason this fork is maintainable.**
 
 **Status:** fully implemented — server, web client, desktop client, TOTP auth, cross-platform desktop releases (§10). §9 lists what's a deliberate scope cut, not unfinished work. §2–§6 are the merge mechanics; §8 is a one-line-per-phase summary, not a build history.
@@ -61,7 +63,7 @@ So: **Windows is a supported OS for the Electron client's server-connection and 
 
 ### Gotcha: build flags are not OS flags
 
-The `LINUX`/`WINDOWS` compile-time globals (`src/vite.config.js`'s `define`) name the **shell**, not the host OS. `LINUX === true` in *every* Electron build, including the Windows `.exe` and macOS `.dmg` that `desktop-release.yaml` produces (all built with `pnpm run prod-linux`). `WINDOWS === true` only in the CefSharp build, which this fork doesn't ship. The naming is upstream's: upstream only shipped Electron for Linux, so for upstream "Electron" and "Linux" meant the same thing.
+The `LINUX`/`WINDOWS` compile-time globals (`src/vite.config.js`'s `define`) name the **shell**, not the host OS. `LINUX === true` in *every* Electron build, including the Windows `.exe` that `desktop-release.yaml` produces (all built with `pnpm run prod-linux`). `WINDOWS === true` only in the CefSharp build, which this fork doesn't ship. The naming is upstream's: upstream only shipped Electron for Linux, so for upstream "Electron" and "Linux" meant the same thing.
 
 Most of upstream's `LINUX` checks really do mean "the Electron shell" (use `window.electron`/`InteropApi` rather than CefSharp, the Electron-only AppApi variants, and so on), and those are correct as they are. Don't rename them, because every upstream sync would then conflict on them. The bug class to watch for is a `LINUX`/`!isLinux` check that actually means **"is the host OS Linux/Windows"**: a registry, autostart or Windows-path feature, or a Windows-only third-party app such as XSOverlay or OVR Toolkit. On the Windows Electron build, those checks silently hide working features or show broken ones.
 

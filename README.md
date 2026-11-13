@@ -14,6 +14,46 @@
 - **Building and running the Electron desktop client → [`client-desktop/README.md`](./client-desktop/README.md)**
 - **Architecture, fork invariants and the upstream merge procedure → [`CLAUDE.md`](./CLAUDE.md)**
 
+## What this fork adds
+
+Everything here is on top of upstream VRCX, which keeps working as before. This lists new user-facing features only, not fixes for things the fork itself broke or upstream behaviour it preserved; the technical details live in [`CLAUDE.md`](./CLAUDE.md) and [`docs/patch-inventory.md`](./docs/patch-inventory.md).
+
+### Architecture
+
+- **Headless server** (Node, Docker, multi-arch incl. Raspberry Pi). It owns the VRChat login, the pipeline WebSocket, the polling loop and `VRCX.sqlite3`, and is the only writer of the database. One instance runs 24/7, so nothing is missed while your PC is off.
+- **Browser client** (`PLATFORM=web`): the same Vue UI, served from any device, kept in sync with the server over an event stream. Settings are shared across devices.
+- **Electron desktop client** for Linux and Windows, connecting to your server. A .NET sidecar provides the machine-local parts: game log tailing, VR overlay, Discord Rich Presence, registry access, screenshots and game launch. The CefSharp client is gone.
+- **TOTP login** for the server, with first-time enrollment from the browser or CLI.
+- **Multiple servers** on the desktop client: a server switcher, a remembered default and a setup screen.
+- **Reuses your existing database.** The server runs upstream's own data layer unchanged, so a desktop VRCX `VRCX.sqlite3` can be moved over (see [`server/README.md`](./server/README.md)).
+
+### Server features
+
+- **External read-only API** (opt-in, `VRCX_API_ENABLED`) with scoped, expiring API keys: profile, time together (single and batch), user lookups, friends, notes and Discord ids. OpenAPI spec included. See [`docs/external-api.md`](./docs/external-api.md).
+- **API key management page**, embedded in the web and desktop status bar.
+- **Server CLI**: `login`, `whoami`, `pipeline`, `serve`, `migrate`, `query`, `tables`, `setup-totp`, `check-update`, `reset-activity-cache`, `dedupe-group-changes`.
+- **Seen-avatars index** (`seen_avatars`), shown on a user's Avatars tab ahead of the external avatar database.
+- **avtrDB lookups** done server-side with a compliant User-Agent (`AVTRDB_CONTACT`), with readable errors when the provider blocks a request.
+- **Game log as a second notification source**, so notifications still arrive when the VRChat pipeline is down.
+- **Automatic VRChat settings backup**, stored server-side.
+- **Fork update checker**: Settings shows the upstream VRCX version the fork is based on, and the repository to update from is configurable.
+
+### Desktop client features
+
+- **Self-updater** for Windows (installer) and Linux (AppImage) with hash verification and a startup splash, driven by this fork's GitHub releases.
+- **Cross-platform release pipeline**: Windows (x64/arm64) and Linux (x64/arm64) builds, plus Docker images, tagged `<vrcx-date>.<minor>.<patch>`.
+- **Windows support in the Electron client**: game launch, native registry backup/restore, clipboard, "open folder", open-instance-in-running-VRChat, auto-launch of helper apps with VRChat, and a SteamVR VR overlay.
+- **Linux support**: autostart `.desktop` entry, open instances in a running VRChat under Wine/Proton, VR overlay via OpenGL, Steam path autodetection.
+- **Start with SteamVR** option.
+- **Persistent invite notifications** that stay on screen until dismissed while the game is closed.
+- **Customizable tray and in-app notification dot colors** per notification type.
+
+### UI and behaviour changes
+
+- Headless server status indicator in the status bar.
+- Option to show a friend's status instead of "Private" in the sidebar.
+- DeepL as a third bio translation provider.
+
 Everything below is upstream VRCX's own documentation and still describes the desktop app.
 
 <div align="center">
