@@ -44,40 +44,40 @@ Your VRChat session cookie is stored in `VRCX.sqlite3` on the volume, so later c
 
 ```yaml
 services:
-    vrcx:
-        image: ghcr.io/wentthefox/vrcx-headless-server:main
-        volumes:
-            - ./vrcx-data:/data
-        ports:
-            - '9000:9000'
-        environment:
-            VRCX_LOG_LEVEL: info
-            # Skips browser-driven enrollment (see "TOTP setup" below) —
-            # generate one from a checkout with:
-            #   node --input-type=module -e "import('./server/src/totp.js').then(({generateTotpSecret}) => console.log(generateTotpSecret()))"
-            VRCX_SERVER_TOTP_SECRET: ...
-        command: serve
-        restart: unless-stopped
+  vrcx:
+    image: ghcr.io/wentthefox/vrcx-headless-server:main
+    volumes:
+      - ./vrcx-data:/data
+    ports:
+      - '9000:9000'
+    environment:
+      VRCX_LOG_LEVEL: info
+      # Skips browser-driven enrollment (see "TOTP setup" below) —
+      # generate one from a checkout with:
+      #   node --input-type=module -e "import('./server/src/totp.js').then(({generateTotpSecret}) => console.log(generateTotpSecret()))"
+      VRCX_SERVER_TOTP_SECRET: ...
+    command: serve
+    restart: unless-stopped
 ```
 
 ### Tags
 
-Release tags are `<vrcx-date-no-dots>.<minor>.<patch>` — real semver, with the VRCX version this release is built against as the *major* number. MINOR bumps on a change that needs this server container itself redeployed/restarted to take effect (server code, the shared data layer, DB schema); PATCH bumps on a client-only change (desktop/web UI) that doesn't, and resets to `0` whenever MINOR bumps. `20260718.1.0` means: built against VRCX `2026.07.18`, the first server-requiring fork release cut against that base. A later client-only release against the same MINOR is `20260718.1.1`; a later server-requiring release is `20260718.2.0`; syncing to a newer VRCX release resets both counters, e.g. `20260801.1.0`.
+Release tags are `<vrcx-date-no-dots>.<minor>.<patch>` — real semver, with the VRCX version this release is built against as the _major_ number. MINOR bumps on a change that needs this server container itself redeployed/restarted to take effect (server code, the shared data layer, DB schema); PATCH bumps on a client-only change (desktop/web UI) that doesn't, and resets to `0` whenever MINOR bumps. `20260718.1.0` means: built against VRCX `2026.07.18`, the first server-requiring fork release cut against that base. A later client-only release against the same MINOR is `20260718.1.1`; a later server-requiring release is `20260718.2.0`; syncing to a newer VRCX release resets both counters, e.g. `20260801.1.0`.
 
-| Tag             | What it is                                                             |
-| ---------------- | ------------------------------------------------------------------------ |
-| `main`           | latest build of the default branch                                     |
-| `sha-<short>`    | a specific commit                                                      |
-| `20260718.1.0`   | one exact, immutable fork release                                      |
-| `20260718.1`     | floating: latest PATCH under that MINOR — this one *does* move on a client-only release, since the server code behind it hasn't changed |
-| `20260718`       | floating: latest fork release built against VRCX `2026.07.18`          |
-| `latest`         | most recent release tag                                                |
+| Tag            | What it is                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`         | latest build of the default branch                                                                                                      |
+| `sha-<short>`  | a specific commit                                                                                                                       |
+| `20260718.1.0` | one exact, immutable fork release                                                                                                       |
+| `20260718.1`   | floating: latest PATCH under that MINOR — this one _does_ move on a client-only release, since the server code behind it hasn't changed |
+| `20260718`     | floating: latest fork release built against VRCX `2026.07.18`                                                                           |
+| `latest`       | most recent release tag                                                                                                                 |
 
 `docker inspect`'s `org.opencontainers.image.version` label and `... info`'s `server version` line both show the full `20260718.1.0` version (the `info` line also repeats the dotted `2026.07.18` for readability). Maintainers: see CLAUDE.md's "Server/Docker versioning" for how to cut a release.
 
 ### Desktop client auto-updates
 
-The Windows and Linux desktop clients update themselves automatically, but only in response to *this server's* version — not GitHub in general. On every launch (and every server switch, which restarts the process), it asks the configured default server what version it's running and, if a newer release is available **under that server's own MINOR version**, downloads and installs it for you, no confirmation needed.
+The Windows and Linux desktop clients update themselves automatically, but only in response to _this server's_ version — not GitHub in general. On every launch (and every server switch, which restarts the process), it asks the configured default server what version it's running and, if a newer release is available **under that server's own MINOR version**, downloads and installs it for you, no confirmation needed.
 
 "Under that server's own MINOR" matters because PATCH releases are client-only by definition — the server never needed a code change or a redeploy to produce one, so the running server's own PATCH can genuinely lag behind the newest one published. The client isn't held back by that: it's offered the newest PATCH under the server's MINOR even if the server itself is still reporting an older PATCH. A MINOR mismatch is different — that always means the server container itself was rebuilt, and is still the trigger for the client to move onto a whole new release line.
 
@@ -102,21 +102,21 @@ pnpm run server -- login
 
 ## Commands
 
-| Command                  | What it does                                                |
-| ------------------------ | ----------------------------------------------------------- |
-| `info`                   | Where the database is, its schema version, who is logged in |
-| `migrate [--user=usr_…]` | Runs VRCX's own migration layer against the database        |
-| `tables`                 | Row counts per table                                        |
-| `query "SELECT …"`       | Read-only query, printed as positional rows                 |
-| `reset-activity-cache [--force]` | Wipes the cached Activity/Overlap tables; they rebuild from the game log and feed. Refuses while `serve`/`pipeline` hold the write lock |
-| `dedupe-group-changes [--apply] [--force]` | Removes duplicate `groupChange` notifications (same group and message within 10s). Dry run unless `--apply`, which writes a `.pre-dedupe-<timestamp>.bak` copy first |
-| `check-update [--force] [--json]` | Checks GitHub for a newer upstream VRCX release and whether this fork has a matching one. Exits 1 when a sync is needed and no fork release exists yet; `--force` bypasses the 6h cache |
-| `login`                  | Logs in to VRChat, prompting for credentials and 2FA        |
-| `whoami`                 | Shows the logged-in account                                 |
-| `logout`                 | Clears the session (keeps saved credentials)                |
-| `pipeline`               | Connects to the VRChat event pipeline and streams events    |
-| `setup-totp`             | Sets the TOTP secret that protects `serve`'s HTTP/WS server  |
-| `serve`                  | Starts the HTTP/WS server and the `updateLoop` daemon        |
+| Command                                    | What it does                                                                                                                                                                            |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `info`                                     | Where the database is, its schema version, who is logged in                                                                                                                             |
+| `migrate [--user=usr_…]`                   | Runs VRCX's own migration layer against the database                                                                                                                                    |
+| `tables`                                   | Row counts per table                                                                                                                                                                    |
+| `query "SELECT …"`                         | Read-only query, printed as positional rows                                                                                                                                             |
+| `reset-activity-cache [--force]`           | Wipes the cached Activity/Overlap tables; they rebuild from the game log and feed. Refuses while `serve`/`pipeline` hold the write lock                                                 |
+| `dedupe-group-changes [--apply] [--force]` | Removes duplicate `groupChange` notifications (same group and message within 10s). Dry run unless `--apply`, which writes a `.pre-dedupe-<timestamp>.bak` copy first                    |
+| `check-update [--force] [--json]`          | Checks GitHub for a newer upstream VRCX release and whether this fork has a matching one. Exits 1 when a sync is needed and no fork release exists yet; `--force` bypasses the 6h cache |
+| `login`                                    | Logs in to VRChat, prompting for credentials and 2FA                                                                                                                                    |
+| `whoami`                                   | Shows the logged-in account                                                                                                                                                             |
+| `logout`                                   | Clears the session (keeps saved credentials)                                                                                                                                            |
+| `pipeline`                                 | Connects to the VRChat event pipeline and streams events                                                                                                                                |
+| `setup-totp`                               | Sets the TOTP secret that protects `serve`'s HTTP/WS server                                                                                                                             |
+| `serve`                                    | Starts the HTTP/WS server and the `updateLoop` daemon                                                                                                                                   |
 
 Options: `--db=PATH`, `--user=ID`, `--create`, `--force`, `--apply`, `--json`, `--username=NAME`, `--endpoint=URL`, `--websocket=URL`, `--tls-cert=PATH`, `--tls-key=PATH`.
 
@@ -176,22 +176,22 @@ keys and a read-only `/api/v1/*` API, optionally on its own public-only port
 
 ## Environment
 
-| Variable               | Meaning                                                 |
-| ----------------------- | -------------------------------------------------------- |
-| `VRCX_DATABASE`        | Absolute path to `VRCX.sqlite3`                         |
-| `VRCX_DATA_DIR`        | VRCX app data directory (`/data` in the container)      |
-| `AVTRDB_CONTACT`       | Your contact (email, Discord or URL), sent in the User-Agent to api.avtrdb.com. Required for avatar-database lookups, see [avtrDB lookups](#avtrdb-avatar-database-lookups) |
-| `VRCX_LOG_LEVEL`       | `debug` \| `info` \| `warn` \| `error` (default `info`) |
-| `VRCHAT_PASSWORD`      | Password for a non-interactive `login`                  |
-| `VRCHAT_2FA_CODE`      | Two-factor code for a non-interactive `login`           |
-| `VRCHAT_2FA_SECRET`    | Base32 TOTP secret from the VRChat account's own authenticator enrollment — generates a fresh code on every login/re-login, so an unattended auto-login retry can clear a TOTP challenge without `VRCHAT_2FA_CODE` (good for only one code) |
-| `VRCX_SERVER_TOTP_SECRET` | Base32 TOTP secret for `serve`, instead of running `setup-totp` |
-| `VRCX_SERVER_HOST`     | HTTP/WS bind address (default `0.0.0.0`)                |
-| `VRCX_SERVER_PORT`     | HTTP/WS bind port (default `9000`)                      |
-| `VRCX_UPDATE_REPO`     | GitHub repo (`owner/name` or URL) desktop clients fetch updates from (default `WentTheFox/VRCX-Headless`); forces and locks it — the desktop client's Settings → Fork Update repo field is otherwise shared via the server config |
-| `VRCX_SERVER_TLS_CERT` | PEM certificate file, instead of `--tls-cert`           |
-| `VRCX_SERVER_TLS_KEY`  | PEM private key file, instead of `--tls-key`            |
-| `HTTPS_PROXY`          | Honoured when `NODE_USE_ENV_PROXY=1` (set in the image) |
+| Variable                  | Meaning                                                                                                                                                                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VRCX_DATABASE`           | Absolute path to `VRCX.sqlite3`                                                                                                                                                                                                             |
+| `VRCX_DATA_DIR`           | VRCX app data directory (`/data` in the container)                                                                                                                                                                                          |
+| `AVTRDB_CONTACT`          | Your contact (email, Discord or URL), sent in the User-Agent to api.avtrdb.com. Required for avatar-database lookups, see [avtrDB lookups](#avtrdb-avatar-database-lookups)                                                                 |
+| `VRCX_LOG_LEVEL`          | `debug` \| `info` \| `warn` \| `error` (default `info`)                                                                                                                                                                                     |
+| `VRCHAT_PASSWORD`         | Password for a non-interactive `login`                                                                                                                                                                                                      |
+| `VRCHAT_2FA_CODE`         | Two-factor code for a non-interactive `login`                                                                                                                                                                                               |
+| `VRCHAT_2FA_SECRET`       | Base32 TOTP secret from the VRChat account's own authenticator enrollment — generates a fresh code on every login/re-login, so an unattended auto-login retry can clear a TOTP challenge without `VRCHAT_2FA_CODE` (good for only one code) |
+| `VRCX_SERVER_TOTP_SECRET` | Base32 TOTP secret for `serve`, instead of running `setup-totp`                                                                                                                                                                             |
+| `VRCX_SERVER_HOST`        | HTTP/WS bind address (default `0.0.0.0`)                                                                                                                                                                                                    |
+| `VRCX_SERVER_PORT`        | HTTP/WS bind port (default `9000`)                                                                                                                                                                                                          |
+| `VRCX_UPDATE_REPO`        | GitHub repo (`owner/name` or URL) desktop clients fetch updates from (default `WentTheFox/VRCX-Headless`); forces and locks it — the desktop client's Settings → Fork Update repo field is otherwise shared via the server config           |
+| `VRCX_SERVER_TLS_CERT`    | PEM certificate file, instead of `--tls-cert`                                                                                                                                                                                               |
+| `VRCX_SERVER_TLS_KEY`     | PEM private key file, instead of `--tls-key`                                                                                                                                                                                                |
+| `HTTPS_PROXY`             | Honoured when `NODE_USE_ENV_PROXY=1` (set in the image)                                                                                                                                                                                     |
 
 ---
 
@@ -237,7 +237,7 @@ Cookies and saved credentials are stored in the same format the .NET app uses, s
 ## Security notes
 
 - **VRChat credentials are stored the way upstream VRCX stores them.** With no primary password set, the password is saved in `savedCredentials` in **plaintext**, exactly as the desktop app does it. This is upstream behaviour, not something this fork introduced; treat `VRCX.sqlite3` as a secret.
-- **`serve`'s own auth is TOTP, not a static password** (see "TOTP setup" above for setup/reset). A rotating 6-digit code from a 2FA app is worthless outside its 30-second window even if sniffed in transit — a real improvement over a static password given the common deployment is plain HTTP on a home network. The *secret* backing it is still the one long-lived credential (same threat model a password hash had), so `VRCX.sqlite3` remains something to treat as a secret either way.
+- **`serve`'s own auth is TOTP, not a static password** (see "TOTP setup" above for setup/reset). A rotating 6-digit code from a 2FA app is worthless outside its 30-second window even if sniffed in transit — a real improvement over a static password given the common deployment is plain HTTP on a home network. The _secret_ backing it is still the one long-lived credential (same threat model a password hash had), so `VRCX.sqlite3` remains something to treat as a secret either way.
 - **`serve`'s cookie has no `Secure` flag by default.** The common deployment is a home-network Docker container over plain HTTP, so requiring TLS out of the box would just break that. Two ways to get TLS: put a reverse proxy in front, or point `serve` at a cert/key pair directly (`--tls-cert`/`--tls-key`, or `VRCX_SERVER_TLS_CERT`/`VRCX_SERVER_TLS_KEY`) — when either is used, the session cookie gains `Secure` automatically. `HttpOnly`/`SameSite=Strict` alone protect against XSS/CSRF, not eavesdropping on the wire, so exposing `serve` past a network you trust without one of these two is not safe.
 - **Sessions are signed, stateless tokens (180-day expiry) that survive a `serve` restart.** Both clients call `/api/session/refresh` on every launch, which rotates a still-valid token into a fresh one with a full new expiry — so reopening the app within the window keeps sliding it forward, effectively "stay logged in indefinitely" as long as it's reopened at least once every 180 days. Nothing about that changes the trust model: treat a leaked session token as equivalent to a leaked TOTP code either way.
 - **`/api/rpc` exposes `database`/`configRepository`'s full real method surface**, the same one the desktop app itself uses locally with no additional restriction — the authenticated session is the security boundary, not per-method filtering. Don't run `serve` on a database you wouldn't otherwise trust the network it's exposed to.
