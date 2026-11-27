@@ -3,7 +3,13 @@ import { createRequire } from 'node:module';
 
 // src-electron/overlayShm.js is CommonJS and shared with the Electron main process
 const require = createRequire(import.meta.url);
-const { getOverlayFrameTransport, getOverlayShmPath, getOverlayFrameResize } = require('../../src-electron/overlayShm.js');
+const {
+    getOverlayFrameTransport,
+    getOverlayShmPath,
+    getOverlayFrameResize,
+    shouldResizeOverlayWindow,
+    isOverlayFrameShapeValid
+} = require('../../src-electron/overlayShm.js');
 
 describe('getOverlayFrameTransport', () => {
     it('uses the /dev/shm file on Linux', () => {
@@ -46,5 +52,39 @@ describe('getOverlayFrameResize', () => {
 
     it('also resizes when only one dimension differs', () => {
         expect(getOverlayFrameResize({ width: 1024, height: 1535 }, 1024, 1536)).not.toBeNull();
+    });
+});
+
+describe('shouldResizeOverlayWindow', () => {
+    it('leaves a full-size window alone', () => {
+        expect(shouldResizeOverlayWindow([1024, 1536], 1024, 1536, 10_000, null)).toBe(false);
+    });
+
+    it('resizes a window clamped to a 1440p work area', () => {
+        expect(shouldResizeOverlayWindow([1024, 1392], 1024, 1536, 10_000, null)).toBe(true);
+    });
+
+    it('waits between attempts so a refused resize is not retried every frame', () => {
+        expect(shouldResizeOverlayWindow([1024, 1392], 1024, 1536, 10_000, 8_000)).toBe(false);
+        expect(shouldResizeOverlayWindow([1024, 1392], 1024, 1536, 13_000, 8_000)).toBe(true);
+        expect(shouldResizeOverlayWindow([1024, 1392], 1024, 1536, 10_000, 9_000, 500)).toBe(true);
+    });
+});
+
+describe('isOverlayFrameShapeValid', () => {
+    it('accepts the expected frame and HiDPI copies of it', () => {
+        expect(isOverlayFrameShapeValid({ width: 1024, height: 1536 }, 1024, 1536)).toBe(true);
+        expect(isOverlayFrameShapeValid({ width: 1280, height: 1920 }, 1024, 1536)).toBe(true);
+        // 115%: 1177.6 x 1766.4, rounded by Chromium
+        expect(isOverlayFrameShapeValid({ width: 1178, height: 1766 }, 1024, 1536)).toBe(true);
+    });
+
+    it('rejects a clamped frame, which stretching would misplace', () => {
+        expect(isOverlayFrameShapeValid({ width: 1024, height: 1392 }, 1024, 1536)).toBe(false);
+        expect(isOverlayFrameShapeValid({ width: 1280, height: 1740 }, 1024, 1536)).toBe(false);
+    });
+
+    it('rejects an empty bitmap', () => {
+        expect(isOverlayFrameShapeValid({ width: 0, height: 0 }, 1024, 1536)).toBe(false);
     });
 });

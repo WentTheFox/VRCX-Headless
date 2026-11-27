@@ -22,7 +22,13 @@ const { createTempAutoAcceptStore } = require('./tempAutoAcceptStore');
 const { verifyWithCustomCa } = require('./customCaTrust');
 const { refreshWithRetry, isTransientStatus } = require('./sessionRetry');
 const { buildWindowsUpdateScript } = require('./windowsUpdateScript');
-const { getOverlayFrameTransport, getOverlayShmPath, getOverlayFrameResize } = require('./overlayShm');
+const {
+    getOverlayFrameTransport,
+    getOverlayShmPath,
+    getOverlayFrameResize,
+    shouldResizeOverlayWindow,
+    isOverlayFrameShapeValid
+} = require('./overlayShm');
 
 //app.disableHardwareAcceleration();
 
@@ -2125,7 +2131,25 @@ function createOverlayWindowOffscreen() {
     }
     overlayWindow.loadURL(fileUrl, { userAgent: version });
     // Use paint event for offscreen rendering
+    let overlayResizeAttemptMs = null;
     overlayWindow.webContents.on('paint', (_event, _dirty, image) => {
+        // Fork-only: Windows clamps the hidden window to its display's work area (see overlayShm.js). Undo that
+        // after the first paint, and drop the mis-shaped frames painted until then instead of stretching them.
+        if (
+            shouldResizeOverlayWindow(
+                overlayWindow.getContentSize(),
+                OVERLAY_SHARED_WIDTH,
+                OVERLAY_SHARED_HEIGHT,
+                Date.now(),
+                overlayResizeAttemptMs
+            )
+        ) {
+            overlayResizeAttemptMs = Date.now();
+            overlayWindow.setContentSize(OVERLAY_SHARED_WIDTH, OVERLAY_SHARED_HEIGHT);
+        }
+        if (!isOverlayFrameShapeValid(image.getSize(), OVERLAY_SHARED_WIDTH, OVERLAY_SHARED_HEIGHT)) {
+            return;
+        }
         // Fork-only: with display scaling the bitmap is larger than the frame .NET expects (see overlayShm.js)
         const resize = getOverlayFrameResize(image.getSize(), OVERLAY_SHARED_WIDTH, OVERLAY_SHARED_HEIGHT);
         const buffer = (resize ? image.resize(resize) : image).toBitmap();
